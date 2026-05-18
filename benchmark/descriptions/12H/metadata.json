@@ -1,0 +1,16 @@
+{
+  "agents": ["CHEF_A", "CHEF_B", "CHEF_C"],
+  "resources": ["OVEN", "PREP_STATION", "STOVETOP"],
+  "agent_resources": {
+    "CHEF_A": ["OVEN", "PREP_STATION", "STOVETOP"],
+    "CHEF_B": ["OVEN", "PREP_STATION", "STOVETOP"],
+    "CHEF_C": ["OVEN", "PREP_STATION"]
+  },
+  "tool_resource_map": {
+    "prep_mise_en_place": ["PREP_STATION"],
+    "cook_on_stovetop": ["STOVETOP"],
+    "cook_in_oven": ["OVEN"],
+    "plate_dish": ["PREP_STATION"],
+    "prepare_ingredient": []
+  }
+}

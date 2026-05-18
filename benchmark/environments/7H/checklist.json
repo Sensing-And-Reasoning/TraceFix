@@ -1,0 +1,72 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "DOCUMENT is a shared resource requiring coordinated write access"
+  },
+  {
+    "id": "R2",
+    "type": "resource",
+    "description": "FIGURE_STORE is a shared resource requiring coordinated update access"
+  },
+  {
+    "id": "D1",
+    "type": "dependency",
+    "description": "Chapter 3 references evaluation data from chapter 4 (WRITER_B depends on WRITER_C's results)"
+  },
+  {
+    "id": "D2",
+    "type": "dependency",
+    "description": "Part I (chapters 1-2) must frame contributions from chapters 3-4 (WRITER_A waits for WRITER_B and WRITER_C)"
+  },
+  {
+    "id": "D3",
+    "type": "dependency",
+    "description": "FIGURE_CREATOR needs DOCUMENT and FIGURE_STORE to insert figures into multiple chapters"
+  },
+  {
+    "id": "D4",
+    "type": "dependency",
+    "description": "FACT_CHECKER must verify cross-chapter data consistency requiring DOCUMENT access"
+  },
+  {
+    "id": "D5",
+    "type": "dependency",
+    "description": "REVIEWER can only review complete chapters; major revisions require re-review"
+  },
+  {
+    "id": "DEC1",
+    "type": "decision",
+    "description": "REVIEWER decides major revision (re-review needed) vs minor revision vs accept"
+  },
+  {
+    "id": "DEC2",
+    "type": "decision",
+    "description": "EDITOR_IN_CHIEF resolves cross-chapter conflicts and makes final editorial decisions"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "Write -> review -> editor decision -> finalize (per chapter pipeline)"
+  },
+  {
+    "id": "O2",
+    "type": "ordering",
+    "description": "WRITER_C publishes stable results before WRITER_B finalizes chapter 3 references"
+  },
+  {
+    "id": "RA1",
+    "type": "resource_access",
+    "description": "FIGURE_CREATOR, FACT_CHECKER, writers, and REVIEWER all need DOCUMENT at different phases"
+  },
+  {
+    "id": "DL1",
+    "type": "deadlock_scenario",
+    "description": "Cross-chapter dependency: WRITER_B waits for WRITER_C's results, WRITER_A waits for both, creating a dependency chain that could block if combined with resource contention on DOCUMENT"
+  },
+  {
+    "id": "DL2",
+    "type": "deadlock_scenario",
+    "description": "Multi-resource acquisition: FIGURE_CREATOR or FACT_CHECKER acquiring DOCUMENT and FIGURE_STORE without consistent ordering could cause circular wait"
+  }
+]

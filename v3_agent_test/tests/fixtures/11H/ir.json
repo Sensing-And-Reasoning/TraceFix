@@ -1,0 +1,34 @@
+{
+  "agents": [
+    {"id": "workerA"},
+    {"id": "workerB"},
+    {"id": "workerC"},
+    {"id": "workerD"},
+    {"id": "inspector"},
+    {"id": "mat_handler"},
+    {"id": "packager"}
+  ],
+  "resources": [
+    {"id": "station_1", "type": "Lock"},
+    {"id": "station_2", "type": "Lock"},
+    {"id": "station_3", "type": "Lock"},
+    {"id": "station_4", "type": "Lock"},
+    {"id": "tool_supply", "type": "Counter", "config": {"initial": 3}},
+    {"id": "raw_material", "type": "Counter", "config": {"initial": 4}}
+  ],
+  "channels": [
+    {"id": "wA_to_insp", "from": "workerA", "to": "inspector", "labels": ["inspect"]},
+    {"id": "wB_to_insp", "from": "workerB", "to": "inspector", "labels": ["inspect"]},
+    {"id": "wC_to_insp", "from": "workerC", "to": "inspector", "labels": ["inspect"]},
+    {"id": "wD_to_insp", "from": "workerD", "to": "inspector", "labels": ["inspect"]},
+    {"id": "insp_to_wA", "from": "inspector", "to": "workerA", "labels": ["pass"]},
+    {"id": "insp_to_wB", "from": "inspector", "to": "workerB", "labels": ["pass"]},
+    {"id": "insp_to_wC", "from": "inspector", "to": "workerC", "labels": ["pass"]},
+    {"id": "insp_to_wD", "from": "inspector", "to": "workerD", "labels": ["pass"]},
+    {"id": "wA_to_pack", "from": "workerA", "to": "packager", "labels": ["finished"]},
+    {"id": "wB_to_pack", "from": "workerB", "to": "packager", "labels": ["finished"]},
+    {"id": "wC_to_pack", "from": "workerC", "to": "packager", "labels": ["finished"]},
+    {"id": "wD_to_pack", "from": "workerD", "to": "packager", "labels": ["finished"]},
+    {"id": "insp_to_mat", "from": "inspector", "to": "mat_handler", "labels": ["all_done"]}
+  ]
+}

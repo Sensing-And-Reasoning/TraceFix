@@ -1,0 +1,37 @@
+[
+  {"type": "function", "function": {
+    "name": "run_analysis", "description": "Run a spectrometer analysis on a sample.",
+    "agent_ids": ["CHEMIST", "BIOLOGIST", "ANALYST"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"sample": {"type": "string", "description": "What to analyze"}}, "required": ["sample"]}
+  }},
+  {"type": "function", "function": {
+    "name": "run_separation", "description": "Run centrifuge separation on a material.",
+    "agent_ids": ["CHEMIST", "BIOLOGIST", "ANALYST"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"material": {"type": "string", "description": "What to separate"}}, "required": ["material"]}
+  }},
+  {"type": "function", "function": {
+    "name": "run_bioassay", "description": "Run biological activity test on the compound using cell cultures. No instrument required.",
+    "agent_ids": ["BIOLOGIST"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"compound": {"type": "string", "description": "Compound to test"}, "cell_type": {"type": "string", "description": "Type of cell culture to use"}}, "required": ["compound"]}
+  }},
+  {"type": "function", "function": {
+    "name": "run_synthesis", "description": "Run chemical synthesis in the fume hood. Consumes one reagent unit. Can fail.",
+    "agent_ids": ["CHEMIST"], "can_fail": true,
+    "parameters": {"type": "object", "properties": {"compound": {"type": "string", "description": "Compound to synthesize"}}, "required": ["compound"]}
+  }},
+  {"type": "function", "function": {
+    "name": "run_chromatography", "description": "Run chromatographic separation and identification.",
+    "agent_ids": ["ANALYST"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"sample": {"type": "string", "description": "Sample to analyze"}}, "required": ["sample"]}
+  }},
+  {"type": "function", "function": {
+    "name": "verify_result", "description": "Verify a scientist's result. Can reject, requiring the scientist to redo work.",
+    "agent_ids": ["QC_CONTROLLER"], "can_fail": true,
+    "parameters": {"type": "object", "properties": {"scientist": {"type": "string", "description": "Scientist whose result to verify"}, "data_type": {"type": "string", "description": "Type of data being verified"}}, "required": ["scientist", "data_type"]}
+  }},
+  {"type": "function", "function": {
+    "name": "perform_inspection", "description": "Perform a full safety inspection of all instruments.",
+    "agent_ids": ["SAFETY_OFFICER"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"notes": {"type": "string", "description": "Inspection notes or observations"}}, "required": []}
+  }}
+]

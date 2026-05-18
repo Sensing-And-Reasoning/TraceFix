@@ -1,0 +1,27 @@
+[
+  {"type": "function", "function": {
+    "name": "prep_mise_en_place", "description": "Prepare ingredients and base components at the prep station.",
+    "agent_ids": ["CHEF_A", "CHEF_B", "CHEF_C"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"dish": {"type": "string", "description": "Dish or ingredient to prep (e.g., 'appetizer', 'sauce')"}}, "required": ["dish"]}
+  }},
+  {"type": "function", "function": {
+    "name": "cook_on_stovetop", "description": "Cook a dish or ingredient on the stovetop. Can fail — on failure, must re-prep and re-cook.",
+    "agent_ids": ["CHEF_A", "CHEF_B"], "can_fail": true,
+    "parameters": {"type": "object", "properties": {"item": {"type": "string", "description": "Item to cook (e.g., 'appetizer_base', 'sauce', 'main_course_base', 'garnish')"}}, "required": ["item"]}
+  }},
+  {"type": "function", "function": {
+    "name": "cook_in_oven", "description": "Cook a dish or ingredient in the oven. Can fail — on failure, must re-prep and re-cook.",
+    "agent_ids": ["CHEF_A", "CHEF_B", "CHEF_C"], "can_fail": true,
+    "parameters": {"type": "object", "properties": {"item": {"type": "string", "description": "Item to cook (e.g., 'appetizer_base', 'dessert_base', 'glaze')"}}, "required": ["item"]}
+  }},
+  {"type": "function", "function": {
+    "name": "plate_dish", "description": "Plate the completed dish with the received ingredient at the prep station.",
+    "agent_ids": ["CHEF_A", "CHEF_B", "CHEF_C"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"dish": {"type": "string", "description": "Dish to plate"}, "ingredient": {"type": "string", "description": "Received ingredient to combine with"}}, "required": ["dish", "ingredient"]}
+  }},
+  {"type": "function", "function": {
+    "name": "prepare_ingredient", "description": "Prepare an ingredient for another chef's dish (uses stovetop or oven depending on ingredient). Can fail — on failure, must re-prepare.",
+    "agent_ids": ["CHEF_A", "CHEF_B", "CHEF_C"], "can_fail": true,
+    "parameters": {"type": "object", "properties": {"ingredient": {"type": "string", "description": "Ingredient to prepare (e.g., 'sauce', 'garnish', 'glaze')"}, "for_chef": {"type": "string", "description": "Which chef this ingredient is for"}}, "required": ["ingredient", "for_chef"]}
+  }}
+]

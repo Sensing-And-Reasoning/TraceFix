@@ -1,0 +1,17 @@
+{
+  "agents": ["BIOLOGIST", "CHEMIST", "LEAD_SCIENTIST", "REGULATORY_SPECIALIST", "TOXICOLOGIST"],
+  "resources": ["CELL_LAB", "HPLC", "MASS_SPEC"],
+  "agent_resources": {
+    "BIOLOGIST": ["CELL_LAB", "HPLC"],
+    "CHEMIST": ["HPLC", "MASS_SPEC"],
+    "LEAD_SCIENTIST": ["HPLC", "MASS_SPEC"],
+    "REGULATORY_SPECIALIST": [],
+    "TOXICOLOGIST": ["CELL_LAB", "HPLC", "MASS_SPEC"]
+  },
+  "tool_resource_map": {
+    "run_hplc_analysis": ["HPLC"],
+    "run_mass_spec_analysis": ["MASS_SPEC"],
+    "run_cell_assay": ["CELL_LAB"],
+    "verify_regulatory_compliance": []
+  }
+}

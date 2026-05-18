@@ -1,0 +1,52 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "DOCUMENT is a shared resource requiring coordinated write access"
+  },
+  {
+    "id": "R2",
+    "type": "resource",
+    "description": "FIGURE_STORE is a shared resource requiring coordinated update access"
+  },
+  {
+    "id": "D1",
+    "type": "dependency",
+    "description": "FIGURE_CREATOR needs DOCUMENT to insert figures, creating contention with WRITER_A and WRITER_B"
+  },
+  {
+    "id": "D2",
+    "type": "dependency",
+    "description": "WRITER_A and WRITER_B may cross-reference other chapters, requiring read-after-write dependency"
+  },
+  {
+    "id": "D3",
+    "type": "dependency",
+    "description": "FACT_CHECKER can only check a chapter after writer marks it complete"
+  },
+  {
+    "id": "D4",
+    "type": "dependency",
+    "description": "EDITOR reviews only after both fact checking and writing are done"
+  },
+  {
+    "id": "DEC1",
+    "type": "decision",
+    "description": "FACT_CHECKER flags issues or approves claims in each chapter"
+  },
+  {
+    "id": "DEC2",
+    "type": "decision",
+    "description": "EDITOR accepts or requests revisions for consistency"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "Write chapter -> figure insertion -> fact check -> EDITOR review (per chapter pipeline)"
+  },
+  {
+    "id": "DL1",
+    "type": "deadlock_scenario",
+    "description": "Writer-FIGURE_CREATOR contention: writer holds DOCUMENT while FIGURE_CREATOR waits to insert, or vice versa"
+  }
+]

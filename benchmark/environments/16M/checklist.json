@@ -1,0 +1,39 @@
+[
+  {"id": "res_build_server",    "type": "resource",        "description": "BUILD_SERVER modeled as Lock"},
+  {"id": "res_artifact_store",  "type": "resource",        "description": "ARTIFACT_STORE modeled as Lock"},
+  {"id": "res_test_env",        "type": "resource",        "description": "TEST_ENV modeled as Lock"},
+  {"id": "res_prod_env",        "type": "resource",        "description": "PROD_ENV modeled as Lock"},
+
+  {"id": "ch_bm_fe_req",        "type": "dependency",      "description": "channel from BUILD_MASTER to FRONTEND_DEV for build/revision requests"},
+  {"id": "ch_bm_be_req",        "type": "dependency",      "description": "channel from BUILD_MASTER to BACKEND_DEV for build/revision requests"},
+  {"id": "ch_fe_bm_rpt",        "type": "dependency",      "description": "channel from FRONTEND_DEV to BUILD_MASTER for build reports"},
+  {"id": "ch_be_bm_rpt",        "type": "dependency",      "description": "channel from BACKEND_DEV to BUILD_MASTER for build reports"},
+  {"id": "ch_bm_qa_req",        "type": "dependency",      "description": "channel from BUILD_MASTER to QA_ENGINEER for test requests"},
+  {"id": "ch_qa_bm_rpt",        "type": "dependency",      "description": "channel from QA_ENGINEER to BUILD_MASTER for test reports"},
+  {"id": "ch_bm_re_req",        "type": "dependency",      "description": "channel from BUILD_MASTER to RELEASE_ENGINEER for deploy/promote/abort signals"},
+  {"id": "ch_re_bm_rpt",        "type": "dependency",      "description": "channel from RELEASE_ENGINEER to BUILD_MASTER for deploy reports"},
+  {"id": "ch_bm_all_done",      "type": "dependency",      "description": "channel(s) from BUILD_MASTER to all agents for pipeline-complete"},
+
+  {"id": "dp_build_pass_fail",  "type": "decision",        "description": "each developer's build can pass or fail"},
+  {"id": "dp_qa_pass_fail",     "type": "decision",        "description": "QA tests can pass or fail, triggering revision"},
+  {"id": "dp_staging_pass_fail","type": "decision",        "description": "staging deployment can succeed or fail"},
+  {"id": "dp_promote_abort",    "type": "decision",        "description": "BUILD_MASTER decides promote or abort after staging"},
+
+  {"id": "ord_compile_before_test",     "type": "ordering", "description": "unit tests require prior compilation"},
+  {"id": "ord_test_before_publish",     "type": "ordering", "description": "publish requires passing unit tests"},
+  {"id": "ord_publish_before_pull",     "type": "ordering", "description": "artifacts must be published before pull"},
+  {"id": "ord_pull_before_deploy",      "type": "ordering", "description": "staging deploy requires pulled artifacts"},
+  {"id": "ord_staging_before_prod",     "type": "ordering", "description": "production deploy requires staging success"},
+
+  {"id": "hold_bs_during_publish",      "type": "resource_access", "description": "publish_artifact requires holding BOTH BUILD_SERVER and ARTIFACT_STORE simultaneously"},
+  {"id": "hold_test_env_for_qa",        "type": "resource_access", "description": "QA testing requires holding TEST_ENV"},
+  {"id": "hold_test_env_for_staging",   "type": "resource_access", "description": "staging deployment requires holding TEST_ENV"},
+  {"id": "hold_artifact_for_pull",      "type": "resource_access", "description": "artifact pulls require holding ARTIFACT_STORE"},
+
+  {"id": "deadlock_lock_ordering",      "type": "concurrency", "description": "FRONTEND_DEV and BACKEND_DEV both need BUILD_SERVER then ARTIFACT_STORE — if both acquire BUILD_SERVER first, second blocks; if one acquires ARTIFACT_STORE while other holds BUILD_SERVER, ABBA deadlock possible"},
+  {"id": "deadlock_test_env_contention","type": "concurrency", "description": "QA_ENGINEER and RELEASE_ENGINEER both need TEST_ENV — QA tests and staging deploy cannot overlap"},
+  {"id": "deadlock_artifact_contention","type": "concurrency", "description": "publisher (dev holding BUILD_SERVER+ARTIFACT_STORE) blocks QA/release pulls — pull cannot happen during publish"},
+  {"id": "deadlock_revision_cascade",   "type": "concurrency", "description": "on build failure: BUILD_MASTER waits for BOTH reports before deciding; failed dev may re-need BUILD_SERVER that succeeded dev still holds for publish"},
+  {"id": "deadlock_qa_revision_loop",   "type": "concurrency", "description": "on QA failure: BUILD_MASTER sends revision to dev(s), dev(s) re-build, QA re-tests — dev needs BUILD_SERVER+ARTIFACT_STORE, QA needs ARTIFACT_STORE+TEST_ENV, RELEASE_ENGINEER needs ARTIFACT_STORE+TEST_ENV"},
+  {"id": "parallel_builds",            "type": "concurrency", "description": "frontend and backend cannot build simultaneously (shared BUILD_SERVER)"}
+]

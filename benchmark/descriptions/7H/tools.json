@@ -1,0 +1,228 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "write_section",
+      "description": "Write a draft section.",
+      "agent_ids": [
+        "WRITER_A",
+        "WRITER_B",
+        "WRITER_C"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "section_name": {
+            "type": "string",
+            "description": "Name of the section"
+          },
+          "content_notes": {
+            "type": "string",
+            "description": "Notes or outline"
+          }
+        },
+        "required": [
+          "section_name"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "revise_section",
+      "description": "Revise a section based on feedback.",
+      "agent_ids": [
+        "WRITER_A",
+        "WRITER_B",
+        "WRITER_C"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "section_name": {
+            "type": "string",
+            "description": "Section to revise"
+          },
+          "feedback": {
+            "type": "string",
+            "description": "Feedback to address"
+          }
+        },
+        "required": [
+          "section_name"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "update_references",
+      "description": "Update citations for a section.",
+      "agent_ids": [
+        "WRITER_A",
+        "WRITER_B",
+        "WRITER_C"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "section_name": {
+            "type": "string",
+            "description": "Name of the section"
+          }
+        },
+        "required": [
+          "section_name"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "review_sections",
+      "description": "Review sections for quality.",
+      "agent_ids": [
+        "REVIEWER"
+      ],
+      "can_fail": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "section_name": {
+            "type": "string",
+            "description": "Name of the section"
+          }
+        },
+        "required": [
+          "section_name"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "fact_check",
+      "description": "Verify factual accuracy.",
+      "agent_ids": [
+        "FACT_CHECKER"
+      ],
+      "can_fail": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "section_name": {
+            "type": "string",
+            "description": "Name of the section"
+          }
+        },
+        "required": [
+          "section_name"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "create_figure",
+      "description": "Create a figure or chart.",
+      "agent_ids": [
+        "FIGURE_CREATOR"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Figure description"
+          }
+        },
+        "required": [
+          "description"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "insert_figure",
+      "description": "Insert a figure into a section.",
+      "agent_ids": [
+        "FIGURE_CREATOR"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "figure_id": {
+            "type": "string",
+            "description": "Figure ID"
+          },
+          "section_name": {
+            "type": "string",
+            "description": "Target section"
+          }
+        },
+        "required": [
+          "figure_id",
+          "section_name"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "combine_sections",
+      "description": "Combine sections into final document.",
+      "agent_ids": [
+        "EDITOR_IN_CHIEF"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sections": {
+            "type": "string",
+            "description": "Comma-separated list of sections"
+          }
+        },
+        "required": [
+          "sections"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "make_editorial_decision",
+      "description": "Make final editorial decision.",
+      "agent_ids": [
+        "EDITOR_IN_CHIEF"
+      ],
+      "can_fail": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "review_summary": {
+            "type": "string",
+            "description": "Summary of reviews"
+          }
+        },
+        "required": [
+          "review_summary"
+        ]
+      }
+    }
+  }
+]

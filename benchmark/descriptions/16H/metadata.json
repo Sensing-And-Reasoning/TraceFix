@@ -1,0 +1,25 @@
+{
+  "agents": ["BACKEND_DEV", "BUILD_MASTER", "DB_ADMIN", "FRONTEND_DEV", "QA_ENGINEER", "RELEASE_ENGINEER", "SECURITY_REVIEWER"],
+  "resources": ["ARTIFACT_STORE", "BUILD_SERVER", "CANARY_SLOTS", "PROD_BLUE", "PROD_GREEN", "STAGING_ENV", "TEST_ENV"],
+  "agent_resources": {
+    "BACKEND_DEV": ["ARTIFACT_STORE", "BUILD_SERVER"],
+    "BUILD_MASTER": [],
+    "DB_ADMIN": ["BUILD_SERVER", "STAGING_ENV"],
+    "FRONTEND_DEV": ["ARTIFACT_STORE", "BUILD_SERVER"],
+    "QA_ENGINEER": ["ARTIFACT_STORE", "TEST_ENV"],
+    "RELEASE_ENGINEER": ["ARTIFACT_STORE", "CANARY_SLOTS", "PROD_BLUE", "PROD_GREEN", "STAGING_ENV"],
+    "SECURITY_REVIEWER": ["ARTIFACT_STORE"]
+  },
+  "tool_resource_map": {
+    "compile_code": ["BUILD_SERVER"],
+    "run_unit_tests": ["BUILD_SERVER"],
+    "publish_artifact": ["ARTIFACT_STORE", "BUILD_SERVER"],
+    "pull_artifacts": ["ARTIFACT_STORE"],
+    "run_db_migration": ["BUILD_SERVER", "STAGING_ENV"],
+    "run_integration_tests": ["TEST_ENV"],
+    "run_e2e_tests": ["TEST_ENV"],
+    "deploy_to_env": ["STAGING_ENV", "PROD_GREEN", "PROD_BLUE"],
+    "run_smoke_tests": ["STAGING_ENV", "PROD_GREEN", "CANARY_SLOTS"],
+    "run_security_scan": ["ARTIFACT_STORE"]
+  }
+}

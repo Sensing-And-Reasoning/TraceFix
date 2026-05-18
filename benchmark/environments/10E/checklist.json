@@ -1,0 +1,42 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "CORE_LIB requires exclusive compilation access (only one builder at a time)"
+  },
+  {
+    "id": "R2",
+    "type": "resource",
+    "description": "SHARED_TYPES requires exclusive read/write access (only one agent at a time)"
+  },
+  {
+    "id": "D1",
+    "type": "dependency",
+    "description": "Both BUILDER_A and BUILDER_B depend on CORE_LIB during compilation"
+  },
+  {
+    "id": "D2",
+    "type": "dependency",
+    "description": "BUILDER_B depends on SHARED_TYPES produced by BUILDER_A"
+  },
+  {
+    "id": "D3",
+    "type": "dependency",
+    "description": "INTEGRATOR cannot begin linking until both builders complete successfully"
+  },
+  {
+    "id": "D4",
+    "type": "dependency",
+    "description": "If BUILDER_A updates SHARED_TYPES after BUILDER_B compiled, BUILDER_B must recompile"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "Both builders compile concurrently; INTEGRATOR links after both finish"
+  },
+  {
+    "id": "RA1",
+    "type": "resource_access",
+    "description": "Both BUILDER_A and BUILDER_B need CORE_LIB during compilation"
+  }
+]

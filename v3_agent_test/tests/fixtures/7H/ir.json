@@ -1,0 +1,45 @@
+{
+  "agents": [
+    {"id": "writerA"},
+    {"id": "writerB"},
+    {"id": "writerC"},
+    {"id": "figCreator"},
+    {"id": "factChecker"},
+    {"id": "reviewer"},
+    {"id": "eic"}
+  ],
+  "resources": [
+    {"id": "partI_lock", "type": "Lock"},
+    {"id": "ch3_lock", "type": "Lock"},
+    {"id": "ch4_lock", "type": "Lock"},
+    {"id": "fig_lock", "type": "Lock"},
+    {"id": "ref_lock", "type": "Lock"}
+  ],
+  "channels": [
+    {"id": "wC_to_wB", "from": "writerC", "to": "writerB", "labels": ["stable"]},
+    {"id": "wB_to_wA", "from": "writerB", "to": "writerA", "labels": ["stable"]},
+    {"id": "wC_to_wA", "from": "writerC", "to": "writerA", "labels": ["stable"]},
+    {"id": "wA_to_fig", "from": "writerA", "to": "figCreator", "labels": ["fig_request"]},
+    {"id": "wB_to_fig", "from": "writerB", "to": "figCreator", "labels": ["fig_request"]},
+    {"id": "wC_to_fig", "from": "writerC", "to": "figCreator", "labels": ["fig_request"]},
+    {"id": "fig_to_wA", "from": "figCreator", "to": "writerA", "labels": ["fig_done"]},
+    {"id": "fig_to_wB", "from": "figCreator", "to": "writerB", "labels": ["fig_done"]},
+    {"id": "fig_to_wC", "from": "figCreator", "to": "writerC", "labels": ["fig_done"]},
+    {"id": "wA_to_fc", "from": "writerA", "to": "factChecker", "labels": ["ready"]},
+    {"id": "wB_to_fc", "from": "writerB", "to": "factChecker", "labels": ["ready"]},
+    {"id": "wC_to_fc", "from": "writerC", "to": "factChecker", "labels": ["ready"]},
+    {"id": "fc_to_wA", "from": "factChecker", "to": "writerA", "labels": ["ok", "revise"]},
+    {"id": "fc_to_wB", "from": "factChecker", "to": "writerB", "labels": ["ok", "revise"]},
+    {"id": "fc_to_wC", "from": "factChecker", "to": "writerC", "labels": ["ok", "revise"]},
+    {"id": "eic_to_rev", "from": "eic", "to": "reviewer", "labels": ["assign"]},
+    {"id": "rev_to_wA", "from": "reviewer", "to": "writerA", "labels": ["ok", "minor", "major"]},
+    {"id": "rev_to_wB", "from": "reviewer", "to": "writerB", "labels": ["ok", "minor", "major"]},
+    {"id": "rev_to_wC", "from": "reviewer", "to": "writerC", "labels": ["ok", "minor", "major"]},
+    {"id": "wA_to_rev", "from": "writerA", "to": "reviewer", "labels": ["ready", "revised"]},
+    {"id": "wB_to_rev", "from": "writerB", "to": "reviewer", "labels": ["ready", "revised"]},
+    {"id": "wC_to_rev", "from": "writerC", "to": "reviewer", "labels": ["ready", "revised"]},
+    {"id": "eic_to_wA", "from": "eic", "to": "writerA", "labels": ["decision"]},
+    {"id": "eic_to_wB", "from": "eic", "to": "writerB", "labels": ["decision"]},
+    {"id": "eic_to_wC", "from": "eic", "to": "writerC", "labels": ["decision"]}
+  ]
+}

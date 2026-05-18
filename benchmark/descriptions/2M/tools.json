@@ -1,0 +1,110 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "read_literature",
+      "description": "Read and review relevant literature.",
+      "agent_ids": [
+        "RESEARCHER_A",
+        "RESEARCHER_B",
+        "RESEARCHER_C",
+        "RESEARCHER_D",
+        "RESEARCHER_E"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "description": "Research topic"
+          }
+        },
+        "required": [
+          "topic"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "draft_content",
+      "description": "Draft content locally.",
+      "agent_ids": [
+        "RESEARCHER_A",
+        "RESEARCHER_B",
+        "RESEARCHER_C",
+        "RESEARCHER_D",
+        "RESEARCHER_E"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "section_name": {
+            "type": "string",
+            "description": "Section name"
+          }
+        },
+        "required": [
+          "section_name"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "write_to_document",
+      "description": "Write content into shared document sections.",
+      "agent_ids": [
+        "RESEARCHER_A",
+        "RESEARCHER_B",
+        "RESEARCHER_C",
+        "RESEARCHER_D",
+        "RESEARCHER_E"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sections": {
+            "type": "string",
+            "description": "Sections being written to"
+          }
+        },
+        "required": [
+          "sections"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "review_own_work",
+      "description": "Review own written work. May find issues requiring revision.",
+      "agent_ids": [
+        "RESEARCHER_A",
+        "RESEARCHER_B",
+        "RESEARCHER_C",
+        "RESEARCHER_D",
+        "RESEARCHER_E"
+      ],
+      "can_fail": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "section_name": {
+            "type": "string",
+            "description": "Section name"
+          }
+        },
+        "required": [
+          "section_name"
+        ]
+      }
+    }
+  }
+]

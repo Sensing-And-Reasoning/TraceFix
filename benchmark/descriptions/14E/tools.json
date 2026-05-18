@@ -1,0 +1,17 @@
+[
+  {"type": "function", "function": {
+    "name": "run_hplc_analysis", "description": "Run an HPLC analysis on a sample.",
+    "agent_ids": ["CHEMIST", "BIOLOGIST", "TOXICOLOGIST", "LEAD_SCIENTIST"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"sample": {"type": "string", "description": "What to analyze (e.g., 'synthesis_qc', 'stability', 'purity_check', 'structural_confirmation', 'documentation')"}}, "required": ["sample"]}
+  }},
+  {"type": "function", "function": {
+    "name": "run_mass_spec_analysis", "description": "Run a mass spectrometry analysis on a sample.",
+    "agent_ids": ["CHEMIST", "TOXICOLOGIST", "LEAD_SCIENTIST"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"sample": {"type": "string", "description": "What to analyze (e.g., 'molecular_id', 'baseline_markers', 'reference_methods', 'characterization')"}}, "required": ["sample"]}
+  }},
+  {"type": "function", "function": {
+    "name": "run_cell_assay", "description": "Run a cell-based assay in the cell culture laboratory.",
+    "agent_ids": ["BIOLOGIST", "TOXICOLOGIST"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"assay_type": {"type": "string", "description": "Type of assay (e.g., 'culture_prep', 'bioassay', 'cytotoxicity')"}}, "required": ["assay_type"]}
+  }}
+]

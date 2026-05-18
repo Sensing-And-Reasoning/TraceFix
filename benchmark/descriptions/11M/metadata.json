@@ -1,0 +1,19 @@
+{
+  "agents": ["DISPATCHER", "INSPECTOR", "WORKER_A", "WORKER_B", "WORKER_C"],
+  "resources": ["STATION_ALPHA", "STATION_BETA", "STATION_GAMMA", "TOOL_CABINET"],
+  "agent_resources": {
+    "DISPATCHER": [],
+    "INSPECTOR": [],
+    "WORKER_A": ["STATION_ALPHA", "STATION_BETA", "TOOL_CABINET"],
+    "WORKER_B": ["STATION_BETA", "STATION_GAMMA", "TOOL_CABINET"],
+    "WORKER_C": ["STATION_ALPHA", "STATION_GAMMA", "TOOL_CABINET"]
+  },
+  "tool_resource_map": {
+    "dispatch_rework": [],
+    "do_job": [],
+    "inspect_quality": []
+  },
+  "resource_capacity": {
+    "TOOL_CABINET": 2
+  }
+}

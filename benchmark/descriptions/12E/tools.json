@@ -1,0 +1,17 @@
+[
+  {"type": "function", "function": {
+    "name": "prepare_base_dish", "description": "Cook the base component of a dish using kitchen equipment.",
+    "agent_ids": ["CHEF_A", "CHEF_B", "CHEF_C"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"dish": {"type": "string"}}, "required": ["dish"]}
+  }},
+  {"type": "function", "function": {
+    "name": "prepare_ingredient", "description": "Prepare an ingredient for another chef's dish.",
+    "agent_ids": ["CHEF_A", "CHEF_B", "CHEF_C"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"ingredient": {"type": "string"}, "for_chef": {"type": "string"}}, "required": ["ingredient", "for_chef"]}
+  }},
+  {"type": "function", "function": {
+    "name": "combine_dish", "description": "Combine base dish with received ingredient to complete the final dish.",
+    "agent_ids": ["CHEF_A", "CHEF_B", "CHEF_C"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"dish": {"type": "string"}, "ingredient": {"type": "string"}}, "required": ["dish", "ingredient"]}
+  }}
+]

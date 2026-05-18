@@ -1,0 +1,192 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "design_proposal",
+      "description": "Create a design proposal.",
+      "agent_ids": [
+        "ARCHITECT"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Proposal title"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "implement_feature",
+      "description": "Implement a feature.",
+      "agent_ids": [
+        "DEVELOPER_A",
+        "DEVELOPER_B",
+        "DEVELOPER_C"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "feature_name": {
+            "type": "string",
+            "description": "Feature to implement"
+          }
+        },
+        "required": [
+          "feature_name"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "code_review",
+      "description": "Review code changes.",
+      "agent_ids": [
+        "REVIEWER"
+      ],
+      "can_fail": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pr_id": {
+            "type": "string",
+            "description": "Pull request ID"
+          }
+        },
+        "required": [
+          "pr_id"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "run_tests",
+      "description": "Run test suite.",
+      "agent_ids": [
+        "TESTER"
+      ],
+      "can_fail": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "suite": {
+            "type": "string",
+            "description": "Test suite to run"
+          }
+        },
+        "required": [
+          "suite"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "deploy_service",
+      "description": "Deploy a service.",
+      "agent_ids": [
+        "DEVOPS"
+      ],
+      "can_fail": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service": {
+            "type": "string",
+            "description": "Service name"
+          },
+          "environment": {
+            "type": "string",
+            "description": "Target environment"
+          }
+        },
+        "required": [
+          "service"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "rollback_service",
+      "description": "Rollback a service.",
+      "agent_ids": [
+        "DEVOPS"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service": {
+            "type": "string",
+            "description": "Service name"
+          }
+        },
+        "required": [
+          "service"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "migrate_schema",
+      "description": "Run a database migration.",
+      "agent_ids": [
+        "DEVOPS"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "migration_name": {
+            "type": "string",
+            "description": "Migration name"
+          }
+        },
+        "required": [
+          "migration_name"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "register_service",
+      "description": "Register in service mesh.",
+      "agent_ids": [
+        "DEVOPS"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_name": {
+            "type": "string",
+            "description": "Service to register"
+          }
+        },
+        "required": [
+          "service_name"
+        ]
+      }
+    }
+  }
+]

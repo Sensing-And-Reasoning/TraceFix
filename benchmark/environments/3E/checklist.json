@@ -1,0 +1,42 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "Shared DOCUMENT requires exclusive write access (mutex lock)"
+  },
+  {
+    "id": "R2",
+    "type": "resource",
+    "description": "Reference DATABASE requires exclusive update access (mutex lock)"
+  },
+  {
+    "id": "D1",
+    "type": "dependency",
+    "description": "EDITOR cannot begin combining until both RESEARCHER_A and RESEARCHER_B have submitted their sections"
+  },
+  {
+    "id": "D2",
+    "type": "dependency",
+    "description": "Section submission channel from RESEARCHER_A and RESEARCHER_B to EDITOR carries completed sections"
+  },
+  {
+    "id": "DEC1",
+    "type": "decision",
+    "description": "EDITOR decides whether sections are consistent or require revision"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "RESEARCHER_A and RESEARCHER_B investigate and write before submitting; EDITOR reviews after both submissions"
+  },
+  {
+    "id": "RA1",
+    "type": "resource_access",
+    "description": "Both RESEARCHER_A and RESEARCHER_B and the EDITOR need shared DOCUMENT lock for writing"
+  },
+  {
+    "id": "RA2",
+    "type": "resource_access",
+    "description": "Both RESEARCHER_A and RESEARCHER_B need reference DATABASE lock for updating citations"
+  }
+]

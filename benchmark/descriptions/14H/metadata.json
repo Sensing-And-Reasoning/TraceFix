@@ -1,0 +1,21 @@
+{
+  "agents": ["BIOLOGIST", "CHEMIST", "CLINICAL_LEAD", "FORMULATION_SCIENTIST", "PROJECT_DIRECTOR", "REGULATORY_SPECIALIST", "TOXICOLOGIST"],
+  "resources": ["BIOLOGICAL_SAMPLES", "CELL_LAB", "FORMULATION_SUITE", "HPLC", "MASS_SPEC"],
+  "agent_resources": {
+    "BIOLOGIST": ["BIOLOGICAL_SAMPLES", "CELL_LAB", "HPLC"],
+    "CHEMIST": ["HPLC", "MASS_SPEC"],
+    "CLINICAL_LEAD": ["MASS_SPEC"],
+    "FORMULATION_SCIENTIST": ["FORMULATION_SUITE"],
+    "PROJECT_DIRECTOR": [],
+    "REGULATORY_SPECIALIST": ["HPLC", "MASS_SPEC"],
+    "TOXICOLOGIST": ["BIOLOGICAL_SAMPLES", "CELL_LAB", "HPLC", "MASS_SPEC"]
+  },
+  "tool_resource_map": {
+    "run_hplc_analysis": ["HPLC"],
+    "run_mass_spec_analysis": ["MASS_SPEC"],
+    "run_cell_assay": ["BIOLOGICAL_SAMPLES", "CELL_LAB"],
+    "prepare_formulation": ["FORMULATION_SUITE"],
+    "verify_regulatory_compliance": [],
+    "review_clinical_data": ["MASS_SPEC"]
+  }
+}

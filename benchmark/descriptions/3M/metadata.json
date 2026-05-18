@@ -1,0 +1,13 @@
+{
+  "agents": ["EDITOR", "FACT_CHECKER", "RESEARCHER_A", "RESEARCHER_B", "RESEARCHER_C"],
+  "resources": ["DATABASE", "DOCUMENT"],
+  "tool_resource_map": {
+    "research_topic": [],
+    "write_section": ["DOCUMENT"],
+    "revise_section": ["DOCUMENT"],
+    "update_references": ["DATABASE"],
+    "review_sections": [],
+    "fact_check": [],
+    "combine_sections": ["DOCUMENT"]
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "agents": ["EDITOR_IN_CHIEF", "FACT_CHECKER", "FIGURE_CREATOR", "REVIEWER", "WRITER_A", "WRITER_B", "WRITER_C"],
+  "resources": ["DOCUMENT", "FIGURE_STORE"],
+  "agent_resources": {},
+  "tool_resource_map": {
+    "combine_sections": ["DOCUMENT"],
+    "create_figure": ["FIGURE_STORE"],
+    "fact_check": [],
+    "insert_figure": ["DOCUMENT", "FIGURE_STORE"],
+    "make_editorial_decision": [],
+    "review_sections": [],
+    "revise_section": ["DOCUMENT"],
+    "update_references": [],
+    "write_section": ["DOCUMENT"]
+  }
+}

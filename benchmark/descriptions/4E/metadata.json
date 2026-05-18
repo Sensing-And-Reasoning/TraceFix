@@ -1,0 +1,10 @@
+{
+  "agents": ["BACKEND_DEV", "FRONTEND_DEV", "TESTER"],
+  "resources": ["REPO", "TEST_ENV"],
+  "agent_resources": {},
+  "tool_resource_map": {
+    "define_api": ["REPO"],
+    "implement_feature": ["REPO"],
+    "run_tests": ["TEST_ENV"]
+  }
+}

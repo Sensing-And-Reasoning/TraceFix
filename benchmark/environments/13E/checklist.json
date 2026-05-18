@@ -1,0 +1,16 @@
+[
+  {"id": "res_spectrometer",        "type": "resource",        "description": "SPECTROMETER modeled as Lock"},
+  {"id": "res_centrifuge",          "type": "resource",        "description": "CENTRIFUGE modeled as Lock"},
+  {"id": "ch_compound",             "type": "dependency",      "description": "channel from CHEMIST to BIOLOGIST for compound sample"},
+  {"id": "ch_results",              "type": "dependency",      "description": "channel from BIOLOGIST to ANALYST for test results"},
+  {"id": "ch_report",               "type": "dependency",      "description": "channel from ANALYST to CHEMIST for quality report"},
+  {"id": "ord_analysis_before_purification", "type": "ordering", "description": "CHEMIST must analyze raw materials before purifying"},
+  {"id": "ord_bioassay_after_receive",       "type": "ordering", "description": "BIOLOGIST runs bioassay only after receiving compound"},
+  {"id": "ord_analyst_after_receive",        "type": "ordering", "description": "ANALYST analyzes only after receiving test results"},
+  {"id": "ord_validation_after_report",      "type": "ordering", "description": "CHEMIST validates only after receiving quality report"},
+  {"id": "acc_analysis_spectrometer",  "type": "resource_access", "description": "run_analysis requires SPECTROMETER"},
+  {"id": "acc_separation_centrifuge",  "type": "resource_access", "description": "run_separation requires CENTRIFUGE"},
+  {"id": "deadlock_risk_lock_order",   "type": "concurrency",     "description": "CHEMIST (spec->cent) and BIOLOGIST (cent->spec) use instruments in opposite order"},
+  {"id": "deadlock_risk_hold_wait",    "type": "concurrency",     "description": "CHEMIST must release SPECTROMETER before waiting for ANALYST report, since ANALYST needs it"},
+  {"id": "parallel_start",            "type": "concurrency",     "description": "all three scientists can start working concurrently"}
+]

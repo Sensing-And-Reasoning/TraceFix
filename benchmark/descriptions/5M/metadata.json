@@ -1,0 +1,14 @@
+{
+  "agents": ["CARDIOLOGIST", "ER_DOCTOR", "NEUROLOGIST", "PHARMACIST", "RADIOLOGIST"],
+  "resources": ["CONSULTATION_ROOM", "CT_SCANNER", "MRI"],
+  "agent_resources": {},
+  "tool_resource_map": {
+    "assess_patient": [],
+    "order_tests": [],
+    "perform_imaging": ["CT_SCANNER", "MRI"],
+    "interpret_imaging": ["CT_SCANNER", "MRI"],
+    "diagnose": [],
+    "review_prescriptions": [],
+    "conduct_case_conference": ["CONSULTATION_ROOM"]
+  }
+}

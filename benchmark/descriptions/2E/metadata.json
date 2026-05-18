@@ -1,0 +1,15 @@
+{
+  "agents": ["RESEARCHER_A", "RESEARCHER_B", "RESEARCHER_C"],
+  "resources": ["INTRO_SECTION", "METHODS_SECTION", "RESULTS_SECTION"],
+  "agent_resources": {
+    "RESEARCHER_A": ["INTRO_SECTION", "METHODS_SECTION"],
+    "RESEARCHER_B": ["METHODS_SECTION", "RESULTS_SECTION"],
+    "RESEARCHER_C": ["INTRO_SECTION", "RESULTS_SECTION"]
+  },
+  "tool_resource_map": {
+    "read_literature":   [],
+    "draft_content":     [],
+    "write_to_document": "@agent_resources",
+    "review_own_work":   []
+  }
+}

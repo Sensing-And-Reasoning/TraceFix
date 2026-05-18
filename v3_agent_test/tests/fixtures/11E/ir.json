@@ -1,0 +1,15 @@
+{
+  "agents": [
+    {"id": "techA"},
+    {"id": "techB"},
+    {"id": "supervisor"}
+  ],
+  "resources": [
+    {"id": "lathe_lock", "type": "Lock"},
+    {"id": "mill_lock", "type": "Lock"}
+  ],
+  "channels": [
+    {"id": "techA_to_sup", "from": "techA", "to": "supervisor", "labels": ["job_done"]},
+    {"id": "techB_to_sup", "from": "techB", "to": "supervisor", "labels": ["job_done"]}
+  ]
+}

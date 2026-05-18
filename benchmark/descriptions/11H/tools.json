@@ -1,0 +1,97 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "do_job",
+      "description": "Execute a manufacturing job.",
+      "agent_ids": [
+        "WORKER_A",
+        "WORKER_B",
+        "WORKER_C",
+        "WORKER_D"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "description": "Job ID"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "inspect_quality",
+      "description": "Inspect quality of a completed job.",
+      "agent_ids": [
+        "INSPECTOR"
+      ],
+      "can_fail": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "description": "Job ID to inspect"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "replenish_material",
+      "description": "Replenish raw materials.",
+      "agent_ids": [
+        "MATERIAL_HANDLER"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "material": {
+            "type": "string",
+            "description": "Material type"
+          }
+        },
+        "required": [
+          "material"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "package_goods",
+      "description": "Package finished goods.",
+      "agent_ids": [
+        "PACKAGER"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "description": "Batch ID"
+          }
+        },
+        "required": [
+          "batch_id"
+        ]
+      }
+    }
+  }
+]

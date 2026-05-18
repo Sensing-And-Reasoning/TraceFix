@@ -1,0 +1,42 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "AUTH_MODULE module requires exclusive access (mutex lock)"
+  },
+  {
+    "id": "R2",
+    "type": "resource",
+    "description": "DATABASE_MODULE module requires exclusive access (mutex lock)"
+  },
+  {
+    "id": "R3",
+    "type": "resource",
+    "description": "API_MODULE module requires exclusive access (mutex lock)"
+  },
+  {
+    "id": "RA1",
+    "type": "resource_access",
+    "description": "DEVELOPER_A acquires AUTH_MODULE and DATABASE_MODULE one at a time (sequential acquisition) to commit"
+  },
+  {
+    "id": "RA2",
+    "type": "resource_access",
+    "description": "DEVELOPER_B acquires DATABASE_MODULE and API_MODULE one at a time (sequential acquisition) to commit"
+  },
+  {
+    "id": "RA3",
+    "type": "resource_access",
+    "description": "DEVELOPER_C acquires API_MODULE and AUTH_MODULE one at a time (sequential acquisition) to commit"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "Each developer must design locally before attempting to acquire module locks for commit"
+  },
+  {
+    "id": "DL1",
+    "type": "deadlock_scenario",
+    "description": "Circular wait: DEVELOPER_A holds AUTH_MODULE waiting for DATABASE_MODULE, DEVELOPER_B holds DATABASE_MODULE waiting for API_MODULE, DEVELOPER_C holds API_MODULE waiting for AUTH_MODULE"
+  }
+]

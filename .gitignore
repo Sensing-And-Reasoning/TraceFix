@@ -1,0 +1,20 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+.DS_Store
+lib/tla2tools.jar
+*.tla.out/
+tlc_output/
+# TLC model-checker state queue (multi-GB, regenerable — never commit)
+states/
+*.st
+*.fp
+.env
+v3_agent_test/workspaces/
+v3_agent_test/sessions/
+v3_agent_test/results/
+logs/

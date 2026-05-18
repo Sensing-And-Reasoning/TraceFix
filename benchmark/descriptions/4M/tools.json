@@ -1,0 +1,119 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "design_proposal",
+      "description": "Create a design proposal.",
+      "agent_ids": [
+        "ARCHITECT"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Proposal title"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "refactor_code",
+      "description": "Refactor existing code.",
+      "agent_ids": [
+        "DEVELOPER_A",
+        "DEVELOPER_B"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "description": "Code target to refactor"
+          }
+        },
+        "required": [
+          "target"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "code_review",
+      "description": "Review code changes.",
+      "agent_ids": [
+        "REVIEWER"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pr_id": {
+            "type": "string",
+            "description": "Pull request ID"
+          }
+        },
+        "required": [
+          "pr_id"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "run_tests",
+      "description": "Run test suite.",
+      "agent_ids": [
+        "TESTER"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "suite": {
+            "type": "string",
+            "description": "Test suite to run"
+          }
+        },
+        "required": [
+          "suite"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "merge_code",
+      "description": "Merge a branch.",
+      "agent_ids": [
+        "DEVELOPER_A",
+        "DEVELOPER_B"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "branch": {
+            "type": "string",
+            "description": "Branch to merge"
+          }
+        },
+        "required": [
+          "branch"
+        ]
+      }
+    }
+  }
+]

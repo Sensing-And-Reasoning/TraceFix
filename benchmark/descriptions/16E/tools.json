@@ -1,0 +1,17 @@
+[
+  {"type": "function", "function": {
+    "name": "compile_and_test", "description": "Compile the application and run unit tests on the build server.",
+    "agent_ids": ["DEVELOPER"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"component": {"type": "string", "description": "Component to compile and test (e.g., 'application')"}}, "required": ["component"]}
+  }},
+  {"type": "function", "function": {
+    "name": "run_integration_tests", "description": "Run integration tests against compiled artifacts on the build server.",
+    "agent_ids": ["TESTER"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"suite": {"type": "string", "description": "Test suite to run (e.g., 'integration')"}}, "required": ["suite"]}
+  }},
+  {"type": "function", "function": {
+    "name": "deploy_application", "description": "Deploy the application to the deployment environment and run smoke tests.",
+    "agent_ids": ["DEPLOYER"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"target": {"type": "string", "description": "Deployment target (e.g., 'production')"}}, "required": ["target"]}
+  }}
+]

@@ -1,0 +1,15 @@
+{
+  "agents": ["PHILOSOPHER_A", "PHILOSOPHER_B", "PHILOSOPHER_C", "PHILOSOPHER_D", "PHILOSOPHER_E"],
+  "resources": ["FORK_A", "FORK_B", "FORK_C", "FORK_D", "FORK_E"],
+  "agent_resources": {
+    "PHILOSOPHER_A": ["FORK_A", "FORK_E"],
+    "PHILOSOPHER_B": ["FORK_A", "FORK_B"],
+    "PHILOSOPHER_C": ["FORK_B", "FORK_C"],
+    "PHILOSOPHER_D": ["FORK_C", "FORK_D"],
+    "PHILOSOPHER_E": ["FORK_D", "FORK_E"]
+  },
+  "tool_resource_map": {
+    "eat": "@agent_resources",
+    "think": []
+  }
+}

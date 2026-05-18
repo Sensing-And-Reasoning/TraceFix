@@ -1,0 +1,12 @@
+{
+  "agents": ["ARCHITECT", "DEVELOPER_A", "DEVELOPER_B", "REVIEWER", "TESTER"],
+  "resources": ["REPO", "TEST_ENV"],
+  "agent_resources": {},
+  "tool_resource_map": {
+    "code_review": [],
+    "design_proposal": [],
+    "merge_code": ["REPO"],
+    "refactor_code": ["REPO"],
+    "run_tests": ["TEST_ENV"]
+  }
+}

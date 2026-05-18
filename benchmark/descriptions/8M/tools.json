@@ -1,0 +1,144 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "implement_backend",
+      "description": "Implement backend component.",
+      "agent_ids": [
+        "BACKEND_DEV"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "component": {
+            "type": "string",
+            "description": "Backend component"
+          }
+        },
+        "required": [
+          "component"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "implement_frontend",
+      "description": "Implement frontend component.",
+      "agent_ids": [
+        "FRONTEND_DEV"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "component": {
+            "type": "string",
+            "description": "Frontend component"
+          }
+        },
+        "required": [
+          "component"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "define_api",
+      "description": "Define an API contract.",
+      "agent_ids": [
+        "BACKEND_DEV"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "description": "API endpoint"
+          },
+          "method": {
+            "type": "string",
+            "description": "HTTP method"
+          }
+        },
+        "required": [
+          "endpoint"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "migrate_schema",
+      "description": "Run a database migration.",
+      "agent_ids": [
+        "DB_ADMIN"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "migration_name": {
+            "type": "string",
+            "description": "Migration name"
+          }
+        },
+        "required": [
+          "migration_name"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "code_review",
+      "description": "Review code changes.",
+      "agent_ids": [
+        "REVIEWER"
+      ],
+      "can_fail": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pr_id": {
+            "type": "string",
+            "description": "Pull request ID"
+          }
+        },
+        "required": [
+          "pr_id"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "run_integration_tests",
+      "description": "Run integration test suite.",
+      "agent_ids": [
+        "TESTER"
+      ],
+      "can_fail": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "suite": {
+            "type": "string",
+            "description": "Test suite"
+          }
+        },
+        "required": [
+          "suite"
+        ]
+      }
+    }
+  }
+]

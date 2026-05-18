@@ -1,0 +1,82 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "REPO may only be used by one agent at a time"
+  },
+  {
+    "id": "R2",
+    "type": "resource",
+    "description": "TEST_ENV may only be used by one agent at a time"
+  },
+  {
+    "id": "R3",
+    "type": "resource",
+    "description": "BUILD_SERVER may only be used by one agent at a time"
+  },
+  {
+    "id": "R4",
+    "type": "resource",
+    "description": "STAGING_ENV may only be used by one agent at a time"
+  },
+  {
+    "id": "D1",
+    "type": "dependency",
+    "description": "Interface changes in shared files must be communicated to all affected developers"
+  },
+  {
+    "id": "D2",
+    "type": "dependency",
+    "description": "TEST_WRITER must wait for feature code to stabilize before writing tests in TEST_ENV"
+  },
+  {
+    "id": "D3",
+    "type": "dependency",
+    "description": "All code must pass review before merge to REPO"
+  },
+  {
+    "id": "D4",
+    "type": "dependency",
+    "description": "CI on BUILD_SERVER must pass after each merge before next merge proceeds"
+  },
+  {
+    "id": "D5",
+    "type": "dependency",
+    "description": "Feature B (DEVELOPER_B) depends on Feature A (DEVELOPER_A, uses auth tokens); Feature C (DEVELOPER_C) depends on Feature B (payment event notifications)"
+  },
+  {
+    "id": "DEC1",
+    "type": "decision",
+    "description": "REVIEWER approves or requests revisions for each feature"
+  },
+  {
+    "id": "DEC2",
+    "type": "decision",
+    "description": "STAGING_ENV validation passes or fails; failure triggers rollback"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "Deployment ordering: Feature A merged and validated in STAGING_ENV before B, B before C"
+  },
+  {
+    "id": "O2",
+    "type": "ordering",
+    "description": "Implement -> test in TEST_ENV -> review -> merge to REPO -> CI on BUILD_SERVER -> STAGING_ENV validate -> release (full pipeline)"
+  },
+  {
+    "id": "RA1",
+    "type": "resource_access",
+    "description": "DEVELOPER_A needs REPO; DEVELOPER_B needs REPO; DEVELOPER_C needs REPO"
+  },
+  {
+    "id": "DL1",
+    "type": "deadlock_scenario",
+    "description": "Circular wait on REPO: three developers with overlapping file modification requirements"
+  },
+  {
+    "id": "DL2",
+    "type": "deadlock_scenario",
+    "description": "Deployment ordering deadlock: rollback of Feature A in STAGING_ENV blocks Features B and C from proceeding, potentially creating an infinite retry loop"
+  }
+]

@@ -1,0 +1,62 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "API_GATEWAY specification requires exclusive modification access"
+  },
+  {
+    "id": "R2",
+    "type": "resource",
+    "description": "DATABASE migration requires exclusive schema change access"
+  },
+  {
+    "id": "R3",
+    "type": "resource",
+    "description": "TEST_ENV requires exclusive test access"
+  },
+  {
+    "id": "D1",
+    "type": "dependency",
+    "description": "Three-layer dependency chain: DB schema -> Backend API -> Frontend UI"
+  },
+  {
+    "id": "D2",
+    "type": "dependency",
+    "description": "BACKEND_DEV cannot finalize API until schema is ready"
+  },
+  {
+    "id": "D3",
+    "type": "dependency",
+    "description": "FRONTEND_DEV cannot integrate until API is ready"
+  },
+  {
+    "id": "D4",
+    "type": "dependency",
+    "description": "REVIEWER must approve each layer's code before proceeding"
+  },
+  {
+    "id": "DEC1",
+    "type": "decision",
+    "description": "BACKEND_DEV discovers schema is insufficient, triggering additional migration by DB_ADMIN"
+  },
+  {
+    "id": "DEC2",
+    "type": "decision",
+    "description": "REVIEWER requests API changes that alter the spec, requiring FRONTEND_DEV notification"
+  },
+  {
+    "id": "DEC3",
+    "type": "decision",
+    "description": "Integration tests pass or fail; failure triggers cascading updates through dependency chain"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "DB migration -> BACKEND_DEV implementation -> FRONTEND_DEV integration -> testing (layered pipeline)"
+  },
+  {
+    "id": "DL1",
+    "type": "deadlock_scenario",
+    "description": "Cascading re-work: schema change invalidates BACKEND_DEV code, which invalidates FRONTEND_DEV, creating a chain of dependent re-work that could stall progress"
+  }
+]

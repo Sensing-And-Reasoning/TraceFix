@@ -1,0 +1,57 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "REPO can only be modified or merged into by one agent at a time"
+  },
+  {
+    "id": "R2",
+    "type": "resource",
+    "description": "TEST_ENV can only be used by one agent at a time"
+  },
+  {
+    "id": "D1",
+    "type": "dependency",
+    "description": "Design changes must be approved by ARCHITECT before implementation begins"
+  },
+  {
+    "id": "D2",
+    "type": "dependency",
+    "description": "All code changes must pass code review before being merged"
+  },
+  {
+    "id": "D3",
+    "type": "dependency",
+    "description": "After shared library modification in REPO, all dependent modules must be retested"
+  },
+  {
+    "id": "DEC1",
+    "type": "decision",
+    "description": "ARCHITECT approves or rejects design proposals"
+  },
+  {
+    "id": "DEC2",
+    "type": "decision",
+    "description": "REVIEWER approves code or requests changes before merge"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "Design approval -> implementation -> code review -> merge -> test (sequential pipeline)"
+  },
+  {
+    "id": "RA1",
+    "type": "resource_access",
+    "description": "Both DEVELOPER_A and DEVELOPER_B need REPO access to modify shared code"
+  },
+  {
+    "id": "RA2",
+    "type": "resource_access",
+    "description": "Both developers need REPO access to merge their changes sequentially"
+  },
+  {
+    "id": "DL1",
+    "type": "deadlock_scenario",
+    "description": "Hold-and-wait: developer holds REPO while waiting for ARCHITECT approval, blocking the other developer"
+  }
+]

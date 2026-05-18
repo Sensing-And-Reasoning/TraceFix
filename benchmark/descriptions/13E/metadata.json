@@ -1,0 +1,14 @@
+{
+  "agents": ["ANALYST", "BIOLOGIST", "CHEMIST"],
+  "resources": ["CENTRIFUGE", "SPECTROMETER"],
+  "agent_resources": {
+    "ANALYST": ["CENTRIFUGE", "SPECTROMETER"],
+    "BIOLOGIST": ["CENTRIFUGE", "SPECTROMETER"],
+    "CHEMIST": ["CENTRIFUGE", "SPECTROMETER"]
+  },
+  "tool_resource_map": {
+    "run_analysis": ["SPECTROMETER"],
+    "run_bioassay": [],
+    "run_separation": ["CENTRIFUGE"]
+  }
+}

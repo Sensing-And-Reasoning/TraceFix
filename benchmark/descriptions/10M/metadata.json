@@ -1,0 +1,14 @@
+{
+  "agents": ["BUILDER_A", "BUILDER_B", "BUILDER_C", "INTEGRATOR", "TEST_RUNNER"],
+  "resources": ["CONFIG", "CORE_LIB", "DATA_MODELS"],
+  "agent_resources": {
+    "BUILDER_A": ["CONFIG", "CORE_LIB"],
+    "BUILDER_B": ["CORE_LIB", "DATA_MODELS"],
+    "BUILDER_C": ["CONFIG", "DATA_MODELS"]
+  },
+  "tool_resource_map": {
+    "compile_module": "@agent_resources",
+    "link_modules": [],
+    "run_build_tests": []
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "agents": [
+    {"id": "researcherA"},
+    {"id": "researcherB"},
+    {"id": "editor"}
+  ],
+  "resources": [
+    {"id": "doc_lock", "type": "Lock"},
+    {"id": "ref_lock", "type": "Lock"}
+  ],
+  "channels": [
+    {"id": "resA_to_editor", "from": "researcherA", "to": "editor", "labels": ["submit"]},
+    {"id": "resB_to_editor", "from": "researcherB", "to": "editor", "labels": ["submit"]},
+    {"id": "editor_to_resA", "from": "editor", "to": "researcherA", "labels": ["revise", "accept"]},
+    {"id": "editor_to_resB", "from": "editor", "to": "researcherB", "labels": ["revise", "accept"]}
+  ]
+}

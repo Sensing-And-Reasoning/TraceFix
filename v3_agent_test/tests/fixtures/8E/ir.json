@@ -1,0 +1,17 @@
+{
+  "agents": [
+    {"id": "backendDev"},
+    {"id": "dbAdmin"},
+    {"id": "tester"}
+  ],
+  "resources": [
+    {"id": "migration_lock", "type": "Lock"},
+    {"id": "test_env_lock", "type": "Lock"}
+  ],
+  "channels": [
+    {"id": "dbAdmin_to_backend", "from": "dbAdmin", "to": "backendDev", "labels": ["migration_done"]},
+    {"id": "backend_to_tester", "from": "backendDev", "to": "tester", "labels": ["deploy"]},
+    {"id": "tester_to_backend", "from": "tester", "to": "backendDev", "labels": ["pass", "fail"]},
+    {"id": "backend_to_dbAdmin", "from": "backendDev", "to": "dbAdmin", "labels": ["adjust", "done"]}
+  ]
+}

@@ -1,0 +1,42 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "DATABASE requires exclusive access during schema changes"
+  },
+  {
+    "id": "R2",
+    "type": "resource",
+    "description": "TEST_ENV requires exclusive access during testing"
+  },
+  {
+    "id": "D1",
+    "type": "dependency",
+    "description": "BACKEND_DEV cannot deploy or test code until DB_ADMIN migration is complete"
+  },
+  {
+    "id": "D2",
+    "type": "dependency",
+    "description": "Migration done channel from DB_ADMIN to BACKEND_DEV confirms schema is ready"
+  },
+  {
+    "id": "DEC1",
+    "type": "decision",
+    "description": "Tests pass or fail; failure may require DB_ADMIN to adjust migration"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "DB schema migration must complete before BACKEND_DEV code deployment and testing"
+  },
+  {
+    "id": "O2",
+    "type": "ordering",
+    "description": "Test failure triggers revision loop: fix -> potentially re-migrate -> re-test"
+  },
+  {
+    "id": "RA1",
+    "type": "resource_access",
+    "description": "DB_ADMIN needs DATABASE during migration; TESTER needs TEST_ENV during testing"
+  }
+]

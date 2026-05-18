@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tla-verify"
+version = "0.1.0"
+description = "CLI for TLA+ verification of multi-agent coordination protocols"
+requires-python = ">=3.11"
+dependencies = ["jsonschema"]
+
+[project.scripts]
+tla-verify-pluscal = "tla_verify_pluscal.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["tla_verify_pluscal*", "v3_agent_test*", "benchmark*"]

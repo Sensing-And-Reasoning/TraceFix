@@ -1,0 +1,118 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "design_feature",
+      "description": "Design a feature locally.",
+      "agent_ids": [
+        "DEVELOPER_A",
+        "DEVELOPER_B",
+        "DEVELOPER_C",
+        "DEVELOPER_D",
+        "DEVELOPER_E",
+        "DEVELOPER_F",
+        "DEVELOPER_G"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "feature_name": {
+            "type": "string",
+            "description": "Feature being worked on"
+          }
+        },
+        "required": [
+          "feature_name"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "implement_code",
+      "description": "Implement code locally.",
+      "agent_ids": [
+        "DEVELOPER_A",
+        "DEVELOPER_B",
+        "DEVELOPER_C",
+        "DEVELOPER_D",
+        "DEVELOPER_E",
+        "DEVELOPER_F",
+        "DEVELOPER_G"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "feature_name": {
+            "type": "string",
+            "description": "Feature being worked on"
+          }
+        },
+        "required": [
+          "feature_name"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "commit_changes",
+      "description": "Commit changes to shared codebase modules.",
+      "agent_ids": [
+        "DEVELOPER_A",
+        "DEVELOPER_B",
+        "DEVELOPER_C",
+        "DEVELOPER_D",
+        "DEVELOPER_E",
+        "DEVELOPER_F",
+        "DEVELOPER_G"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "modules": {
+            "type": "string",
+            "description": "Modules being committed to"
+          }
+        },
+        "required": [
+          "modules"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "run_local_tests",
+      "description": "Run tests locally. May fail if tests detect integration issues.",
+      "agent_ids": [
+        "DEVELOPER_A",
+        "DEVELOPER_B",
+        "DEVELOPER_C",
+        "DEVELOPER_D",
+        "DEVELOPER_E",
+        "DEVELOPER_F",
+        "DEVELOPER_G"
+      ],
+      "can_fail": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "feature_name": {
+            "type": "string",
+            "description": "Feature being worked on"
+          }
+        },
+        "required": [
+          "feature_name"
+        ]
+      }
+    }
+  }
+]

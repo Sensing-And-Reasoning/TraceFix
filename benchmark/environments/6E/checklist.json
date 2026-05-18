@@ -1,0 +1,37 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "REPO may only be used by one agent at a time"
+  },
+  {
+    "id": "D1",
+    "type": "dependency",
+    "description": "REVIEWER must approve a feature before the developer can merge"
+  },
+  {
+    "id": "D2",
+    "type": "dependency",
+    "description": "Code ready channel notifies REVIEWER that code is ready for review"
+  },
+  {
+    "id": "DEC1",
+    "type": "decision",
+    "description": "REVIEWER approves or requests changes for each feature"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "Implement feature -> REVIEWER approval -> merge (sequential per feature)"
+  },
+  {
+    "id": "RA1",
+    "type": "resource_access",
+    "description": "Both DEVELOPER_A and DEVELOPER_B need REPO to modify shared files"
+  },
+  {
+    "id": "RA2",
+    "type": "resource_access",
+    "description": "Both developers need REPO to merge sequentially"
+  }
+]

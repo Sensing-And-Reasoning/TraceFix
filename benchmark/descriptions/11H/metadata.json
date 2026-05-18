@@ -1,0 +1,23 @@
+{
+  "agents": ["INSPECTOR", "MATERIAL_HANDLER", "PACKAGER", "WORKER_A", "WORKER_B", "WORKER_C", "WORKER_D"],
+  "resources": ["RAW_MATERIAL", "STATION_1", "STATION_2", "STATION_3", "STATION_4", "TOOL_SUPPLY"],
+  "agent_resources": {
+    "INSPECTOR": [],
+    "MATERIAL_HANDLER": [],
+    "PACKAGER": [],
+    "WORKER_A": ["RAW_MATERIAL", "STATION_1", "STATION_2", "STATION_3", "TOOL_SUPPLY"],
+    "WORKER_B": ["RAW_MATERIAL", "STATION_2", "STATION_3", "STATION_4", "TOOL_SUPPLY"],
+    "WORKER_C": ["RAW_MATERIAL", "STATION_1", "STATION_3", "STATION_4", "TOOL_SUPPLY"],
+    "WORKER_D": ["RAW_MATERIAL", "STATION_1", "STATION_2", "STATION_4", "TOOL_SUPPLY"]
+  },
+  "tool_resource_map": {
+    "do_job": [],
+    "inspect_quality": [],
+    "package_goods": [],
+    "replenish_material": []
+  },
+  "resource_capacity": {
+    "RAW_MATERIAL": 4,
+    "TOOL_SUPPLY": 3
+  }
+}

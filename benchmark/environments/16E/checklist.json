@@ -1,0 +1,15 @@
+[
+  {"id": "res_build_server",     "type": "resource",        "description": "BUILD_SERVER modeled as Lock"},
+  {"id": "res_deploy_env",       "type": "resource",        "description": "DEPLOY_ENV modeled as Lock"},
+  {"id": "ch_dev_to_tester",     "type": "dependency",      "description": "channel from DEVELOPER to TESTER for build-complete notification"},
+  {"id": "ch_tester_to_deployer","type": "dependency",      "description": "channel from TESTER to DEPLOYER for tests-passed notification"},
+  {"id": "ch_deployer_to_dev",   "type": "dependency",      "description": "channel from DEPLOYER to DEVELOPER for deployment-complete notification"},
+  {"id": "ch_deployer_to_tester","type": "dependency",      "description": "channel from DEPLOYER to TESTER for deployment-complete notification"},
+  {"id": "ord_test_after_build", "type": "ordering",        "description": "TESTER runs integration tests only after receiving build-complete from DEVELOPER"},
+  {"id": "ord_deploy_after_test","type": "ordering",        "description": "DEPLOYER deploys only after receiving tests-passed from TESTER"},
+  {"id": "acc_build_server_dev", "type": "resource_access", "description": "compile_and_test requires holding BUILD_SERVER"},
+  {"id": "acc_build_server_test","type": "resource_access", "description": "run_integration_tests requires holding BUILD_SERVER"},
+  {"id": "acc_deploy_env",       "type": "resource_access", "description": "deploy_application requires holding DEPLOY_ENV"},
+  {"id": "build_server_contention","type": "concurrency",   "description": "DEVELOPER and TESTER both need the BUILD_SERVER — DEVELOPER must release before TESTER can acquire"},
+  {"id": "linear_pipeline",      "type": "concurrency",     "description": "strictly sequential pipeline: build → test → deploy"}
+]

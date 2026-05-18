@@ -1,0 +1,14 @@
+{
+  "agents": ["DEVELOPER_A", "DEVELOPER_B", "REVIEWER"],
+  "resources": ["REPO"],
+  "agent_resources": {
+    "DEVELOPER_A": ["REPO"],
+    "DEVELOPER_B": ["REPO"],
+    "REVIEWER": []
+  },
+  "tool_resource_map": {
+    "code_review": [],
+    "implement_feature": ["REPO"],
+    "merge_code": ["REPO"]
+  }
+}

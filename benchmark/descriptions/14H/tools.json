@@ -1,0 +1,32 @@
+[
+  {"type": "function", "function": {
+    "name": "run_hplc_analysis", "description": "Run an HPLC analysis on a sample. Can fail.",
+    "agent_ids": ["CHEMIST", "BIOLOGIST", "TOXICOLOGIST", "REGULATORY_SPECIALIST"], "can_fail": true,
+    "parameters": {"type": "object", "properties": {"sample": {"type": "string", "description": "What to analyze"}}, "required": ["sample"]}
+  }},
+  {"type": "function", "function": {
+    "name": "run_mass_spec_analysis", "description": "Run a mass spectrometry analysis on a sample.",
+    "agent_ids": ["CHEMIST", "TOXICOLOGIST", "CLINICAL_LEAD", "REGULATORY_SPECIALIST"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"sample": {"type": "string", "description": "What to analyze"}}, "required": ["sample"]}
+  }},
+  {"type": "function", "function": {
+    "name": "run_cell_assay", "description": "Run a cell-based assay in the cell culture laboratory. Consumes one biological sample unit. Can fail.",
+    "agent_ids": ["BIOLOGIST", "TOXICOLOGIST"], "can_fail": true,
+    "parameters": {"type": "object", "properties": {"assay_type": {"type": "string", "description": "Type of assay (e.g., 'culture_prep', 'bioassay', 'cytotoxicity')"}}, "required": ["assay_type"]}
+  }},
+  {"type": "function", "function": {
+    "name": "prepare_formulation", "description": "Prepare a drug formulation in the formulation suite. Can fail.",
+    "agent_ids": ["FORMULATION_SCIENTIST"], "can_fail": true,
+    "parameters": {"type": "object", "properties": {"compound": {"type": "string", "description": "Compound to formulate"}}, "required": ["compound"]}
+  }},
+  {"type": "function", "function": {
+    "name": "verify_regulatory_compliance", "description": "Review clinical data for regulatory compliance. Can result in approval, clinical hold, or rejection.",
+    "agent_ids": ["REGULATORY_SPECIALIST"], "can_fail": true,
+    "parameters": {"type": "object", "properties": {"review_type": {"type": "string", "description": "Type of review (e.g., 'initial_review', 'hold_review')"}}, "required": ["review_type"]}
+  }},
+  {"type": "function", "function": {
+    "name": "review_clinical_data", "description": "Review combined bio/tox results for clinical assessment.",
+    "agent_ids": ["CLINICAL_LEAD"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"data_type": {"type": "string", "description": "Type of review (e.g., 'combined_review')"}}, "required": ["data_type"]}
+  }}
+]

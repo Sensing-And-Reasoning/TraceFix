@@ -1,0 +1,27 @@
+[
+  {"type": "function", "function": {
+    "name": "run_stepper_exposure", "description": "Run a photolithography exposure sequence on the STEPPER, or read STEPPER alignment/stage sensors for cross-calibration.",
+    "agent_ids": ["LITHOGRAPHER", "DEPOSITOR", "INTEGRATION_ENGINEER"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"process": {"type": "string", "description": "Process to run (e.g., 'photo_exposure', 'overlay_alignment', 'read_alignment_sensors', 'read_reference_datum')"}}, "required": ["process"]}
+  }},
+  {"type": "function", "function": {
+    "name": "run_deposition", "description": "Run a CVD thin-film deposition in the deposition chamber, or read deposition sensors for cross-calibration.",
+    "agent_ids": ["DEPOSITOR", "ETCHER", "INTEGRATION_ENGINEER"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"process": {"type": "string", "description": "Process to run (e.g., 'cvd_growth', 'film_integrity_check', 'read_film_stress_sensors')"}}, "required": ["process"]}
+  }},
+  {"type": "function", "function": {
+    "name": "run_etch_process", "description": "Run a reactive ion etch process in the etch chamber, or read etch sensors for cross-calibration.",
+    "agent_ids": ["LITHOGRAPHER", "ETCHER", "INTEGRATION_ENGINEER"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"process": {"type": "string", "description": "Process to run (e.g., 'pattern_transfer_etch', 'reactive_ion_etch', 'etch_uniformity_check', 'read_etch_profile_sensors')"}}, "required": ["process"]}
+  }},
+  {"type": "function", "function": {
+    "name": "run_metrology_measurement", "description": "Perform a metrology measurement at the metrology station.",
+    "agent_ids": ["LITHOGRAPHER", "DEPOSITOR", "METROLOGY_ENGINEER", "INTEGRATION_ENGINEER"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"measurement": {"type": "string", "description": "Measurement type (e.g., 'cd_measurement', 'thickness_measurement', 'profile_measurement', 'alignment_check', 'overlay_alignment', 'thickness_verification')"}}, "required": ["measurement"]}
+  }},
+  {"type": "function", "function": {
+    "name": "check_monitoring", "description": "Access the process monitoring system for real-time data.",
+    "agent_ids": ["LITHOGRAPHER", "DEPOSITOR", "ETCHER", "PROCESS_CONTROLLER"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"check_type": {"type": "string", "description": "What to check (e.g., 'exposure_dose', 'etch_endpoint', 'deposition_rate', 'etch_rate', 'cross_reference')"}}, "required": ["check_type"]}
+  }}
+]

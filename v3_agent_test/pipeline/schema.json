@@ -1,0 +1,101 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tla-mas.example.com/ir-v3-schema.json",
+  "title": "TLA+ MAS Coordination Protocol IR v3 (PlusCal)",
+  "description": "Intermediate Representation for coordination protocols between independent concurrent agents. Defines agents, shared resources, and message channels. Agent behavior is written as PlusCal process bodies (not JSON states).",
+  "type": "object",
+  "required": ["agents", "resources", "channels"],
+  "additionalProperties": false,
+
+  "properties": {
+    "agents": {
+      "description": "Independent agent processes. Each runs concurrently as a PlusCal process.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Unique agent identifier."
+          },
+          "tools": {
+            "description": "Optional: available tools for this agent. Ignored by TLA+ verification, used by execution runtime.",
+            "type": "array",
+            "items": {"type": "string", "minLength": 1}
+          }
+        }
+      }
+    },
+
+    "resources": {
+      "description": "Shared resources that agents compete for. Lock = exclusive access, Counter = counting semaphore.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "type": "string",
+            "enum": ["Lock", "Counter"]
+          },
+          "config": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "initial": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Initial counter value. Required for Counter type."
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "channels": {
+      "description": "Unbounded FIFO message channels between agents. Send always succeeds; receive blocks if empty.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "from", "to", "labels"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "from": {
+            "description": "Agent(s) allowed to send on this channel.",
+            "oneOf": [
+              {"type": "string", "minLength": 1},
+              {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1}
+            ]
+          },
+          "to": {
+            "description": "Agent(s) allowed to receive from this channel.",
+            "oneOf": [
+              {"type": "string", "minLength": 1},
+              {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1}
+            ]
+          },
+          "labels": {
+            "description": "Message types that flow through this channel. All send/receive operations on this channel must use one of these labels.",
+            "type": "array",
+            "items": {"type": "string", "minLength": 1},
+            "minItems": 1
+          }
+        }
+      }
+    }
+  }
+}

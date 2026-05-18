@@ -1,0 +1,14 @@
+{
+  "agents": ["CHEF_A", "CHEF_B", "CHEF_C"],
+  "resources": ["OVEN", "STOVETOP"],
+  "agent_resources": {
+    "CHEF_A": ["OVEN", "STOVETOP"],
+    "CHEF_B": ["OVEN", "STOVETOP"],
+    "CHEF_C": ["OVEN"]
+  },
+  "tool_resource_map": {
+    "prepare_base_dish": "@agent_resources",
+    "prepare_ingredient": [],
+    "combine_dish": []
+  }
+}

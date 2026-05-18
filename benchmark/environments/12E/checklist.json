@@ -1,0 +1,14 @@
+[
+  {"id": "res_oven",        "type": "resource",        "description": "OVEN modeled as Lock"},
+  {"id": "res_stovetop",    "type": "resource",        "description": "STOVETOP modeled as Lock"},
+  {"id": "ch_garnish",      "type": "dependency",      "description": "channel from CHEF_B to CHEF_A for garnish"},
+  {"id": "ch_sauce",        "type": "dependency",      "description": "channel from CHEF_A to CHEF_C for sauce"},
+  {"id": "ch_glaze",        "type": "dependency",      "description": "channel from CHEF_C to CHEF_B for glaze"},
+  {"id": "ord_appetizer",   "type": "ordering",        "description": "appetizer completion requires receiving garnish"},
+  {"id": "ord_main",        "type": "ordering",        "description": "main course completion requires receiving glaze"},
+  {"id": "ord_dessert",     "type": "ordering",        "description": "dessert completion requires receiving sauce"},
+  {"id": "acc_base_oven",   "type": "resource_access", "description": "base dish preparation acquires OVEN"},
+  {"id": "acc_base_stove",  "type": "resource_access", "description": "base dish preparation acquires STOVETOP (CHEF_A, CHEF_B)"},
+  {"id": "indep_ingredient","type": "concurrency",     "description": "ingredient preparation does NOT require equipment"},
+  {"id": "parallel_start",  "type": "concurrency",     "description": "all three chefs can start working concurrently"}
+]

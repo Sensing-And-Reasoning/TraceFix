@@ -1,0 +1,27 @@
+[
+  {"type": "function", "function": {
+    "name": "run_stepper_exposure", "description": "Run a photolithography exposure or read STEPPER sensors.",
+    "agent_ids": ["LITHOGRAPHER", "DEPOSITOR", "INTEGRATION_ENGINEER"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"process": {"type": "string", "description": "Process to run"}}, "required": ["process"]}
+  }},
+  {"type": "function", "function": {
+    "name": "run_deposition", "description": "Run CVD deposition or read deposition sensors.",
+    "agent_ids": ["DEPOSITOR", "ETCHER", "INTEGRATION_ENGINEER"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"process": {"type": "string", "description": "Process to run"}}, "required": ["process"]}
+  }},
+  {"type": "function", "function": {
+    "name": "run_etch_process", "description": "Run reactive ion etch or read etch sensors. Can fail during rework.",
+    "agent_ids": ["LITHOGRAPHER", "ETCHER", "INTEGRATION_ENGINEER"], "can_fail": true,
+    "parameters": {"type": "object", "properties": {"process": {"type": "string", "description": "Process to run"}}, "required": ["process"]}
+  }},
+  {"type": "function", "function": {
+    "name": "run_metrology_measurement", "description": "Perform a metrology measurement. Can fail, triggering rework.",
+    "agent_ids": ["LITHOGRAPHER", "DEPOSITOR", "METROLOGY_ENGINEER", "INTEGRATION_ENGINEER", "PROCESS_CONTROLLER"], "can_fail": true,
+    "parameters": {"type": "object", "properties": {"measurement": {"type": "string", "description": "Measurement type"}}, "required": ["measurement"]}
+  }},
+  {"type": "function", "function": {
+    "name": "check_monitoring", "description": "Access the process monitoring system. Can fail for PROCESS_CONTROLLER, triggering a yield halt investigation.",
+    "agent_ids": ["LITHOGRAPHER", "DEPOSITOR", "ETCHER", "PROCESS_CONTROLLER"], "can_fail": true,
+    "parameters": {"type": "object", "properties": {"check_type": {"type": "string", "description": "What to check"}}, "required": ["check_type"]}
+  }}
+]

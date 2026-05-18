@@ -1,0 +1,42 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "REPO can only be modified by one agent at a time"
+  },
+  {
+    "id": "R2",
+    "type": "resource",
+    "description": "TEST_ENV can only be used by one agent at a time"
+  },
+  {
+    "id": "D1",
+    "type": "dependency",
+    "description": "Neither developer should begin implementation until API spec is agreed upon"
+  },
+  {
+    "id": "D2",
+    "type": "dependency",
+    "description": "TESTER can only run tests when both FRONTEND_DEV and BACKEND_DEV implementations are ready"
+  },
+  {
+    "id": "DEC1",
+    "type": "decision",
+    "description": "If a developer changes the API spec after implementation started, the other must adapt"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "API spec agreement must precede implementation by both developers"
+  },
+  {
+    "id": "O2",
+    "type": "ordering",
+    "description": "Both implementations must complete before TESTER can run integration tests"
+  },
+  {
+    "id": "RA1",
+    "type": "resource_access",
+    "description": "Both FRONTEND_DEV and BACKEND_DEV need REPO access to modify the specification"
+  }
+]

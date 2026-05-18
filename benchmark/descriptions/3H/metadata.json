@@ -1,0 +1,22 @@
+{
+  "agents": ["DATA_ANALYST", "EDITOR_IN_CHIEF", "RESEARCHER_A", "RESEARCHER_B", "RESEARCHER_C", "RESEARCHER_D", "REVIEWER"],
+  "resources": ["DATABASE", "FIGURE_REPOSITORY", "SECTION_A", "SECTION_B", "SECTION_C", "SECTION_D"],
+  "agent_resources": {
+    "RESEARCHER_A": ["SECTION_A"],
+    "RESEARCHER_B": ["SECTION_B"],
+    "RESEARCHER_C": ["SECTION_C"],
+    "RESEARCHER_D": ["SECTION_D"]
+  },
+  "tool_resource_map": {
+    "research_topic": [],
+    "write_section": "@agent_resources",
+    "revise_section": "@agent_resources",
+    "update_references": ["DATABASE"],
+    "review_sections": [],
+    "peer_review": [],
+    "create_figure": ["FIGURE_REPOSITORY"],
+    "insert_figure": [],
+    "combine_sections": [],
+    "make_editorial_decision": []
+  }
+}

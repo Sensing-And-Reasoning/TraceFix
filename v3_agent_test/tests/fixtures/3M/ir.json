@@ -1,0 +1,28 @@
+{
+  "agents": [
+    {"id": "researcherA"},
+    {"id": "researcherB"},
+    {"id": "researcherC"},
+    {"id": "factchecker"},
+    {"id": "editor"}
+  ],
+  "resources": [
+    {"id": "doc_lock", "type": "Lock"},
+    {"id": "ref_lock", "type": "Lock"}
+  ],
+  "channels": [
+    {"id": "resA_to_fc", "from": "researcherA", "to": "factchecker", "labels": ["submit"]},
+    {"id": "resB_to_fc", "from": "researcherB", "to": "factchecker", "labels": ["submit"]},
+    {"id": "resC_to_fc", "from": "researcherC", "to": "factchecker", "labels": ["submit"]},
+    {"id": "fc_to_resA", "from": "factchecker", "to": "researcherA", "labels": ["pass", "flag"]},
+    {"id": "fc_to_resB", "from": "factchecker", "to": "researcherB", "labels": ["pass", "flag"]},
+    {"id": "fc_to_resC", "from": "factchecker", "to": "researcherC", "labels": ["pass", "flag"]},
+    {"id": "fc_to_editor", "from": "factchecker", "to": "editor", "labels": ["passedA", "passedB", "passedC"]},
+    {"id": "editor_to_resA", "from": "editor", "to": "researcherA", "labels": ["accept", "revise"]},
+    {"id": "editor_to_resB", "from": "editor", "to": "researcherB", "labels": ["accept", "revise"]},
+    {"id": "editor_to_resC", "from": "editor", "to": "researcherC", "labels": ["accept", "revise"]},
+    {"id": "resA_to_editor", "from": "researcherA", "to": "editor", "labels": ["resubmit"]},
+    {"id": "resB_to_editor", "from": "researcherB", "to": "editor", "labels": ["resubmit"]},
+    {"id": "resC_to_editor", "from": "researcherC", "to": "editor", "labels": ["resubmit"]}
+  ]
+}

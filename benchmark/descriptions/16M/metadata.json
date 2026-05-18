@@ -1,0 +1,22 @@
+{
+  "agents": ["BACKEND_DEV", "BUILD_MASTER", "FRONTEND_DEV", "QA_ENGINEER", "RELEASE_ENGINEER"],
+  "resources": ["ARTIFACT_STORE", "BUILD_SERVER", "PROD_ENV", "TEST_ENV"],
+  "agent_resources": {
+    "BACKEND_DEV": ["ARTIFACT_STORE", "BUILD_SERVER"],
+    "BUILD_MASTER": [],
+    "FRONTEND_DEV": ["ARTIFACT_STORE", "BUILD_SERVER"],
+    "QA_ENGINEER": ["ARTIFACT_STORE", "TEST_ENV"],
+    "RELEASE_ENGINEER": ["ARTIFACT_STORE", "PROD_ENV", "TEST_ENV"]
+  },
+  "tool_resource_map": {
+    "compile_code": ["BUILD_SERVER"],
+    "run_unit_tests": ["BUILD_SERVER"],
+    "publish_artifact": ["ARTIFACT_STORE", "BUILD_SERVER"],
+    "pull_artifacts": ["ARTIFACT_STORE"],
+    "run_integration_tests": ["TEST_ENV"],
+    "run_e2e_tests": ["TEST_ENV"],
+    "deploy_staging": ["TEST_ENV"],
+    "run_smoke_tests": ["TEST_ENV", "PROD_ENV"],
+    "deploy_production": ["PROD_ENV"]
+  }
+}

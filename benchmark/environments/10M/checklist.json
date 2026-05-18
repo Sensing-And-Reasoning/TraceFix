@@ -1,0 +1,57 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "CORE_LIB requires exclusive access (only one builder at a time)"
+  },
+  {
+    "id": "R2",
+    "type": "resource",
+    "description": "DATA_MODELS requires exclusive access (only one builder at a time)"
+  },
+  {
+    "id": "R3",
+    "type": "resource",
+    "description": "CONFIG requires exclusive access (only one builder at a time)"
+  },
+  {
+    "id": "D1",
+    "type": "dependency",
+    "description": "BUILDER_A and BUILDER_B both need CORE_LIB (pairwise race)"
+  },
+  {
+    "id": "D2",
+    "type": "dependency",
+    "description": "BUILDER_B and BUILDER_C both need DATA_MODELS (pairwise race)"
+  },
+  {
+    "id": "D3",
+    "type": "dependency",
+    "description": "BUILDER_A and BUILDER_C both need CONFIG (pairwise race)"
+  },
+  {
+    "id": "D4",
+    "type": "dependency",
+    "description": "When a builder modifies a shared artifact, all dependent builders must rebuild"
+  },
+  {
+    "id": "D5",
+    "type": "dependency",
+    "description": "TEST_RUNNER must validate each module before INTEGRATOR accepts it"
+  },
+  {
+    "id": "D6",
+    "type": "dependency",
+    "description": "INTEGRATOR cannot begin until all three modules are tested and accepted"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "Build -> test -> accept -> integrate (per module pipeline)"
+  },
+  {
+    "id": "DL1",
+    "type": "deadlock_scenario",
+    "description": "Circular wait across three pairwise races: BUILDER_A holds CORE_LIB wants CONFIG, BUILDER_C holds CONFIG wants DATA_MODELS, BUILDER_B holds DATA_MODELS wants CORE_LIB"
+  }
+]

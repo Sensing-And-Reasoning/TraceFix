@@ -1,0 +1,87 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "OPERATING_ROOM can only perform one surgery at a time"
+  },
+  {
+    "id": "R2",
+    "type": "resource",
+    "description": "CT_SCANNER can only serve one patient at a time"
+  },
+  {
+    "id": "R3",
+    "type": "resource",
+    "description": "MRI can only serve one patient at a time"
+  },
+  {
+    "id": "R4",
+    "type": "resource",
+    "description": "ICU_BEDS are a limited shared capacity (Counter, initial=2)"
+  },
+  {
+    "id": "R5",
+    "type": "resource",
+    "description": "VENTILATOR can only be used by one patient at a time"
+  },
+  {
+    "id": "D1",
+    "type": "dependency",
+    "description": "ANESTHESIOLOGIST must confirm readiness before surgery can begin"
+  },
+  {
+    "id": "D2",
+    "type": "dependency",
+    "description": "All medication prescriptions must pass PHARMACIST review"
+  },
+  {
+    "id": "D3",
+    "type": "dependency",
+    "description": "Surgical request from ER_DOCTOR_A/ER_DOCTOR_B to SURGEON coordinates operative care"
+  },
+  {
+    "id": "D4",
+    "type": "dependency",
+    "description": "ICU admission requests from ER_DOCTOR_A/ER_DOCTOR_B to ICU_COORDINATOR"
+  },
+  {
+    "id": "DEC1",
+    "type": "decision",
+    "description": "ER_DOCTOR_A decides trauma patient treatment plan (surgery vs conservative)"
+  },
+  {
+    "id": "DEC2",
+    "type": "decision",
+    "description": "ER_DOCTOR_B decides stroke patient needs (imaging type, ICU admission)"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "Anesthesia readiness must precede surgery start"
+  },
+  {
+    "id": "O2",
+    "type": "ordering",
+    "description": "Imaging results must be available before surgical or ICU decisions"
+  },
+  {
+    "id": "RA1",
+    "type": "resource_access",
+    "description": "Both ER_DOCTOR_A and ER_DOCTOR_B may need CT_SCANNER, MRI, and VENTILATOR for their respective patients"
+  },
+  {
+    "id": "RA2",
+    "type": "resource_access",
+    "description": "ICU_COORDINATOR manages bed allocation; both patients may need ICU_BEDS"
+  },
+  {
+    "id": "DL1",
+    "type": "deadlock_scenario",
+    "description": "Resource contention: both patients need OPERATING_ROOM, CT_SCANNER, and MRI simultaneously; agents must coordinate access to prevent circular wait"
+  },
+  {
+    "id": "DL2",
+    "type": "deadlock_scenario",
+    "description": "ICU_BEDS exhaustion: both patients need ICU admission but only 2 beds available; counter reaches 0 blocking further admissions"
+  }
+]

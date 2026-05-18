@@ -1,0 +1,15 @@
+{
+  "agents": ["DEVELOPER_A", "DEVELOPER_B", "DEVELOPER_C"],
+  "resources": ["API_MODULE", "AUTH_MODULE", "DATABASE_MODULE"],
+  "agent_resources": {
+    "DEVELOPER_A": ["AUTH_MODULE", "DATABASE_MODULE"],
+    "DEVELOPER_B": ["API_MODULE", "DATABASE_MODULE"],
+    "DEVELOPER_C": ["API_MODULE", "AUTH_MODULE"]
+  },
+  "tool_resource_map": {
+    "design_feature": [],
+    "implement_code": [],
+    "run_local_tests": [],
+    "commit_changes": "@agent_resources"
+  }
+}

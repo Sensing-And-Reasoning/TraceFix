@@ -1,0 +1,62 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "MRI can only serve one patient at a time"
+  },
+  {
+    "id": "R2",
+    "type": "resource",
+    "description": "CT_SCANNER can only serve one patient at a time"
+  },
+  {
+    "id": "R3",
+    "type": "resource",
+    "description": "CONSULTATION_ROOM can only host one case conference at a time"
+  },
+  {
+    "id": "D1",
+    "type": "dependency",
+    "description": "Referral channel from ER_DOCTOR to specialists initiates evaluations"
+  },
+  {
+    "id": "D2",
+    "type": "dependency",
+    "description": "All imaging requests go through the RADIOLOGIST (shared bottleneck)"
+  },
+  {
+    "id": "D3",
+    "type": "dependency",
+    "description": "Cross-domain findings must be explicitly shared between specialists"
+  },
+  {
+    "id": "D4",
+    "type": "dependency",
+    "description": "All medication prescriptions must pass PHARMACIST review before administration"
+  },
+  {
+    "id": "DEC1",
+    "type": "decision",
+    "description": "CARDIOLOGIST and NEUROLOGIST may reach different preliminary diagnoses requiring case conference"
+  },
+  {
+    "id": "DEC2",
+    "type": "decision",
+    "description": "PHARMACIST approves or flags medication interactions"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "ER_DOCTOR initial assessment precedes specialist referrals"
+  },
+  {
+    "id": "O2",
+    "type": "ordering",
+    "description": "Case conference required when specialists disagree before treatment plan finalization"
+  },
+  {
+    "id": "DL1",
+    "type": "deadlock_scenario",
+    "description": "RADIOLOGIST bottleneck: multiple specialists request imaging simultaneously, all blocked waiting for the single RADIOLOGIST"
+  }
+]

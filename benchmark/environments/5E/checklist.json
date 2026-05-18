@@ -1,0 +1,42 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "CT_SCANNER can only serve one patient at a time"
+  },
+  {
+    "id": "D1",
+    "type": "dependency",
+    "description": "Referral channel from ER_DOCTOR to CARDIOLOGIST initiates cardiac evaluation"
+  },
+  {
+    "id": "D2",
+    "type": "dependency",
+    "description": "Any medication prescription must be reviewed by PHARMACIST before administration"
+  },
+  {
+    "id": "D3",
+    "type": "dependency",
+    "description": "Findings must be explicitly shared between specialists (domain-specific visibility)"
+  },
+  {
+    "id": "DEC1",
+    "type": "decision",
+    "description": "ER_DOCTOR determines whether cause is cardiac or pulmonary"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "Initial assessment by ER_DOCTOR precedes specialist referral"
+  },
+  {
+    "id": "O2",
+    "type": "ordering",
+    "description": "Prescription must pass PHARMACIST review before drug administration"
+  },
+  {
+    "id": "RA1",
+    "type": "resource_access",
+    "description": "ER_DOCTOR uses CT_SCANNER for imaging; only one patient can be scanned at a time"
+  }
+]

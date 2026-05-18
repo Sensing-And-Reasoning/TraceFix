@@ -1,0 +1,42 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "INTRO_SECTION requires exclusive access (mutex lock)"
+  },
+  {
+    "id": "R2",
+    "type": "resource",
+    "description": "METHODS_SECTION requires exclusive access (mutex lock)"
+  },
+  {
+    "id": "R3",
+    "type": "resource",
+    "description": "RESULTS_SECTION requires exclusive access (mutex lock)"
+  },
+  {
+    "id": "RA1",
+    "type": "resource_access",
+    "description": "RESEARCHER_A acquires INTRO_SECTION and METHODS_SECTION one at a time (sequential acquisition)"
+  },
+  {
+    "id": "RA2",
+    "type": "resource_access",
+    "description": "RESEARCHER_B acquires METHODS_SECTION and RESULTS_SECTION one at a time (sequential acquisition)"
+  },
+  {
+    "id": "RA3",
+    "type": "resource_access",
+    "description": "RESEARCHER_C acquires INTRO_SECTION and RESULTS_SECTION one at a time (sequential acquisition)"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "Each researcher reads literature and drafts locally before acquiring section locks"
+  },
+  {
+    "id": "DL1",
+    "type": "deadlock_scenario",
+    "description": "Circular wait: RESEARCHER_A holds INTRO_SECTION waiting for METHODS_SECTION, RESEARCHER_B holds METHODS_SECTION waiting for RESULTS_SECTION, RESEARCHER_C holds RESULTS_SECTION waiting for INTRO_SECTION"
+  }
+]

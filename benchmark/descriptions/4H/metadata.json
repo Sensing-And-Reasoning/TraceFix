@@ -1,0 +1,15 @@
+{
+  "agents": ["ARCHITECT", "DEVELOPER_A", "DEVELOPER_B", "DEVELOPER_C", "DEVOPS", "REVIEWER", "TESTER"],
+  "resources": ["STAGING_ENV", "TEST_ENV"],
+  "agent_resources": {},
+  "tool_resource_map": {
+    "code_review": [],
+    "deploy_service": ["STAGING_ENV"],
+    "design_proposal": [],
+    "implement_feature": [],
+    "migrate_schema": ["STAGING_ENV"],
+    "register_service": [],
+    "rollback_service": ["STAGING_ENV"],
+    "run_tests": ["TEST_ENV"]
+  }
+}

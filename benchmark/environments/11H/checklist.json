@@ -1,0 +1,97 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "STATION_1 can only be used by one worker at a time"
+  },
+  {
+    "id": "R2",
+    "type": "resource",
+    "description": "STATION_2 can only be used by one worker at a time"
+  },
+  {
+    "id": "R3",
+    "type": "resource",
+    "description": "STATION_3 can only be used by one worker at a time"
+  },
+  {
+    "id": "R4",
+    "type": "resource",
+    "description": "STATION_4 can only be used by one worker at a time"
+  },
+  {
+    "id": "R5",
+    "type": "resource",
+    "description": "TOOL_SUPPLY has 3 shared tools (Counter, initial=3)"
+  },
+  {
+    "id": "R6",
+    "type": "resource",
+    "description": "RAW_MATERIAL starts at 4 units (Counter, initial=4), consumed by jobs and replenished by MATERIAL_HANDLER"
+  },
+  {
+    "id": "D1",
+    "type": "dependency",
+    "description": "Each job consumes 1 RAW_MATERIAL and requires 1 tool from TOOL_SUPPLY"
+  },
+  {
+    "id": "D2",
+    "type": "dependency",
+    "description": "With 8 total jobs and only 4 initial materials, workers must request replenishment from MATERIAL_HANDLER"
+  },
+  {
+    "id": "D3",
+    "type": "dependency",
+    "description": "INSPECTOR checks each job; failed jobs must be reworked"
+  },
+  {
+    "id": "D4",
+    "type": "dependency",
+    "description": "PACKAGER collects all 8 finished goods (2 per worker) before terminating"
+  },
+  {
+    "id": "DEC1",
+    "type": "decision",
+    "description": "Workers with alternative routing nondeterministically choose station (Job 1 can use either of two stations)"
+  },
+  {
+    "id": "DEC2",
+    "type": "decision",
+    "description": "INSPECTOR passes or fails each job inspection"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "Use station + tool + material -> complete job -> inspection -> pass (package) or fail (rework)"
+  },
+  {
+    "id": "O2",
+    "type": "ordering",
+    "description": "MATERIAL_HANDLER replenishes RAW_MATERIAL counter when workers request it"
+  },
+  {
+    "id": "RA1",
+    "type": "resource_access",
+    "description": "Overlapping station alternatives form a ring: WORKER_A uses STATION_1/STATION_2, WORKER_B uses STATION_2/STATION_3, WORKER_C uses STATION_3/STATION_4, WORKER_D uses STATION_4/STATION_1"
+  },
+  {
+    "id": "RA2",
+    "type": "resource_access",
+    "description": "All four workers compete for 3 shared tools from TOOL_SUPPLY and 4 initial RAW_MATERIAL units"
+  },
+  {
+    "id": "DL1",
+    "type": "deadlock_scenario",
+    "description": "Ring of station contention: four workers with overlapping station alternatives could create circular wait if alternative routing is not used"
+  },
+  {
+    "id": "DL2",
+    "type": "deadlock_scenario",
+    "description": "Resource exhaustion: RAW_MATERIAL depleted (counter=0) while MATERIAL_HANDLER has not been notified, stalling all workers needing materials"
+  },
+  {
+    "id": "DL3",
+    "type": "deadlock_scenario",
+    "description": "Combined tool + station contention: workers hold tools while waiting for stations, stalling other workers who need those tools on available stations"
+  }
+]

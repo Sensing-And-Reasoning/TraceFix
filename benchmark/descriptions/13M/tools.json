@@ -1,0 +1,27 @@
+[
+  {"type": "function", "function": {
+    "name": "run_analysis", "description": "Run a spectrometer analysis on a sample.",
+    "agent_ids": ["CHEMIST", "BIOLOGIST", "ANALYST"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"sample": {"type": "string", "description": "What to analyze (e.g., 'raw_materials', 'fluorescence', 'molecular_detail', 'final_validation', 'verification')"}}, "required": ["sample"]}
+  }},
+  {"type": "function", "function": {
+    "name": "run_separation", "description": "Run centrifuge separation on a material.",
+    "agent_ids": ["CHEMIST", "BIOLOGIST", "ANALYST"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"material": {"type": "string", "description": "What to separate (e.g., 'compound_purification', 'cell_cultures', 'verification')"}}, "required": ["material"]}
+  }},
+  {"type": "function", "function": {
+    "name": "run_bioassay", "description": "Run biological activity test on the compound using cell cultures. No instrument required. Can fail if reaction conditions are suboptimal.",
+    "agent_ids": ["BIOLOGIST"], "can_fail": true,
+    "parameters": {"type": "object", "properties": {"compound": {"type": "string", "description": "Compound to test"}, "cell_type": {"type": "string", "description": "Type of cell culture to use"}}, "required": ["compound"]}
+  }},
+  {"type": "function", "function": {
+    "name": "run_synthesis", "description": "Run chemical synthesis in the fume hood.",
+    "agent_ids": ["CHEMIST"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"compound": {"type": "string", "description": "Compound to synthesize"}}, "required": ["compound"]}
+  }},
+  {"type": "function", "function": {
+    "name": "verify_result", "description": "Verify a scientist's result by inspecting sample conditions and running confirmation analysis. Can reject, requiring the scientist to redo work.",
+    "agent_ids": ["QC_CONTROLLER"], "can_fail": true,
+    "parameters": {"type": "object", "properties": {"scientist": {"type": "string", "description": "Which scientist's result to verify (e.g., 'CHEMIST', 'BIOLOGIST')"}, "data_type": {"type": "string", "description": "Type of data being verified (e.g., 'purification', 'bioassay')"}}, "required": ["scientist", "data_type"]}
+  }}
+]

@@ -1,0 +1,23 @@
+[
+  {"id": "res_hplc",               "type": "resource",        "description": "HPLC modeled as Lock"},
+  {"id": "res_mass_spec",          "type": "resource",        "description": "MASS_SPEC modeled as Lock"},
+  {"id": "res_cell_lab",           "type": "resource",        "description": "CELL_LAB modeled as Lock"},
+  {"id": "ch_chem_to_bio",         "type": "dependency",      "description": "channel from CHEMIST to BIOLOGIST for compound sample"},
+  {"id": "ch_chem_to_tox",         "type": "dependency",      "description": "channel from CHEMIST to TOXICOLOGIST for compound sample"},
+  {"id": "ch_bio_to_lead",         "type": "dependency",      "description": "channel from BIOLOGIST to LEAD_SCIENTIST for bioactivity report"},
+  {"id": "ch_tox_to_lead",         "type": "dependency",      "description": "channel from TOXICOLOGIST to LEAD_SCIENTIST for toxicity report"},
+  {"id": "ch_lead_to_chem",        "type": "dependency",      "description": "channel from LEAD_SCIENTIST to CHEMIST for go/no-go decision"},
+  {"id": "ord_bio_assay_after_compound",   "type": "ordering", "description": "BIOLOGIST runs bioassay only after receiving compound from CHEMIST"},
+  {"id": "ord_tox_test_after_compound",    "type": "ordering", "description": "TOXICOLOGIST tests compound only after receiving it from CHEMIST"},
+  {"id": "ord_lead_after_both_reports",    "type": "ordering", "description": "LEAD_SCIENTIST evaluates only after receiving BOTH bio and tox reports"},
+  {"id": "ord_chem_doc_after_decision",    "type": "ordering", "description": "CHEMIST performs documentation only after receiving LEAD_SCIENTIST's decision"},
+  {"id": "acc_hplc_analysis",       "type": "resource_access", "description": "run_hplc_analysis requires holding HPLC"},
+  {"id": "acc_mass_spec_analysis",  "type": "resource_access", "description": "run_mass_spec_analysis requires holding MASS_SPEC"},
+  {"id": "acc_cell_assay",          "type": "resource_access", "description": "run_cell_assay requires holding CELL_LAB"},
+  {"id": "deadlock_risk_reverse_order",    "type": "concurrency", "description": "BIOLOGIST (CELL_LAB then HPLC) and TOXICOLOGIST (HPLC then CELL_LAB) acquire instruments in opposite order after receiving compound"},
+  {"id": "deadlock_risk_hold_across_wait", "type": "concurrency", "description": "CHEMIST uses HPLC at start AND end — must release before waiting for LEAD_SCIENTIST who needs HPLC"},
+  {"id": "deadlock_risk_tox_hold_hplc",    "type": "concurrency", "description": "description suggests TOXICOLOGIST keeps HPLC method loaded while moving to CELL_LAB — creates hold-and-wait with BIOLOGIST"},
+  {"id": "receive_either_order",    "type": "concurrency",     "description": "LEAD_SCIENTIST receives bio and tox reports in either order (nondeterministic)"},
+  {"id": "parallel_prep",           "type": "concurrency",     "description": "all four scientists perform preparation work concurrently before compound is ready"},
+  {"id": "concurrent_bio_tox",      "type": "concurrency",     "description": "BIOLOGIST and TOXICOLOGIST evaluate compound in parallel after receiving samples"}
+]

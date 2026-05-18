@@ -1,0 +1,13 @@
+{
+  "agents": ["BACKEND_DEV", "DB_ADMIN", "FRONTEND_DEV", "REVIEWER", "TESTER"],
+  "resources": ["API_GATEWAY", "DATABASE", "TEST_ENV"],
+  "agent_resources": {},
+  "tool_resource_map": {
+    "code_review": [],
+    "define_api": ["API_GATEWAY"],
+    "implement_backend": [],
+    "implement_frontend": [],
+    "migrate_schema": ["DATABASE"],
+    "run_integration_tests": ["TEST_ENV"]
+  }
+}

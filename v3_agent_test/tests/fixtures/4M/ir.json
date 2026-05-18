@@ -1,0 +1,28 @@
+{
+  "agents": [
+    {"id": "architect"},
+    {"id": "developerA"},
+    {"id": "developerB"},
+    {"id": "reviewer"},
+    {"id": "tester"}
+  ],
+  "resources": [
+    {"id": "shared_lib_lock", "type": "Lock"},
+    {"id": "merge_lock", "type": "Lock"},
+    {"id": "test_lock", "type": "Lock"}
+  ],
+  "channels": [
+    {"id": "devA_to_arch", "from": "developerA", "to": "architect", "labels": ["design_proposal"]},
+    {"id": "arch_to_devA", "from": "architect", "to": "developerA", "labels": ["approve", "reject"]},
+    {"id": "devB_to_arch", "from": "developerB", "to": "architect", "labels": ["design_proposal"]},
+    {"id": "arch_to_devB", "from": "architect", "to": "developerB", "labels": ["approve", "reject"]},
+    {"id": "devA_to_reviewer", "from": "developerA", "to": "reviewer", "labels": ["review_request", "done"]},
+    {"id": "reviewer_to_devA", "from": "reviewer", "to": "developerA", "labels": ["approved", "revise"]},
+    {"id": "devB_to_reviewer", "from": "developerB", "to": "reviewer", "labels": ["review_request", "done"]},
+    {"id": "reviewer_to_devB", "from": "reviewer", "to": "developerB", "labels": ["approved", "revise"]},
+    {"id": "devA_to_tester", "from": "developerA", "to": "tester", "labels": ["test_request", "done"]},
+    {"id": "tester_to_devA", "from": "tester", "to": "developerA", "labels": ["pass", "fail"]},
+    {"id": "devB_to_tester", "from": "developerB", "to": "tester", "labels": ["test_request", "done"]},
+    {"id": "tester_to_devB", "from": "tester", "to": "developerB", "labels": ["pass", "fail"]}
+  ]
+}

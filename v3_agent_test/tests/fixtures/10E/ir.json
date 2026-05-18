@@ -1,0 +1,16 @@
+{
+  "agents": [
+    {"id": "builder_a"},
+    {"id": "builder_b"},
+    {"id": "integrator"}
+  ],
+  "resources": [
+    {"id": "core_lib", "type": "Lock"},
+    {"id": "shared_types", "type": "Lock"}
+  ],
+  "channels": [
+    {"id": "a_to_b", "from": "builder_a", "to": "builder_b", "labels": ["types_updated", "types_stable"]},
+    {"id": "a_to_integrator", "from": "builder_a", "to": "integrator", "labels": ["done"]},
+    {"id": "b_to_integrator", "from": "builder_b", "to": "integrator", "labels": ["done"]}
+  ]
+}

@@ -1,0 +1,152 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "research_topic",
+      "description": "Research a topic and gather sources.",
+      "agent_ids": [
+        "RESEARCHER_A",
+        "RESEARCHER_B"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "description": "Topic to research"
+          }
+        },
+        "required": [
+          "topic"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "write_section",
+      "description": "Write a draft section.",
+      "agent_ids": [
+        "RESEARCHER_A",
+        "RESEARCHER_B"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "section_name": {
+            "type": "string",
+            "description": "Name of the section"
+          },
+          "content_notes": {
+            "type": "string",
+            "description": "Notes or outline"
+          }
+        },
+        "required": [
+          "section_name"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "revise_section",
+      "description": "Revise a section based on feedback.",
+      "agent_ids": [
+        "RESEARCHER_A",
+        "RESEARCHER_B"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "section_name": {
+            "type": "string",
+            "description": "Section to revise"
+          },
+          "feedback": {
+            "type": "string",
+            "description": "Feedback to address"
+          }
+        },
+        "required": [
+          "section_name"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "update_references",
+      "description": "Update citations for a section.",
+      "agent_ids": [
+        "RESEARCHER_A",
+        "RESEARCHER_B"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "section_name": {
+            "type": "string",
+            "description": "Name of the section"
+          }
+        },
+        "required": [
+          "section_name"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "review_sections",
+      "description": "Review sections for quality.",
+      "agent_ids": [
+        "EDITOR"
+      ],
+      "can_fail": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "section_name": {
+            "type": "string",
+            "description": "Name of the section"
+          }
+        },
+        "required": [
+          "section_name"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "combine_sections",
+      "description": "Combine sections into final document.",
+      "agent_ids": [
+        "EDITOR"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sections": {
+            "type": "string",
+            "description": "Comma-separated list of sections"
+          }
+        },
+        "required": [
+          "sections"
+        ]
+      }
+    }
+  }
+]

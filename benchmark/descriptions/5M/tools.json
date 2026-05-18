@@ -1,0 +1,193 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "assess_patient",
+      "description": "Assess patient vitals and condition.",
+      "agent_ids": [
+        "ER_DOCTOR"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "description": "Patient ID"
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "order_tests",
+      "description": "Order diagnostic tests.",
+      "agent_ids": [
+        "ER_DOCTOR",
+        "CARDIOLOGIST",
+        "NEUROLOGIST"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "test_type": {
+            "type": "string",
+            "description": "Type of test"
+          },
+          "patient_id": {
+            "type": "string",
+            "description": "Patient ID"
+          }
+        },
+        "required": [
+          "test_type",
+          "patient_id"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "perform_imaging",
+      "description": "Perform medical imaging.",
+      "agent_ids": [
+        "RADIOLOGIST"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "modality": {
+            "type": "string",
+            "description": "Imaging modality"
+          },
+          "patient_id": {
+            "type": "string",
+            "description": "Patient ID"
+          }
+        },
+        "required": [
+          "modality",
+          "patient_id"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "interpret_imaging",
+      "description": "Interpret imaging results.",
+      "agent_ids": [
+        "RADIOLOGIST"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "description": "Patient ID"
+          },
+          "modality": {
+            "type": "string",
+            "description": "Imaging modality (e.g. CT, MRI)"
+          }
+        },
+        "required": [
+          "patient_id",
+          "modality"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "diagnose",
+      "description": "Make a diagnosis.",
+      "agent_ids": [
+        "CARDIOLOGIST",
+        "NEUROLOGIST"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "description": "Patient ID"
+          },
+          "symptoms": {
+            "type": "string",
+            "description": "Symptoms observed"
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "review_prescriptions",
+      "description": "Review medication prescriptions.",
+      "agent_ids": [
+        "PHARMACIST"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "description": "Patient ID"
+          },
+          "medications": {
+            "type": "string",
+            "description": "Medication list"
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "conduct_case_conference",
+      "description": "Hold multi-specialty case conference.",
+      "agent_ids": [
+        "ER_DOCTOR"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "description": "Patient ID"
+          },
+          "attendees": {
+            "type": "string",
+            "description": "Conference attendees"
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      }
+    }
+  }
+]

@@ -1,0 +1,16 @@
+{
+  "agents": ["BUILDER_A", "BUILDER_B", "BUILDER_C", "BUILDER_D", "INTEGRATOR", "TEST_RUNNER", "VALIDATOR"],
+  "resources": ["API_TYPES", "BUILD_SLOTS", "CONFIG", "CORE_LIB", "DATA_MODELS"],
+  "agent_resources": {
+    "BUILDER_A": ["BUILD_SLOTS", "CONFIG", "CORE_LIB"],
+    "BUILDER_B": ["BUILD_SLOTS", "CORE_LIB", "DATA_MODELS"],
+    "BUILDER_C": ["API_TYPES", "BUILD_SLOTS", "DATA_MODELS"],
+    "BUILDER_D": ["API_TYPES", "BUILD_SLOTS", "CONFIG"]
+  },
+  "tool_resource_map": {
+    "compile_module": "@agent_resources",
+    "link_modules": [],
+    "run_build_tests": [],
+    "validate_artifact": []
+  }
+}

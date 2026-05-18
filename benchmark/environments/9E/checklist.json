@@ -1,0 +1,42 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "FORK_A can be held by at most one philosopher at a time (shared between PHILOSOPHER_A and PHILOSOPHER_B)"
+  },
+  {
+    "id": "R2",
+    "type": "resource",
+    "description": "FORK_B can be held by at most one philosopher at a time (shared between PHILOSOPHER_B and PHILOSOPHER_C)"
+  },
+  {
+    "id": "R3",
+    "type": "resource",
+    "description": "FORK_C can be held by at most one philosopher at a time (shared between PHILOSOPHER_C and PHILOSOPHER_A)"
+  },
+  {
+    "id": "RA1",
+    "type": "resource_access",
+    "description": "PHILOSOPHER_A needs FORK_A (left) and FORK_C (right) simultaneously to eat"
+  },
+  {
+    "id": "RA2",
+    "type": "resource_access",
+    "description": "PHILOSOPHER_B needs FORK_B (left) and FORK_A (right) simultaneously to eat"
+  },
+  {
+    "id": "RA3",
+    "type": "resource_access",
+    "description": "PHILOSOPHER_C needs FORK_C (left) and FORK_B (right) simultaneously to eat"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "Each philosopher must pick up both forks before eating and put down both forks after eating"
+  },
+  {
+    "id": "DL1",
+    "type": "deadlock_scenario",
+    "description": "Classic circular wait: each philosopher holds left fork and waits for right fork (PHILOSOPHER_A holds FORK_A, PHILOSOPHER_B holds FORK_B, PHILOSOPHER_C holds FORK_C)"
+  }
+]

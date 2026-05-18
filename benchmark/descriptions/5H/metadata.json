@@ -1,0 +1,16 @@
+{
+  "agents": ["ANESTHESIOLOGIST", "ER_DOCTOR_A", "ER_DOCTOR_B", "ICU_COORDINATOR", "PHARMACIST", "RADIOLOGIST", "SURGEON"],
+  "resources": ["CT_SCANNER", "ICU_BEDS", "MRI", "OPERATING_ROOM", "VENTILATOR"],
+  "agent_resources": {},
+  "tool_resource_map": {
+    "assess_patient": [],
+    "order_tests": [],
+    "perform_imaging": ["CT_SCANNER", "MRI"],
+    "interpret_imaging": ["CT_SCANNER", "MRI"],
+    "diagnose": [],
+    "review_prescriptions": [],
+    "perform_surgery": ["OPERATING_ROOM"],
+    "prepare_anesthesia": ["OPERATING_ROOM"],
+    "manage_icu": ["ICU_BEDS", "VENTILATOR"]
+  }
+}

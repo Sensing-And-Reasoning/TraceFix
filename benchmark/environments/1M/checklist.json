@@ -1,0 +1,62 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "AUTH_MODULE module requires exclusive access (mutex lock)"
+  },
+  {
+    "id": "R2",
+    "type": "resource",
+    "description": "DATABASE_MODULE module requires exclusive access (mutex lock)"
+  },
+  {
+    "id": "R3",
+    "type": "resource",
+    "description": "API_MODULE module requires exclusive access (mutex lock)"
+  },
+  {
+    "id": "R4",
+    "type": "resource",
+    "description": "PAYMENT_MODULE module requires exclusive access (mutex lock)"
+  },
+  {
+    "id": "R5",
+    "type": "resource",
+    "description": "NOTIFY_MODULE module requires exclusive access (mutex lock)"
+  },
+  {
+    "id": "RA1",
+    "type": "resource_access",
+    "description": "DEVELOPER_A acquires AUTH_MODULE and DATABASE_MODULE one at a time (sequential acquisition)"
+  },
+  {
+    "id": "RA2",
+    "type": "resource_access",
+    "description": "DEVELOPER_B acquires DATABASE_MODULE and API_MODULE one at a time (sequential acquisition)"
+  },
+  {
+    "id": "RA3",
+    "type": "resource_access",
+    "description": "DEVELOPER_C acquires API_MODULE and PAYMENT_MODULE one at a time (sequential acquisition)"
+  },
+  {
+    "id": "RA4",
+    "type": "resource_access",
+    "description": "DEVELOPER_D acquires PAYMENT_MODULE and NOTIFY_MODULE one at a time (sequential acquisition)"
+  },
+  {
+    "id": "RA5",
+    "type": "resource_access",
+    "description": "DEVELOPER_E acquires NOTIFY_MODULE and AUTH_MODULE one at a time (sequential acquisition)"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "Each developer designs locally before attempting to acquire module locks for commit"
+  },
+  {
+    "id": "DL1",
+    "type": "deadlock_scenario",
+    "description": "Ring-shaped circular wait across 5 developers: each holds one module lock and waits for the next in the ring (DEVELOPER_A→AUTH_MODULE, DEVELOPER_B→DATABASE_MODULE, DEVELOPER_C→API_MODULE, DEVELOPER_D→PAYMENT_MODULE, DEVELOPER_E→NOTIFY_MODULE)"
+  }
+]

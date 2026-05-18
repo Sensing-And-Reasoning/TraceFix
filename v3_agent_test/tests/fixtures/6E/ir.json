@@ -1,0 +1,17 @@
+{
+  "agents": [
+    {"id": "dev_a"},
+    {"id": "dev_b"},
+    {"id": "reviewer"}
+  ],
+  "resources": [
+    {"id": "utility_lock", "type": "Lock"},
+    {"id": "merge_lock", "type": "Lock"}
+  ],
+  "channels": [
+    {"id": "deva_to_reviewer", "from": "dev_a", "to": "reviewer", "labels": ["code_ready"]},
+    {"id": "devb_to_reviewer", "from": "dev_b", "to": "reviewer", "labels": ["code_ready"]},
+    {"id": "reviewer_to_deva", "from": "reviewer", "to": "dev_a", "labels": ["approved", "revise"]},
+    {"id": "reviewer_to_devb", "from": "reviewer", "to": "dev_b", "labels": ["approved", "revise"]}
+  ]
+}

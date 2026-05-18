@@ -1,0 +1,62 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "INTRO_SECTION requires exclusive access (mutex lock)"
+  },
+  {
+    "id": "R2",
+    "type": "resource",
+    "description": "BACKGROUND_SECTION requires exclusive access (mutex lock)"
+  },
+  {
+    "id": "R3",
+    "type": "resource",
+    "description": "METHODS_SECTION requires exclusive access (mutex lock)"
+  },
+  {
+    "id": "R4",
+    "type": "resource",
+    "description": "EXPERIMENTS_SECTION requires exclusive access (mutex lock)"
+  },
+  {
+    "id": "R5",
+    "type": "resource",
+    "description": "RESULTS_SECTION requires exclusive access (mutex lock)"
+  },
+  {
+    "id": "RA1",
+    "type": "resource_access",
+    "description": "RESEARCHER_A acquires BACKGROUND_SECTION and INTRO_SECTION one at a time (sequential acquisition)"
+  },
+  {
+    "id": "RA2",
+    "type": "resource_access",
+    "description": "RESEARCHER_B acquires BACKGROUND_SECTION and METHODS_SECTION one at a time (sequential acquisition)"
+  },
+  {
+    "id": "RA3",
+    "type": "resource_access",
+    "description": "RESEARCHER_C acquires EXPERIMENTS_SECTION and METHODS_SECTION one at a time (sequential acquisition)"
+  },
+  {
+    "id": "RA4",
+    "type": "resource_access",
+    "description": "RESEARCHER_D acquires EXPERIMENTS_SECTION and RESULTS_SECTION one at a time (sequential acquisition)"
+  },
+  {
+    "id": "RA5",
+    "type": "resource_access",
+    "description": "RESEARCHER_E acquires INTRO_SECTION and RESULTS_SECTION one at a time (sequential acquisition)"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "Each researcher drafts locally before acquiring section locks for writing"
+  },
+  {
+    "id": "DL1",
+    "type": "deadlock_scenario",
+    "description": "Ring-shaped circular wait across 5 researchers: each holds one section lock and waits for the next, forming a 5-node cycle"
+  }
+]

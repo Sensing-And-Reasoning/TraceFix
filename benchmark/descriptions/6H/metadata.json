@@ -1,0 +1,23 @@
+{
+  "agents": ["CI_RUNNER", "DEVELOPER_A", "DEVELOPER_B", "DEVELOPER_C", "RELEASE_MANAGER", "REVIEWER", "TEST_WRITER"],
+  "resources": ["BUILD_SERVER", "REPO", "STAGING_ENV", "TEST_ENV"],
+  "agent_resources": {
+    "CI_RUNNER": ["BUILD_SERVER"],
+    "DEVELOPER_A": ["REPO"],
+    "DEVELOPER_B": ["REPO"],
+    "DEVELOPER_C": ["REPO"],
+    "RELEASE_MANAGER": ["STAGING_ENV"],
+    "REVIEWER": [],
+    "TEST_WRITER": ["TEST_ENV"]
+  },
+  "tool_resource_map": {
+    "code_review": [],
+    "deploy_service": ["STAGING_ENV"],
+    "implement_feature": ["REPO"],
+    "merge_code": ["REPO"],
+    "rollback_service": ["STAGING_ENV"],
+    "run_tests": ["BUILD_SERVER"],
+    "validate_staging": ["STAGING_ENV"],
+    "write_tests": ["TEST_ENV"]
+  }
+}

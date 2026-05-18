@@ -1,0 +1,32 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "DOCUMENT is a shared resource requiring coordinated write access"
+  },
+  {
+    "id": "D1",
+    "type": "dependency",
+    "description": "EDITOR cannot begin review until both writers (WRITER_A and WRITER_B) have finished writing and updating references"
+  },
+  {
+    "id": "D2",
+    "type": "dependency",
+    "description": "Either writer may need to edit the other's chapter for cross-chapter consistency (WRITER_A and WRITER_B)"
+  },
+  {
+    "id": "DEC1",
+    "type": "decision",
+    "description": "EDITOR finds inconsistencies and requests revisions, or accepts chapters"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "WRITER_A and WRITER_B complete their chapters before EDITOR review; revision loop if inconsistencies found"
+  },
+  {
+    "id": "RA1",
+    "type": "resource_access",
+    "description": "WRITER_A, WRITER_B, and EDITOR may need DOCUMENT; writers may cross-edit creating contention"
+  }
+]

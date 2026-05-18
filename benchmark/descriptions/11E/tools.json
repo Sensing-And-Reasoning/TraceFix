@@ -1,0 +1,42 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "do_job",
+      "description": "Execute a manufacturing job.",
+      "agent_ids": [
+        "TECHNICIAN_A",
+        "TECHNICIAN_B"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "description": "Job ID"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "collect_reports",
+      "description": "Collect reports from all workers.",
+      "agent_ids": [
+        "SUPERVISOR"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    }
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "agents": ["CARDIOLOGIST", "ER_DOCTOR", "PHARMACIST"],
+  "resources": ["CT_SCANNER"],
+  "agent_resources": {},
+  "tool_resource_map": {
+    "assess_patient": [],
+    "order_tests": [],
+    "perform_imaging": ["CT_SCANNER"],
+    "diagnose": [],
+    "review_prescriptions": []
+  }
+}

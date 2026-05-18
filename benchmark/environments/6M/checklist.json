@@ -1,0 +1,57 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "REPO may only be used by one agent at a time"
+  },
+  {
+    "id": "R2",
+    "type": "resource",
+    "description": "TEST_ENV may only be used by one agent at a time"
+  },
+  {
+    "id": "R3",
+    "type": "resource",
+    "description": "BUILD_SERVER may only be used by one agent at a time"
+  },
+  {
+    "id": "D1",
+    "type": "dependency",
+    "description": "Interface change in data models requires notification to all dependent developers"
+  },
+  {
+    "id": "D2",
+    "type": "dependency",
+    "description": "TEST_WRITER cannot begin until feature code is complete and stable"
+  },
+  {
+    "id": "D3",
+    "type": "dependency",
+    "description": "REVIEWER must approve code before merge"
+  },
+  {
+    "id": "D4",
+    "type": "dependency",
+    "description": "CI_RUNNER on BUILD_SERVER must pass after each merge before next merge proceeds"
+  },
+  {
+    "id": "DEC1",
+    "type": "decision",
+    "description": "REVIEWER approves code or requests changes"
+  },
+  {
+    "id": "DEC2",
+    "type": "decision",
+    "description": "CI_RUNNER passes or fails; failure requires developer to fix regression"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "Implement -> test write in TEST_ENV -> review -> merge to REPO -> CI pass on BUILD_SERVER (sequential pipeline)"
+  },
+  {
+    "id": "DL1",
+    "type": "deadlock_scenario",
+    "description": "Hold-and-wait: DEVELOPER_A holds REPO waiting for REPO access, DEVELOPER_B holds REPO waiting for REPO access"
+  }
+]

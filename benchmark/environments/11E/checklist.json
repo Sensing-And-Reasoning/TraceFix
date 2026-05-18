@@ -1,0 +1,42 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "LATHE workstation can only be used by one technician at a time"
+  },
+  {
+    "id": "R2",
+    "type": "resource",
+    "description": "MILL workstation can only be used by one technician at a time"
+  },
+  {
+    "id": "D1",
+    "type": "dependency",
+    "description": "SUPERVISOR collects all 4 job completion reports (2 per technician) before terminating"
+  },
+  {
+    "id": "D2",
+    "type": "dependency",
+    "description": "Job done channel from TECHNICIAN_A / TECHNICIAN_B to SUPERVISOR carries completion reports"
+  },
+  {
+    "id": "DEC1",
+    "type": "decision",
+    "description": "Each technician nondeterministically chooses which workstation to use first if both are available"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "Each technician completes one job then must do the remaining job on the other workstation"
+  },
+  {
+    "id": "RA1",
+    "type": "resource_access",
+    "description": "Both TECHNICIAN_A and TECHNICIAN_B need both LATHE and MILL (one job on each)"
+  },
+  {
+    "id": "RA2",
+    "type": "resource_access",
+    "description": "When one workstation is occupied, technician uses the alternative workstation instead of waiting"
+  }
+]

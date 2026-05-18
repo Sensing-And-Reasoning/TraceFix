@@ -1,0 +1,60 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "think",
+      "description": "Philosopher thinks.",
+      "agent_ids": [
+        "PHILOSOPHER_A",
+        "PHILOSOPHER_B",
+        "PHILOSOPHER_C",
+        "PHILOSOPHER_D",
+        "PHILOSOPHER_E",
+        "PHILOSOPHER_F",
+        "PHILOSOPHER_G"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "philosopher": {
+            "type": "string",
+            "description": "Philosopher name"
+          }
+        },
+        "required": [
+          "philosopher"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "eat",
+      "description": "Philosopher eats using both adjacent forks. Both forks must be available simultaneously. If not available, wait and retry.",
+      "agent_ids": [
+        "PHILOSOPHER_A",
+        "PHILOSOPHER_B",
+        "PHILOSOPHER_C",
+        "PHILOSOPHER_D",
+        "PHILOSOPHER_E",
+        "PHILOSOPHER_F",
+        "PHILOSOPHER_G"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "philosopher": {
+            "type": "string",
+            "description": "Philosopher name"
+          }
+        },
+        "required": [
+          "philosopher"
+        ]
+      }
+    }
+  }
+]

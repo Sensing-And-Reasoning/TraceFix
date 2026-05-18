@@ -1,0 +1,14 @@
+{
+  "agents": ["DEPLOYER", "DEVELOPER", "TESTER"],
+  "resources": ["BUILD_SERVER", "DEPLOY_ENV"],
+  "agent_resources": {
+    "DEVELOPER": ["BUILD_SERVER"],
+    "TESTER": ["BUILD_SERVER"],
+    "DEPLOYER": ["DEPLOY_ENV"]
+  },
+  "tool_resource_map": {
+    "compile_and_test": ["BUILD_SERVER"],
+    "run_integration_tests": ["BUILD_SERVER"],
+    "deploy_application": ["DEPLOY_ENV"]
+  }
+}

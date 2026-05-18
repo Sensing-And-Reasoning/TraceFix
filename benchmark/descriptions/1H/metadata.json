@@ -1,0 +1,19 @@
+{
+  "agents": ["DEVELOPER_A", "DEVELOPER_B", "DEVELOPER_C", "DEVELOPER_D", "DEVELOPER_E", "DEVELOPER_F", "DEVELOPER_G"],
+  "resources": ["ANALYTICS_MODULE", "API_MODULE", "AUTH_MODULE", "DATABASE_MODULE", "NOTIFY_MODULE", "PAYMENT_MODULE", "SEARCH_MODULE"],
+  "agent_resources": {
+    "DEVELOPER_A": ["AUTH_MODULE", "DATABASE_MODULE"],
+    "DEVELOPER_B": ["API_MODULE", "DATABASE_MODULE"],
+    "DEVELOPER_C": ["API_MODULE", "PAYMENT_MODULE"],
+    "DEVELOPER_D": ["NOTIFY_MODULE", "PAYMENT_MODULE"],
+    "DEVELOPER_E": ["ANALYTICS_MODULE", "NOTIFY_MODULE"],
+    "DEVELOPER_F": ["ANALYTICS_MODULE", "SEARCH_MODULE"],
+    "DEVELOPER_G": ["AUTH_MODULE", "SEARCH_MODULE"]
+  },
+  "tool_resource_map": {
+    "design_feature": [],
+    "implement_code": [],
+    "run_local_tests": [],
+    "commit_changes": "@agent_resources"
+  }
+}

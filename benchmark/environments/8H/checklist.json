@@ -1,0 +1,87 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "API_GATEWAY specification requires exclusive modification access"
+  },
+  {
+    "id": "R2",
+    "type": "resource",
+    "description": "DATABASE migration requires exclusive schema change access"
+  },
+  {
+    "id": "R3",
+    "type": "resource",
+    "description": "TEST_ENV requires exclusive test access"
+  },
+  {
+    "id": "R4",
+    "type": "resource",
+    "description": "STAGING_ENV deployment pipeline requires exclusive deployment access"
+  },
+  {
+    "id": "D1",
+    "type": "dependency",
+    "description": "BACKEND_B depends on BACKEND_A: Service A must be deployed and registered before Service B can be tested"
+  },
+  {
+    "id": "D2",
+    "type": "dependency",
+    "description": "FRONTEND_DEV depends on both services being ready"
+  },
+  {
+    "id": "D3",
+    "type": "dependency",
+    "description": "DATABASE schema must be ready before both BACKEND_A and BACKEND_B can implement"
+  },
+  {
+    "id": "D4",
+    "type": "dependency",
+    "description": "REVIEWER must approve code for each service before deployment"
+  },
+  {
+    "id": "D5",
+    "type": "dependency",
+    "description": "New service version must be registered before old version is decommissioned"
+  },
+  {
+    "id": "DEC1",
+    "type": "decision",
+    "description": "Deployment succeeds or fails; failure triggers DEV_OPS rollback alert to all affected developers"
+  },
+  {
+    "id": "DEC2",
+    "type": "decision",
+    "description": "API spec conflict between BACKEND_A and BACKEND_B must be resolved before proceeding"
+  },
+  {
+    "id": "DEC3",
+    "type": "decision",
+    "description": "REVIEWER approves or requests changes for each service"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "Service dependency ordering: Service A deployed before Service B, both before FRONTEND_DEV"
+  },
+  {
+    "id": "O2",
+    "type": "ordering",
+    "description": "DB migration -> service implementation -> review -> test -> deploy -> register (per service pipeline)"
+  },
+  {
+    "id": "RA1",
+    "type": "resource_access",
+    "description": "Both BACKEND_A and BACKEND_B and FRONTEND_DEV need API_GATEWAY to modify specification; DEV_OPS needs API_GATEWAY to register services"
+  },
+  {
+    "id": "DL1",
+    "type": "deadlock_scenario",
+    "description": "API spec contention: BACKEND_A and BACKEND_B both need to modify the shared API spec, creating mutual blocking"
+  },
+  {
+    "id": "DL2",
+    "type": "deadlock_scenario",
+    "description": "Rollback cascade: failed deployment of Service A triggers rollback, but Service B already started testing against A, requiring B to also roll back"
+  }
+]

@@ -1,0 +1,92 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "Section A draft lock requires exclusive write access"
+  },
+  {
+    "id": "R2",
+    "type": "resource",
+    "description": "Section B draft lock requires exclusive write access"
+  },
+  {
+    "id": "R3",
+    "type": "resource",
+    "description": "Section C draft lock requires exclusive write access"
+  },
+  {
+    "id": "R4",
+    "type": "resource",
+    "description": "Section D draft lock requires exclusive write access"
+  },
+  {
+    "id": "R5",
+    "type": "resource",
+    "description": "FIGURE_REPOSITORY requires exclusive update access (mutex lock)"
+  },
+  {
+    "id": "R6",
+    "type": "resource",
+    "description": "Reference DATABASE requires exclusive update access (mutex lock)"
+  },
+  {
+    "id": "D1",
+    "type": "dependency",
+    "description": "DATA_ANALYST needs raw data from RESEARCHER_A, RESEARCHER_B, RESEARCHER_C, RESEARCHER_D before producing figures"
+  },
+  {
+    "id": "D2",
+    "type": "dependency",
+    "description": "RESEARCHER_A, RESEARCHER_B, RESEARCHER_C, RESEARCHER_D may need figures from DATA_ANALYST before finalizing sections (circular dependency)"
+  },
+  {
+    "id": "D3",
+    "type": "dependency",
+    "description": "Researchers may cross-reference other sections, creating read-after-write dependencies"
+  },
+  {
+    "id": "D4",
+    "type": "dependency",
+    "description": "REVIEWER can only review complete section drafts"
+  },
+  {
+    "id": "D5",
+    "type": "dependency",
+    "description": "EDITOR_IN_CHIEF can only make final decisions after REVIEWER has reviewed a section"
+  },
+  {
+    "id": "DEC1",
+    "type": "decision",
+    "description": "REVIEWER decides major revisions (requires re-review) vs minor revisions vs accept"
+  },
+  {
+    "id": "DEC2",
+    "type": "decision",
+    "description": "EDITOR_IN_CHIEF resolves cross-section conflicts and makes final editorial decisions"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "Write section -> REVIEWER reviews -> EDITOR_IN_CHIEF decides -> finalize (per section pipeline)"
+  },
+  {
+    "id": "O2",
+    "type": "ordering",
+    "description": "Major revisions require re-review by REVIEWER; minor revisions do not"
+  },
+  {
+    "id": "RA1",
+    "type": "resource_access",
+    "description": "DATA_ANALYST needs FIGURE_REPOSITORY lock to update figures and section locks to insert them"
+  },
+  {
+    "id": "DL1",
+    "type": "deadlock_scenario",
+    "description": "Circular dependency: researcher waits for DATA_ANALYST figures, DATA_ANALYST waits for researcher raw data"
+  },
+  {
+    "id": "DL2",
+    "type": "deadlock_scenario",
+    "description": "Cross-reference deadlock: two researchers each need to read the other's section while holding their own section lock"
+  }
+]

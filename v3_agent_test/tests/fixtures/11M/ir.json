@@ -1,0 +1,27 @@
+{
+  "agents": [
+    {"id": "workerA"},
+    {"id": "workerB"},
+    {"id": "workerC"},
+    {"id": "inspector"},
+    {"id": "dispatcher"}
+  ],
+  "resources": [
+    {"id": "station_alpha", "type": "Lock"},
+    {"id": "station_beta", "type": "Lock"},
+    {"id": "station_gamma", "type": "Lock"},
+    {"id": "tool_cabinet", "type": "Counter", "config": {"initial": 2}}
+  ],
+  "channels": [
+    {"id": "wA_to_insp", "from": "workerA", "to": "inspector", "labels": ["inspect"]},
+    {"id": "wB_to_insp", "from": "workerB", "to": "inspector", "labels": ["inspect"]},
+    {"id": "wC_to_insp", "from": "workerC", "to": "inspector", "labels": ["inspect"]},
+    {"id": "insp_to_wA", "from": "inspector", "to": "workerA", "labels": ["pass", "fail"]},
+    {"id": "insp_to_wB", "from": "inspector", "to": "workerB", "labels": ["pass", "fail"]},
+    {"id": "insp_to_wC", "from": "inspector", "to": "workerC", "labels": ["pass", "fail"]},
+    {"id": "insp_to_disp", "from": "inspector", "to": "dispatcher", "labels": ["fail_A", "fail_B", "fail_C", "all_done"]},
+    {"id": "disp_to_wA", "from": "dispatcher", "to": "workerA", "labels": ["rework"]},
+    {"id": "disp_to_wB", "from": "dispatcher", "to": "workerB", "labels": ["rework"]},
+    {"id": "disp_to_wC", "from": "dispatcher", "to": "workerC", "labels": ["rework"]}
+  ]
+}

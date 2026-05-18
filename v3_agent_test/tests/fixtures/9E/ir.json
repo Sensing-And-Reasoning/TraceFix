@@ -1,0 +1,13 @@
+{
+  "agents": [
+    {"id": "phil0"},
+    {"id": "phil1"},
+    {"id": "phil2"}
+  ],
+  "resources": [
+    {"id": "fork0", "type": "Lock"},
+    {"id": "fork1", "type": "Lock"},
+    {"id": "fork2", "type": "Lock"}
+  ],
+  "channels": []
+}

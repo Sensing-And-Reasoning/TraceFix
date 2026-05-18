@@ -1,0 +1,12 @@
+{
+  "agents": ["EDITOR", "WRITER_A", "WRITER_B"],
+  "resources": ["DOCUMENT"],
+  "agent_resources": {},
+  "tool_resource_map": {
+    "combine_sections": ["DOCUMENT"],
+    "review_sections": [],
+    "revise_section": ["DOCUMENT"],
+    "update_references": [],
+    "write_section": ["DOCUMENT"]
+  }
+}

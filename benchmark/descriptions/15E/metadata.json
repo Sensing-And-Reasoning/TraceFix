@@ -1,0 +1,19 @@
+{
+  "agents": ["DEPOSITOR", "ETCHER", "INTEGRATION_ENGINEER", "LITHOGRAPHER", "METROLOGY_ENGINEER", "PROCESS_CONTROLLER"],
+  "resources": ["DEP_CHAMBER", "ETCH_CHAMBER", "METROLOGY_STATION", "MONITOR", "STEPPER"],
+  "agent_resources": {
+    "DEPOSITOR": ["DEP_CHAMBER", "METROLOGY_STATION", "MONITOR"],
+    "ETCHER": ["ETCH_CHAMBER", "MONITOR"],
+    "INTEGRATION_ENGINEER": ["DEP_CHAMBER", "ETCH_CHAMBER", "METROLOGY_STATION", "STEPPER"],
+    "LITHOGRAPHER": ["ETCH_CHAMBER", "METROLOGY_STATION", "MONITOR", "STEPPER"],
+    "METROLOGY_ENGINEER": ["METROLOGY_STATION"],
+    "PROCESS_CONTROLLER": ["MONITOR"]
+  },
+  "tool_resource_map": {
+    "run_stepper_exposure": ["STEPPER"],
+    "run_deposition": ["DEP_CHAMBER"],
+    "run_etch_process": ["ETCH_CHAMBER"],
+    "run_metrology_measurement": ["METROLOGY_STATION"],
+    "check_monitoring": ["MONITOR"]
+  }
+}

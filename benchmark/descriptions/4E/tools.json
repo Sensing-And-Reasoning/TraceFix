@@ -1,0 +1,72 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "implement_feature",
+      "description": "Implement a feature.",
+      "agent_ids": [
+        "FRONTEND_DEV",
+        "BACKEND_DEV"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "feature_name": {
+            "type": "string",
+            "description": "Feature to implement"
+          }
+        },
+        "required": [
+          "feature_name"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "define_api",
+      "description": "Define an API specification.",
+      "agent_ids": [
+        "BACKEND_DEV"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "api_name": {
+            "type": "string",
+            "description": "API specification name (e.g. feature_api_spec)"
+          }
+        },
+        "required": [
+          "api_name"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "run_tests",
+      "description": "Run test suite.",
+      "agent_ids": [
+        "TESTER"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "suite": {
+            "type": "string",
+            "description": "Test suite to run"
+          }
+        },
+        "required": [
+          "suite"
+        ]
+      }
+    }
+  }
+]

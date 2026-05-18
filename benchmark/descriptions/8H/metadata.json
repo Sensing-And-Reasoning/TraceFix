@@ -1,0 +1,16 @@
+{
+  "agents": ["BACKEND_A", "BACKEND_B", "DB_ADMIN", "DEV_OPS", "FRONTEND_DEV", "REVIEWER", "TESTER"],
+  "resources": ["API_GATEWAY", "DATABASE", "STAGING_ENV", "TEST_ENV"],
+  "agent_resources": {},
+  "tool_resource_map": {
+    "code_review": [],
+    "define_api": ["API_GATEWAY"],
+    "deploy_service": ["STAGING_ENV"],
+    "implement_backend": [],
+    "implement_frontend": [],
+    "migrate_schema": ["DATABASE"],
+    "register_service": ["API_GATEWAY"],
+    "rollback_service": ["STAGING_ENV"],
+    "run_integration_tests": ["TEST_ENV"]
+  }
+}

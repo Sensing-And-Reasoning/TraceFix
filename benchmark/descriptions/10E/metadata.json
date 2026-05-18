@@ -1,0 +1,12 @@
+{
+  "agents": ["BUILDER_A", "BUILDER_B", "INTEGRATOR"],
+  "resources": ["CORE_LIB", "SHARED_TYPES"],
+  "agent_resources": {
+    "BUILDER_A": ["CORE_LIB", "SHARED_TYPES"],
+    "BUILDER_B": ["CORE_LIB", "SHARED_TYPES"]
+  },
+  "tool_resource_map": {
+    "compile_module": "@agent_resources",
+    "link_modules": []
+  }
+}

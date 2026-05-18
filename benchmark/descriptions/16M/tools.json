@@ -1,0 +1,47 @@
+[
+  {"type": "function", "function": {
+    "name": "compile_code", "description": "Compile a service component on the build server.",
+    "agent_ids": ["FRONTEND_DEV", "BACKEND_DEV"], "can_fail": true,
+    "parameters": {"type": "object", "properties": {"component": {"type": "string", "description": "Component to compile (e.g., 'frontend', 'backend')"}}, "required": ["component"]}
+  }},
+  {"type": "function", "function": {
+    "name": "run_unit_tests", "description": "Run unit tests for a compiled component on the build server.",
+    "agent_ids": ["FRONTEND_DEV", "BACKEND_DEV"], "can_fail": true,
+    "parameters": {"type": "object", "properties": {"component": {"type": "string", "description": "Component to test (e.g., 'frontend', 'backend')"}}, "required": ["component"]}
+  }},
+  {"type": "function", "function": {
+    "name": "publish_artifact", "description": "Publish a build artifact to the registry. The build server workspace must be available during publishing for metadata access.",
+    "agent_ids": ["FRONTEND_DEV", "BACKEND_DEV"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"artifact": {"type": "string", "description": "Artifact to publish (e.g., 'frontend_image', 'backend_image')"}}, "required": ["artifact"]}
+  }},
+  {"type": "function", "function": {
+    "name": "pull_artifacts", "description": "Pull build artifacts from the registry into a local workspace.",
+    "agent_ids": ["QA_ENGINEER", "RELEASE_ENGINEER"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"target": {"type": "string", "description": "Target context (e.g., 'test_harness', 'staging_deploy', 'production_deploy')"}}, "required": ["target"]}
+  }},
+  {"type": "function", "function": {
+    "name": "run_integration_tests", "description": "Run integration tests against the deployed staging environment.",
+    "agent_ids": ["QA_ENGINEER"], "can_fail": true,
+    "parameters": {"type": "object", "properties": {"suite": {"type": "string", "description": "Test suite to run (e.g., 'api_integration', 'service_mesh')"}}, "required": ["suite"]}
+  }},
+  {"type": "function", "function": {
+    "name": "run_e2e_tests", "description": "Run end-to-end tests against the deployed staging environment.",
+    "agent_ids": ["QA_ENGINEER"], "can_fail": true,
+    "parameters": {"type": "object", "properties": {"suite": {"type": "string", "description": "Test suite to run (e.g., 'user_flows', 'regression')"}}, "required": ["suite"]}
+  }},
+  {"type": "function", "function": {
+    "name": "deploy_staging", "description": "Deploy artifacts to the staging environment.",
+    "agent_ids": ["RELEASE_ENGINEER"], "can_fail": true,
+    "parameters": {"type": "object", "properties": {"component": {"type": "string", "description": "What to deploy (e.g., 'full_stack')"}}, "required": ["component"]}
+  }},
+  {"type": "function", "function": {
+    "name": "run_smoke_tests", "description": "Run smoke tests against a deployed environment.",
+    "agent_ids": ["RELEASE_ENGINEER"], "can_fail": true,
+    "parameters": {"type": "object", "properties": {"target": {"type": "string", "description": "Target environment (e.g., 'staging', 'production')"}}, "required": ["target"]}
+  }},
+  {"type": "function", "function": {
+    "name": "deploy_production", "description": "Deploy artifacts to the production environment.",
+    "agent_ids": ["RELEASE_ENGINEER"], "can_fail": false,
+    "parameters": {"type": "object", "properties": {"component": {"type": "string", "description": "What to deploy (e.g., 'full_stack')"}}, "required": ["component"]}
+  }}
+]

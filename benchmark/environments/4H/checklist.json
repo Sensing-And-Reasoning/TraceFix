@@ -1,0 +1,72 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "TEST_ENV can only be used by one test session at a time"
+  },
+  {
+    "id": "R2",
+    "type": "resource",
+    "description": "STAGING_ENV can only be used by one deployment at a time"
+  },
+  {
+    "id": "D1",
+    "type": "dependency",
+    "description": "New service must be registered before old code is decommissioned"
+  },
+  {
+    "id": "D2",
+    "type": "dependency",
+    "description": "Service dependency ordering: if B depends on A, A must be deployed first"
+  },
+  {
+    "id": "D3",
+    "type": "dependency",
+    "description": "Code review must pass before deployment"
+  },
+  {
+    "id": "D4",
+    "type": "dependency",
+    "description": "Staging tests must pass before production deployment"
+  },
+  {
+    "id": "DEC1",
+    "type": "decision",
+    "description": "REVIEWER approves or requests changes for each microservice"
+  },
+  {
+    "id": "DEC2",
+    "type": "decision",
+    "description": "Deployment succeeds or fails, triggering rollback notification on failure"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "Extract service -> review -> test in TEST_ENV -> deploy in STAGING_ENV -> register (per service pipeline)"
+  },
+  {
+    "id": "O2",
+    "type": "ordering",
+    "description": "Microservice dependency ordering must be respected across the three services"
+  },
+  {
+    "id": "RA1",
+    "type": "resource_access",
+    "description": "TESTER needs TEST_ENV for validation; only one test session at a time"
+  },
+  {
+    "id": "RA2",
+    "type": "resource_access",
+    "description": "DEVOPS needs STAGING_ENV for each service deployment; only one deployment at a time"
+  },
+  {
+    "id": "DL1",
+    "type": "deadlock_scenario",
+    "description": "Hold-and-wait: TESTER holds TEST_ENV waiting for deployment results while DEVOPS holds STAGING_ENV waiting for test results"
+  },
+  {
+    "id": "DL2",
+    "type": "deadlock_scenario",
+    "description": "Rollback cycle: failed deployment triggers rollback, requiring re-entry into review -> test -> deploy, potentially blocking other services indefinitely"
+  }
+]

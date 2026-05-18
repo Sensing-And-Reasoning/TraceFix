@@ -1,0 +1,57 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "DOCUMENT draft requires exclusive write access (mutex lock)"
+  },
+  {
+    "id": "R2",
+    "type": "resource",
+    "description": "Reference DATABASE requires exclusive update access (mutex lock)"
+  },
+  {
+    "id": "D1",
+    "type": "dependency",
+    "description": "FACT_CHECKER can work on sections as they are submitted (does not wait for all)"
+  },
+  {
+    "id": "D2",
+    "type": "dependency",
+    "description": "EDITOR can only finalize a section after it has passed fact checking by FACT_CHECKER"
+  },
+  {
+    "id": "D3",
+    "type": "dependency",
+    "description": "Section submission channel from RESEARCHER_A, RESEARCHER_B, RESEARCHER_C to FACT_CHECKER / EDITOR"
+  },
+  {
+    "id": "DEC1",
+    "type": "decision",
+    "description": "FACT_CHECKER decides whether claims are verified or need revision"
+  },
+  {
+    "id": "DEC2",
+    "type": "decision",
+    "description": "EDITOR decides whether sections are consistent or require cross-section revisions"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "Research -> submit -> FACT_CHECKER fact check -> EDITOR review -> finalize (sequential pipeline per section)"
+  },
+  {
+    "id": "O2",
+    "type": "ordering",
+    "description": "If FACT_CHECKER flags a claim, researcher must revise and resubmit for re-verification"
+  },
+  {
+    "id": "RA1",
+    "type": "resource_access",
+    "description": "All three researchers (RESEARCHER_A, RESEARCHER_B, RESEARCHER_C), FACT_CHECKER, and EDITOR may need DOCUMENT draft lock"
+  },
+  {
+    "id": "DL1",
+    "type": "deadlock_scenario",
+    "description": "Hold-and-wait: researcher holds DOCUMENT lock while waiting for fact-check feedback from FACT_CHECKER, blocking other researchers from writing"
+  }
+]

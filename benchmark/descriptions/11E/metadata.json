@@ -1,0 +1,13 @@
+{
+  "agents": ["SUPERVISOR", "TECHNICIAN_A", "TECHNICIAN_B"],
+  "resources": ["LATHE", "MILL"],
+  "agent_resources": {
+    "SUPERVISOR": [],
+    "TECHNICIAN_A": ["LATHE", "MILL"],
+    "TECHNICIAN_B": ["LATHE", "MILL"]
+  },
+  "tool_resource_map": {
+    "collect_reports": [],
+    "do_job": "@agent_resources"
+  }
+}

@@ -1,0 +1,77 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "CORE_LIB requires exclusive access (only one builder at a time)"
+  },
+  {
+    "id": "R2",
+    "type": "resource",
+    "description": "DATA_MODELS requires exclusive access (only one builder at a time)"
+  },
+  {
+    "id": "R3",
+    "type": "resource",
+    "description": "API_TYPES requires exclusive access (only one builder at a time)"
+  },
+  {
+    "id": "R4",
+    "type": "resource",
+    "description": "CONFIG requires exclusive access (only one builder at a time)"
+  },
+  {
+    "id": "R5",
+    "type": "resource",
+    "description": "BUILD_SLOTS is a limited shared capacity (Counter, initial=2)"
+  },
+  {
+    "id": "D1",
+    "type": "dependency",
+    "description": "Overlapping dependencies form a ring of contention: BUILDER_A-BUILDER_B (CORE_LIB), BUILDER_B-BUILDER_C (DATA_MODELS), BUILDER_C-BUILDER_D (API_TYPES), BUILDER_A-BUILDER_D (CONFIG)"
+  },
+  {
+    "id": "D2",
+    "type": "dependency",
+    "description": "Cascading rebuilds: modifying a shared artifact forces all dependent builders to rebuild, potentially triggering further cascades"
+  },
+  {
+    "id": "D3",
+    "type": "dependency",
+    "description": "VALIDATOR checks one module at a time; validation failure requires rebuild"
+  },
+  {
+    "id": "D4",
+    "type": "dependency",
+    "description": "TEST_RUNNER tests one module at a time; test failure requires rebuild"
+  },
+  {
+    "id": "D5",
+    "type": "dependency",
+    "description": "INTEGRATOR cannot begin until all four modules are validated and tested"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "Build -> validate -> test -> accept -> integrate (per module pipeline)"
+  },
+  {
+    "id": "RA1",
+    "type": "resource_access",
+    "description": "Each builder needs a build slot (counter decrement) before starting compilation"
+  },
+  {
+    "id": "RA2",
+    "type": "resource_access",
+    "description": "BUILDER_A needs CORE_LIB + CONFIG; BUILDER_B needs CORE_LIB + DATA_MODELS; BUILDER_C needs DATA_MODELS + API_TYPES; BUILDER_D needs API_TYPES + CONFIG"
+  },
+  {
+    "id": "DL1",
+    "type": "deadlock_scenario",
+    "description": "Ring of contention: four pairwise artifact races form a ring that could deadlock without careful coordination"
+  },
+  {
+    "id": "DL2",
+    "type": "deadlock_scenario",
+    "description": "Build slot exhaustion combined with artifact contention: 2 builders hold build slots but block on artifacts held by the other 2 who cannot start without build slots"
+  }
+]

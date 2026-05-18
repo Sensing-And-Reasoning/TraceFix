@@ -1,0 +1,62 @@
+[
+  {
+    "id": "R1",
+    "type": "resource",
+    "description": "STATION_ALPHA can only be used by one worker at a time"
+  },
+  {
+    "id": "R2",
+    "type": "resource",
+    "description": "STATION_BETA can only be used by one worker at a time"
+  },
+  {
+    "id": "R3",
+    "type": "resource",
+    "description": "STATION_GAMMA can only be used by one worker at a time"
+  },
+  {
+    "id": "R4",
+    "type": "resource",
+    "description": "TOOL_CABINET has 2 specialized tools (Counter, initial=2)"
+  },
+  {
+    "id": "D1",
+    "type": "dependency",
+    "description": "Some jobs require a tool from the TOOL_CABINET; the tool must be taken before starting and returned after"
+  },
+  {
+    "id": "D2",
+    "type": "dependency",
+    "description": "INSPECTOR checks one job at a time and sends pass/fail results"
+  },
+  {
+    "id": "D3",
+    "type": "dependency",
+    "description": "If inspection fails, DISPATCHER sends rework order; worker must redo the failed job"
+  },
+  {
+    "id": "DEC1",
+    "type": "decision",
+    "description": "Each worker nondeterministically chooses which available workstation to use first"
+  },
+  {
+    "id": "DEC2",
+    "type": "decision",
+    "description": "INSPECTOR passes or fails each job inspection"
+  },
+  {
+    "id": "O1",
+    "type": "ordering",
+    "description": "Complete job -> inspection -> pass (proceed) or fail (rework loop)"
+  },
+  {
+    "id": "RA1",
+    "type": "resource_access",
+    "description": "WORKER_A needs STATION_ALPHA (with tool) and STATION_BETA; WORKER_B needs STATION_BETA (with tool) and STATION_GAMMA; WORKER_C needs STATION_GAMMA (with tool) and STATION_ALPHA"
+  },
+  {
+    "id": "DL1",
+    "type": "deadlock_scenario",
+    "description": "Tool exhaustion: all 2 tools in use while a third worker waits, combined with station contention could stall progress"
+  }
+]

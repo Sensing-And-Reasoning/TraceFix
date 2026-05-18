@@ -1,0 +1,52 @@
+[
+  {"id": "res_stepper",           "type": "resource",        "description": "STEPPER modeled as Lock"},
+  {"id": "res_dep_chamber",       "type": "resource",        "description": "DEP_CHAMBER modeled as Lock"},
+  {"id": "res_etch_chamber",      "type": "resource",        "description": "ETCH_CHAMBER modeled as Lock"},
+  {"id": "res_metrology_station", "type": "resource",        "description": "METROLOGY_STATION modeled as Lock"},
+  {"id": "res_monitor",           "type": "resource",        "description": "MONITOR modeled as Lock"},
+  {"id": "ctr_wafer_slots",       "type": "resource",        "description": "wafer_slots modeled as Counter (initial=2)"},
+
+  {"id": "ch_litho_to_metro",     "type": "dependency",      "description": "channel from LITHOGRAPHER to METROLOGY_ENGINEER for pattern_ready"},
+  {"id": "ch_dep_to_metro",       "type": "dependency",      "description": "channel from DEPOSITOR to METROLOGY_ENGINEER for film_ready"},
+  {"id": "ch_etch_to_metro",      "type": "dependency",      "description": "channel from ETCHER to METROLOGY_ENGINEER for etch_ready"},
+  {"id": "ch_metro_to_ctrl",      "type": "dependency",      "description": "channel from METROLOGY_ENGINEER to PROCESS_CONTROLLER for measurement reports"},
+  {"id": "ch_ctrl_to_litho",      "type": "dependency",      "description": "channel from PROCESS_CONTROLLER to LITHOGRAPHER for validation/halt/clearance"},
+  {"id": "ch_ctrl_to_dep",        "type": "dependency",      "description": "channel from PROCESS_CONTROLLER to DEPOSITOR for validation/halt/clearance"},
+  {"id": "ch_ctrl_to_etch",       "type": "dependency",      "description": "channel from PROCESS_CONTROLLER to ETCHER for validation/halt/clearance"},
+  {"id": "ch_ctrl_to_integ",      "type": "dependency",      "description": "channel from PROCESS_CONTROLLER to INTEGRATION_ENGINEER for all_validated"},
+  {"id": "ch_integ_to_litho",     "type": "dependency",      "description": "channel from INTEGRATION_ENGINEER to LITHOGRAPHER for lot_disposition"},
+  {"id": "ch_integ_to_dep",       "type": "dependency",      "description": "channel from INTEGRATION_ENGINEER to DEPOSITOR for lot_disposition"},
+  {"id": "ch_integ_to_etch",      "type": "dependency",      "description": "channel from INTEGRATION_ENGINEER to ETCHER for lot_disposition"},
+  {"id": "ch_metro_to_litho_rework","type": "dependency",    "description": "channel from METROLOGY_ENGINEER to LITHOGRAPHER for rework notification"},
+  {"id": "ch_metro_to_dep_rework",  "type": "dependency",    "description": "channel from METROLOGY_ENGINEER to DEPOSITOR for rework notification"},
+  {"id": "ch_metro_to_etch_rework", "type": "dependency",    "description": "channel from METROLOGY_ENGINEER to ETCHER for rework notification"},
+
+  {"id": "dp_metro_pass_fail",     "type": "decision",       "description": "metrology measurement can pass or fail, triggering rework"},
+  {"id": "dp_yield_halt",          "type": "decision",       "description": "PROCESS_CONTROLLER can issue a yield halt or proceed normally"},
+
+  {"id": "ord_metro_after_fab",          "type": "ordering", "description": "METROLOGY_ENGINEER measures only after receiving process-ready notifications"},
+  {"id": "ord_ctrl_after_reports",       "type": "ordering", "description": "PROCESS_CONTROLLER validates only after receiving all three measurement reports"},
+  {"id": "ord_phase2_after_validation",  "type": "ordering", "description": "fab agents enter Phase 2 only after receiving validation"},
+  {"id": "ord_integ_after_all_valid",    "type": "ordering", "description": "INTEGRATION_ENGINEER begins only after receiving all_validated"},
+  {"id": "ord_fab_done_after_disposition","type": "ordering", "description": "fab agents finish only after receiving lot_disposition"},
+
+  {"id": "acc_stepper",            "type": "resource_access", "description": "run_stepper_exposure requires holding STEPPER"},
+  {"id": "acc_dep_chamber",        "type": "resource_access", "description": "run_deposition requires holding DEP_CHAMBER"},
+  {"id": "acc_etch_chamber",       "type": "resource_access", "description": "run_etch_process requires holding ETCH_CHAMBER"},
+  {"id": "acc_metrology_station",  "type": "resource_access", "description": "run_metrology_measurement requires holding METROLOGY_STATION"},
+  {"id": "acc_monitor",            "type": "resource_access", "description": "check_monitoring requires holding MONITOR"},
+
+  {"id": "trap_3way_circular",          "type": "concurrency", "description": "3-way circular: LITHOGRAPHER(STEPPER->ETCH_CHAMBER) + ETCHER(ETCH_CHAMBER->DEP_CHAMBER) + DEPOSITOR(DEP_CHAMBER->STEPPER)"},
+  {"id": "trap_2way_circular_phase2",   "type": "concurrency", "description": "2-way circular: LITHOGRAPHER(STEPPER->metrology) + DEPOSITOR(metrology->STEPPER)"},
+  {"id": "trap_contamination_3lock",    "type": "concurrency", "description": "INTEGRATION_ENGINEER acquires DEP_CHAMBER + ETCH_CHAMBER + STEPPER atomically — deadlock if any fab agent holds one"},
+  {"id": "trap_yield_halt_barrier",     "type": "concurrency", "description": "yield halt: PROCESS_CONTROLLER acquires MONITOR + METROLOGY_STATION, broadcasts halt — all fab agents must release and wait"},
+  {"id": "trap_rework_counter",         "type": "concurrency", "description": "rework loops cost wafer_slot units — counter exhaustion (wafer_slots=2) limits concurrent rework"},
+  {"id": "trap_monitor_contention",     "type": "concurrency", "description": "LITHOGRAPHER, DEPOSITOR, ETCHER all do hold-and-wait for MONITOR during Phase 1"},
+  {"id": "trap_rework_reacquire",       "type": "concurrency", "description": "rework requires re-acquiring wafer_slot + instrument — competing with active fab processes"},
+
+  {"id": "metro_fan_in_either_order",   "type": "concurrency", "description": "METROLOGY_ENGINEER receives from fab agents in any order"},
+  {"id": "ctrl_fan_in_either_order",    "type": "concurrency", "description": "PROCESS_CONTROLLER receives reports in any order"},
+  {"id": "ctrl_broadcast",              "type": "concurrency", "description": "PROCESS_CONTROLLER broadcasts validations/halt/clearance"},
+  {"id": "integ_broadcast",             "type": "concurrency", "description": "INTEGRATION_ENGINEER broadcasts lot_disposition"},
+  {"id": "parallel_phase1",             "type": "concurrency", "description": "LITHOGRAPHER, DEPOSITOR, and ETCHER perform Phase 1 concurrently"}
+]

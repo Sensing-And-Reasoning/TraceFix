@@ -1,0 +1,73 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "compile_module",
+      "description": "Compile a source module.",
+      "agent_ids": [
+        "BUILDER_A",
+        "BUILDER_B",
+        "BUILDER_C"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "module_name": {
+            "type": "string",
+            "description": "Module to compile"
+          }
+        },
+        "required": [
+          "module_name"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "run_build_tests",
+      "description": "Run build tests for a module.",
+      "agent_ids": [
+        "TEST_RUNNER"
+      ],
+      "can_fail": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "module_name": {
+            "type": "string",
+            "description": "Module to test"
+          }
+        },
+        "required": [
+          "module_name"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "link_modules",
+      "description": "Link compiled modules into final binary.",
+      "agent_ids": [
+        "INTEGRATOR"
+      ],
+      "can_fail": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "modules": {
+            "type": "string",
+            "description": "Modules to link"
+          }
+        },
+        "required": [
+          "modules"
+        ]
+      }
+    }
+  }
+]
