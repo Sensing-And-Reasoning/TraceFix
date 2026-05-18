@@ -3,14 +3,14 @@ requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "tla-verify"
+name = "tracefix"
 version = "0.1.0"
-description = "CLI for TLA+ verification of multi-agent coordination protocols"
+description = "TraceFix: TLA+-verified coordination protocols for LLM multi-agent systems"
 requires-python = ">=3.11"
 dependencies = ["jsonschema"]
 
 [project.scripts]
-tla-verify-pluscal = "tla_verify_pluscal.cli:main"
+tla-verify-pluscal = "tracefix.cli.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["tla_verify_pluscal*", "v3_agent_test*", "benchmark*"]
+include = ["tracefix*", "benchmark*"]

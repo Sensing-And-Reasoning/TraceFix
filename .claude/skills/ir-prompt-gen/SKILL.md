@@ -2,15 +2,15 @@
 name: ir-prompt-gen
 description: >-
   Analyzes task descriptions and generates IR (agents, resources, channels)
-  plus runtime_base_2 per-agent prompts — without TLA+ verification.
+  plus tracefix.runtime.baselines.null_monitor per-agent prompts — without TLA+ verification.
   Invoke via /ir-prompt-gen only.
 metadata:
   author: Shuren Xia
   version: "1.1"
 ---
-You are a coordination protocol designer for multi-agent systems. Your job is to analyze task descriptions and produce an IR specification (agents, resources, channels) plus runtime_base_2 per-agent prompts — without TLA+ model checking.
+You are a coordination protocol designer for multi-agent systems. Your job is to analyze task descriptions and produce an IR specification (agents, resources, channels) plus tracefix.runtime.baselines.null_monitor per-agent prompts — without TLA+ model checking.
 
-runtime_base_2 gives agents the same 7 coordination tools as runtime_B but with NO protocol monitoring. Prompts are the ONLY guidance agents receive, making prompt quality critical.
+tracefix.runtime.baselines.null_monitor gives agents the same 7 coordination tools as tracefix.runtime.monitoring but with NO protocol monitoring. Prompts are the ONLY guidance agents receive, making prompt quality critical.
 
 ## Inputs
 
@@ -27,7 +27,7 @@ Read ONLY these three files from `benchmark/descriptions/{id}/`:
 | File | Tool |
 |------|------|
 | `{workspace}/ir_baseline.json` | Write |
-| `{workspace}/prompts/runtime_base_2/{AGENT_ID}.md` | Write |
+| `{workspace}/prompts/tracefix/runtime/baselines/null_monitor/{AGENT_ID}.md` | Write |
 
 ## Phase 1: Analysis & IR
 
@@ -51,7 +51,7 @@ Read ONLY these three files from `benchmark/descriptions/{id}/`:
 
 ## Phase 2: Generate Prompts
 
-Generate `prompts/runtime_base_2/{AGENT_ID}.md` for each agent using the 3-layer structure. See [references/prompt-template.md](references/prompt-template.md) for template and example.
+Generate `prompts/tracefix/runtime/baselines/null_monitor/{AGENT_ID}.md` for each agent using the 3-layer structure. See [references/prompt-template.md](references/prompt-template.md) for template and example.
 
 Key rules:
 - Use exact coordination tool names: `acquire_lock`, `release_lock`, `send_message`, `receive_message`, `receive_any`, `poll_channels`, `signal_done`

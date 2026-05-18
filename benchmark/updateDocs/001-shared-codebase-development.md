@@ -92,7 +92,7 @@ TLA+ 模型（原子）  →  TLC 验证通过  →  Runtime 执行（顺序，�
                                     Runtime 可能死锁！验证结论无效
 ```
 
-runtime_B 只有单锁的 `acquire_lock` API，没有多锁原子接口。TLA+ 模型的粒度必须与 runtime API 的粒度一致，否则验证对 runtime 不成立。
+tracefix.runtime.monitoring 只有单锁的 `acquire_lock` API，没有多锁原子接口。TLA+ 模型的粒度必须与 runtime API 的粒度一致，否则验证对 runtime 不成立。
 
 **问题 B — Benchmark 失去意义**：
 原子获取天然打破 Coffman "持有并等待"条件，TLC 必然通过，无法区分好的协议设计（正确加锁顺序）和差的协议设计（随意加锁顺序）。场景 1 的核心挑战（Dining Philosophers）就被绕过了。

@@ -24,30 +24,33 @@ TLC doesn't check business logic — it checks coordination: *"Can two agents ho
 ## Project Structure
 
 ```
-tracefix/
-├── v3_agent_test/          # Agentic verification pipeline (IR → PlusCal → TLA+)
-├── tla_verify_pluscal/     # CLI tool: tla-verify-pluscal
-├── benchmark/              # 48 coordination tasks (16 scenarios × 3 difficulties)
-│
-├── runtime_A/              # Architecture A: runtime enforcement engine
-├── runtime_B/              # Architecture B: runtime monitoring engine
-├── runtime_base_1/         # Baseline: shared-chat (no protocol)
-├── runtime_base_2/         # Baseline: null-monitor (no protocol)
-│
-├── lib/                    # tla2tools.jar (download separately, see Requirements)
-└── .claude/skills/         # Claude Code interactive skills
+.
+├── tracefix/                       # Main package
+│   ├── pipeline/                   # Agentic verification pipeline (IR → PlusCal → TLA+)
+│   ├── cli/                        # CLI tool: tla-verify-pluscal
+│   └── runtime/
+│       ├── enforcement/            # Architecture A: runtime enforcement engine
+│       ├── monitoring/             # Architecture B: runtime monitoring engine
+│       └── baselines/
+│           ├── shared_chat/        # Baseline: shared-chat (no protocol)
+│           └── null_monitor/       # Baseline: null-monitor (no protocol)
+├── benchmark/                      # 48 coordination tasks (16 scenarios × 3 difficulties)
+├── lib/                            # tla2tools.jar (download separately, see Requirements)
+├── .claude/skills/                 # Claude Code interactive skills
+├── pyproject.toml
+└── LICENSE
 ```
 
 Run the pipeline to generate verified workspaces (`ir.json`, `Protocol.tla`, `states.json`, per-agent prompts) locally — see Quick Start.
 
 ## Verification Pipeline
 
-**`v3_agent_test/`** — Agentic pipeline (IR → PlusCal → TLA+)
+**`tracefix/pipeline/`** — Agentic pipeline (IR → PlusCal → TLA+)
 - `pipeline/pluscal_generator.py` → `pluscal_compiler.py` → `pluscal_parser.py` (tree-sitter)
 - TLC state space optimizations: ChannelBound CONSTRAINT, agent-specific Next formula, string messages, multi-core TLC (`-workers auto`), safety-only verification
 - One channel per directed (from, to) pair — `labels` field distinguishes message types
 
-**`tla_verify_pluscal/`** — CLI tool (installed via `pip install -e .`)
+**`tracefix/cli/`** — CLI tool (installed via `pip install -e .`)
 - Commands: `validate`, `scaffold`, `verify`, `extract-states`
 
 ## Benchmarks
@@ -71,11 +74,11 @@ Each task has `description.md`, `tools.json` (per-agent tool schemas), and `meta
 
 Both consume the same TLC-verified spec and provide fine-grained locking (agents run in parallel, blocking only at contention) — unlike LangGraph's global serialization.
 
-**`runtime_A/`** — **Enforcement**: Runtime mediator structurally prevents coordination violations. Agents are unaware of locks/channels.
+**`tracefix/runtime/enforcement/`** — **Enforcement**: Runtime mediator structurally prevents coordination violations. Agents are unaware of locks/channels.
 
-**`runtime_B/`** — **Monitoring**: Agents autonomously call coordination tools (`acquire_lock`, `send_message`, etc.). Monitor validates every operation against the verified spec.
+**`tracefix/runtime/monitoring/`** — **Monitoring**: Agents autonomously call coordination tools (`acquire_lock`, `send_message`, etc.). Monitor validates every operation against the verified spec.
 
-**`runtime_base_1/`** and **`runtime_base_2/`** — Baselines without protocol monitoring, for comparison experiments.
+**`tracefix/runtime/baselines/shared_chat/`** and **`tracefix/runtime/baselines/null_monitor/`** — Baselines without protocol monitoring, for comparison experiments.
 
 ## Orchestration Workflow
 
@@ -138,20 +141,20 @@ pip install -e .
 pip install openai anthropic pytest
 
 # Run tests
-pytest v3_agent_test/tests/ -v             # Pipeline tests
-pytest runtime_A/tests/ -v                 # Runtime A tests
-pytest runtime_B/tests/ -v                 # Runtime B tests
+pytest tracefix/pipeline/tests/ -v             # Pipeline tests
+pytest tracefix/runtime/enforcement/tests/ -v                 # Runtime A tests
+pytest tracefix/runtime/monitoring/tests/ -v                 # Runtime B tests
 pytest benchmark/tests/ -v                 # Benchmark tests
 
 # Run the agentic verification pipeline (produces a verified workspace/ )
-python -m v3_agent_test --benchmark 3E --verbose
+python -m tracefix.pipeline --benchmark 3E --verbose
 
 # Runtime B: run agents with monitoring against the generated workspace
-python -m runtime_B run --task 3E --workspace workspace/3E --verbose
+python -m tracefix.runtime.monitoring run --task 3E --workspace workspace/3E --verbose
 
 # Baseline runtimes (no protocol monitoring)
-python -m runtime_base_1 run --task 3E --verbose
-python -m runtime_base_2 run --task 3E --verbose
+python -m tracefix.runtime.baselines.shared_chat run --task 3E --verbose
+python -m tracefix.runtime.baselines.null_monitor run --task 3E --verbose
 ```
 
 **Requirements:**

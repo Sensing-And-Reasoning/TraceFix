@@ -83,7 +83,7 @@ can lead to circular waits if the acquisition order is not coordinated carefully
 与场景 1 完全相同（详见 `001-shared-codebase-development.md`，变更 2）：
 
 1. `"simultaneously"` 的原子解读会让 LLM 用单个 TLA+ label 获取两把锁，规避 Coffman 持有并等待条件，使 TLC 对任意加锁顺序都能通过验证 → benchmark 失去意义。
-2. runtime_B 的 `acquire_lock` API 是单锁的，TLA+ 模型必须与 API 粒度一致，否则验证对 runtime 不成立。
+2. tracefix.runtime.monitoring 的 `acquire_lock` API 是单锁的，TLA+ 模型必须与 API 粒度一致，否则验证对 runtime 不成立。
 3. 正确建模：顺序获取，每次 `acquire_lock` 是独立 TLA+ label，TLC 能探索两次 acquire 之间的所有 interleaving，发现循环等待死锁。
 
 场景 2 与场景 1 在结构上完全相同（Dining Philosophers 问题，只是领域背景不同：研究员写论文 vs 开发者提交代码）。

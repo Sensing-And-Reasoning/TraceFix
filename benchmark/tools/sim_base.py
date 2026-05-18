@@ -82,7 +82,7 @@ class SimEvent:
 class SimContext(ABC):
     """Base class for simulation environments.
 
-    Provides resource management (modeled after runtime_A/store.py's LockStore)
+    Provides resource management (modeled after tracefix.runtime.enforcement/store.py's LockStore)
     and event/violation logging.  Subclasses implement domain-specific tool
     methods and completion logic.
     """

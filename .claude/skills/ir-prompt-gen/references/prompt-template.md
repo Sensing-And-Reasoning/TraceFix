@@ -1,6 +1,6 @@
-# runtime_base_2 Prompt Template
+# tracefix.runtime.baselines.null_monitor Prompt Template
 
-3-layer structure for each `prompts/runtime_base_2/{AGENT_ID}.md`.
+3-layer structure for each `prompts/tracefix/runtime/baselines/null_monitor/{AGENT_ID}.md`.
 
 ## Template
 
