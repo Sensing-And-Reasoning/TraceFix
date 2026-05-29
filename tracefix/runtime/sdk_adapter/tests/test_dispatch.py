@@ -168,6 +168,43 @@ def test_missing_required_arg_errors():
 
 # -- schema conversion (also SDK-free) --------------------------------------
 
+def test_send_message_schema_is_flag_only():
+    """flag_only_send_schemas removes `body` (control plane = label only)."""
+    from tracefix.runtime.sdk_adapter.mcp_server import flag_only_send_schemas
+    schemas = flag_only_send_schemas(COORD_TOOL_SCHEMAS)
+    send = next(s["function"] for s in schemas
+                if s["function"]["name"] == "send_message")
+    assert "body" not in send["parameters"]["properties"]
+    assert "channel_id" in send["parameters"]["properties"]
+    assert "label" in send["parameters"]["properties"]
+    # Original schemas must be untouched (deepcopy, not mutate).
+    orig = next(s["function"] for s in COORD_TOOL_SCHEMAS
+                if s["function"]["name"] == "send_message")
+    assert "body" in orig["parameters"]["properties"]
+
+
+def test_send_drops_body_so_no_payload_crosses_channel():
+    """Even if an agent attaches a body, it never crosses the channel.
+
+    Regression for the 3E run where the EDITOR put domain feedback into the
+    message body. The control plane must carry only the label.
+    """
+    async def scenario():
+        coord = _make_coord()
+        a = CoordToolDispatcher(coord, "A")
+        r = await a.dispatch("send_message", {
+            "channel_id": "a_to_b", "label": "ping", "body": "SECRET PAYLOAD"})
+        assert r["status"] == "sent"
+        assert "note" in r  # body was ignored and flagged
+
+        b = CoordToolDispatcher(coord, "B")
+        rb = await b.dispatch("receive_message", {"channel_id": "a_to_b"})
+        assert rb["status"] == "received" and rb["label"] == "ping"
+        assert "body" not in rb  # no payload crossed the channel
+
+    asyncio.run(scenario())
+
+
 def test_schema_conversion_and_allowed_names():
     # Every coordination schema converts to (name, desc, json_schema).
     for schema in COORD_TOOL_SCHEMAS:

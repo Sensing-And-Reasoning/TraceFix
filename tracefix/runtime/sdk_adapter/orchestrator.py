@@ -27,7 +27,7 @@ from tracefix.runtime.monitoring.state_tracker import StateTracker
 
 from tracefix.runtime.sdk_adapter.dispatch import CoordToolDispatcher
 from tracefix.runtime.sdk_adapter.mcp_server import (
-    SERVER_NAME, build_agent_mcp_server, allowed_tool_names,
+    SERVER_NAME, build_agent_mcp_server, allowed_tool_names, flag_only_send_schemas,
 )
 from tracefix.runtime.sdk_adapter.sdk_runner import run_sdk_agent
 from tracefix.runtime.sdk_adapter.types import AgentResult
@@ -40,9 +40,16 @@ _COORD_FOOTER = """
 ## Coordination tools (provided by the tracefix runtime)
 
 You have these coordination tools in addition to your work tools:
-acquire_lock(lock_id), release_lock(lock_id), send_message(channel_id, label, body?),
+acquire_lock(lock_id), release_lock(lock_id), send_message(channel_id, label),
 receive_message(channel_id), poll_channels(channel_ids), receive_any(channel_ids),
 signal_done(). Call signal_done() only when you have completed every protocol step.
+
+Control plane vs data plane: coordination channels carry ONLY a label (a signal
+flag like "submit"/"revise"/"accept") — never data or content. To hand another
+agent some data/feedback, write it to a file (the data plane) at a path both
+sides agree on, then send the label to signal it; the receiver reads the file.
+Shared resources (locks) already protect shared documents/data — put content
+there, not in messages.
 
 Tool-call note: do NOT pass an `agent_id` argument to any tool — your identity is
 already bound by the runtime. Pass only the arguments listed for each tool.
@@ -161,7 +168,8 @@ class SdkOrchestrator:
             domain_schemas = (
                 tool_registry.openai_schemas(agent_id) if tool_registry else []
             )
-            schemas = list(COORD_TOOL_SCHEMAS) + list(domain_schemas)
+            schemas = (flag_only_send_schemas(list(COORD_TOOL_SCHEMAS))
+                       + list(domain_schemas))
 
             dispatcher = CoordToolDispatcher(
                 coord, agent_id, tool_registry=tool_registry, verbose=self.verbose)

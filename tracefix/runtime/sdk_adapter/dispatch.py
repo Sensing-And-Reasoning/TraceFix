@@ -154,8 +154,14 @@ class CoordToolDispatcher:
         if name == "release_lock":
             return await coord.release_lock(args["lock_id"], agent_id)
         if name == "send_message":
-            return await coord.send(args["channel_id"], args["label"], agent_id,
-                                    body=args.get("body", ""))
+            # Control plane carries flags only — never payload. Do NOT forward any
+            # body the agent may still attach; data must travel on the data plane.
+            result = await coord.send(args["channel_id"], args["label"], agent_id)
+            if args.get("body"):
+                result = {**result, "note": (
+                    "body ignored — channels are flag-only; put data on the data "
+                    "plane (write a file) and signal it with the label")}
+            return result
         if name == "receive_message":
             return await coord.receive(args["channel_id"], agent_id)
         if name == "poll_channels":

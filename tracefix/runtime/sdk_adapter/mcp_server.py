@@ -16,6 +16,7 @@ adapter (and its tests) can be imported without ``claude-agent-sdk`` installed.
 
 from __future__ import annotations
 
+import copy
 import json
 from typing import Any
 
@@ -97,3 +98,31 @@ def allowed_tool_names(schemas: list[dict], server_name: str = SERVER_NAME) -> l
         fn_def = schema.get("function", schema)
         names.append(f"mcp__{server_name}__{fn_def['name']}")
     return names
+
+
+def flag_only_send_schemas(schemas: list[dict]) -> list[dict]:
+    """Strip the free-form ``body`` field from ``send_message``.
+
+    Coordination channels are the CONTROL PLANE: they carry only a label (a
+    signal flag), exactly as the TLA+/IR model represents a message. Domain
+    data/content belongs on the DATA PLANE (a shared file / artifact); the
+    label signals it (Claim-Check pattern). Not exposing ``body`` to the agent
+    keeps the verified protocol (flag flow) and the runtime in lockstep, and
+    removes the monitoring blind spot where domain payload slipped through
+    unvalidated. Returns a copy; input schemas are untouched.
+    """
+    out = []
+    for schema in schemas:
+        fn = schema.get("function", schema)
+        if fn.get("name") == "send_message":
+            schema = copy.deepcopy(schema)
+            fn = schema.get("function", schema)
+            fn.get("parameters", {}).get("properties", {}).pop("body", None)
+            fn["description"] = (
+                "Send a labeled signal on a channel. Non-blocking. The channel "
+                "carries ONLY the label (a signal flag) — it does NOT carry data "
+                "or content. To share data/feedback, write it to a file (the data "
+                "plane) at an agreed path, then send the label to signal it."
+            )
+        out.append(schema)
+    return out
