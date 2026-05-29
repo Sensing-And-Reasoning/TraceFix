@@ -38,7 +38,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 from tracefix.pipeline.loop import AgentLoop
 from tracefix.pipeline.prompts import SYSTEM_PROMPT, PROMPT_GEN_SYSTEM_PROMPT
