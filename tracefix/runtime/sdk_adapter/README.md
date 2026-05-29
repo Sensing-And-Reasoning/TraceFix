@@ -92,16 +92,52 @@ python -m tracefix.runtime.sdk_adapter run --task 3E --workspace ws/3E \
 `--difficulty`, `--tool-time`, `--seed`) mirror the monitoring CLI for
 scenarios 12–16.
 
+## Examples
+
+Runnable workspaces under `examples/` (no pipeline run needed):
+
+| Example | What it shows |
+|---|---|
+| `ping_pong/` | Minimal 2-agent message handshake — smoke-tests the adapter end-to-end |
+| `mas_doc_report/` | **Real end-to-end MAS task**: 3 agents concurrently write one shared `report.md` under a TLA+-verified lock (real Read/Write output, not a dummy sim). See its README. |
+
+## Sub-agents on OpenAI (LiteLLM proxy)
+
+The adapter is built on `claude-agent-sdk`, which is Claude-only. To run the
+sub-agents on **OpenAI** instead, point the Claude CLI at a LiteLLM proxy that
+translates the Anthropic Messages API to OpenAI (and back):
+
+```bash
+litellm --config tracefix/runtime/sdk_adapter/examples/mas_doc_report/litellm_config.yaml --port 4000 &
+ANTHROPIC_BASE_URL=http://localhost:4000 ANTHROPIC_AUTH_TOKEN=sk-tracefix-local \
+python -m tracefix.runtime.sdk_adapter run --task <id> --workspace <ws> --model gpt-5-mini
+```
+
+The coordination MCP tools work through the translation layer (verified on both
+`ping_pong` and `mas_doc_report`). The env vars affect only that sub-process —
+your own Claude Code / global config is untouched.
+
+## Channels are flag-only (control/data plane separation)
+
+`send_message` here exposes only `{channel_id, label}` — the `body` field is
+stripped (`flag_only_send_schemas` in `mcp_server.py`), and the dispatcher drops
+any body an agent still attaches. Coordination channels are the control plane and
+carry only a signal flag, exactly as the TLA+/IR model represents a message; data
+travels on the data plane (shared files / resources). This keeps the verified
+protocol and the runtime in lockstep and removes the monitoring blind spot where
+domain payload used to slip through unvalidated.
+
 ## Tests
 
 ```bash
 pytest tracefix/runtime/sdk_adapter/tests/ -v
 ```
 
-- `test_dispatch.py` (7) — **SDK-free.** Exercises `CoordToolDispatcher` against
+- `test_dispatch.py` (11) — **SDK-free.** Exercises `CoordToolDispatcher` against
   a real `CoordinationContext` + `ProtocolMonitor`: acquire/send/receive/release,
-  Counter semaphore, Monitor rejecting an illegal send, `signal_done` gating,
-  unknown-tool / missing-arg handling, schema conversion.
+  Counter semaphore, Monitor rejecting an illegal send, `signal_done` gating +
+  premature-done handling, agent_id stripping, flag-only channel enforcement
+  (body dropped), unknown-tool / missing-arg handling, schema conversion.
 - `test_sdk_integration.py` (3) — **skipped unless `claude-agent-sdk` is
   installed.** Validates the adapter↔SDK boundary offline: required symbols
   exist, `ClaudeAgentOptions` accepts the runner's kwargs, and the coordination

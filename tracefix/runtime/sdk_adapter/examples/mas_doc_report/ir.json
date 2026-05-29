@@ -1,0 +1,14 @@
+{
+  "agents": [
+    {"id": "WRITER_LOCKS"},
+    {"id": "WRITER_CHANNELS"},
+    {"id": "EDITOR"}
+  ],
+  "resources": [
+    {"id": "REPORT", "type": "Lock"}
+  ],
+  "channels": [
+    {"id": "locks_to_editor", "from": "WRITER_LOCKS", "to": "EDITOR", "labels": ["submit"]},
+    {"id": "channels_to_editor", "from": "WRITER_CHANNELS", "to": "EDITOR", "labels": ["submit"]}
+  ]
+}

@@ -1,0 +1,164 @@
+{
+  "states": [
+    {
+      "id": "WRITER_LOCKS_draft",
+      "agent": "WRITER_LOCKS",
+      "actions": [
+        {
+          "next_state": "WRITER_LOCKS_acquire"
+        }
+      ]
+    },
+    {
+      "id": "WRITER_LOCKS_acquire",
+      "agent": "WRITER_LOCKS",
+      "actions": [
+        {
+          "next_state": "WRITER_LOCKS_write",
+          "acquire": "REPORT"
+        }
+      ]
+    },
+    {
+      "id": "WRITER_LOCKS_write",
+      "agent": "WRITER_LOCKS",
+      "actions": [
+        {
+          "next_state": "WRITER_LOCKS_release"
+        }
+      ]
+    },
+    {
+      "id": "WRITER_LOCKS_release",
+      "agent": "WRITER_LOCKS",
+      "actions": [
+        {
+          "next_state": "WRITER_LOCKS_submit",
+          "release": "REPORT"
+        }
+      ]
+    },
+    {
+      "id": "WRITER_LOCKS_submit",
+      "agent": "WRITER_LOCKS",
+      "actions": [
+        {
+          "send": {
+            "channel": "locks_to_editor",
+            "label": "submit"
+          },
+          "next_state": "__done__"
+        }
+      ]
+    },
+    {
+      "id": "WRITER_CHANNELS_draft",
+      "agent": "WRITER_CHANNELS",
+      "actions": [
+        {
+          "next_state": "WRITER_CHANNELS_acquire"
+        }
+      ]
+    },
+    {
+      "id": "WRITER_CHANNELS_acquire",
+      "agent": "WRITER_CHANNELS",
+      "actions": [
+        {
+          "next_state": "WRITER_CHANNELS_write",
+          "acquire": "REPORT"
+        }
+      ]
+    },
+    {
+      "id": "WRITER_CHANNELS_write",
+      "agent": "WRITER_CHANNELS",
+      "actions": [
+        {
+          "next_state": "WRITER_CHANNELS_release"
+        }
+      ]
+    },
+    {
+      "id": "WRITER_CHANNELS_release",
+      "agent": "WRITER_CHANNELS",
+      "actions": [
+        {
+          "next_state": "WRITER_CHANNELS_submit",
+          "release": "REPORT"
+        }
+      ]
+    },
+    {
+      "id": "WRITER_CHANNELS_submit",
+      "agent": "WRITER_CHANNELS",
+      "actions": [
+        {
+          "send": {
+            "channel": "channels_to_editor",
+            "label": "submit"
+          },
+          "next_state": "__done__"
+        }
+      ]
+    },
+    {
+      "id": "EDITOR_recv_locks",
+      "agent": "EDITOR",
+      "actions": [
+        {
+          "next_state": "EDITOR_recv_channels",
+          "receive": {
+            "channel": "locks_to_editor"
+          }
+        }
+      ]
+    },
+    {
+      "id": "EDITOR_recv_channels",
+      "agent": "EDITOR",
+      "actions": [
+        {
+          "next_state": "EDITOR_acquire",
+          "receive": {
+            "channel": "channels_to_editor"
+          }
+        }
+      ]
+    },
+    {
+      "id": "EDITOR_acquire",
+      "agent": "EDITOR",
+      "actions": [
+        {
+          "next_state": "EDITOR_finalize",
+          "acquire": "REPORT"
+        }
+      ]
+    },
+    {
+      "id": "EDITOR_finalize",
+      "agent": "EDITOR",
+      "actions": [
+        {
+          "next_state": "EDITOR_release"
+        }
+      ]
+    },
+    {
+      "id": "EDITOR_release",
+      "agent": "EDITOR",
+      "actions": [
+        {
+          "release": "REPORT",
+          "next_state": "__done__"
+        }
+      ]
+    }
+  ],
+  "initial_states": {
+    "WRITER_LOCKS": "WRITER_LOCKS_draft",
+    "WRITER_CHANNELS": "WRITER_CHANNELS_draft",
+    "EDITOR": "EDITOR_recv_locks"
+  }
+}
