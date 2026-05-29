@@ -1,0 +1,95 @@
+"""CLI for the Claude Agent SDK adapter.
+
+    python -m tracefix.runtime.sdk_adapter run --task 3E --workspace agent_workspace/3E
+    python -m tracefix.runtime.sdk_adapter run --task 3E --workspace ws/3E \
+        --model claude-sonnet-4-6 --builtins Read,Write,Edit,Bash --verbose
+"""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import os
+import sys
+from pathlib import Path
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).resolve().parents[3] / ".env")
+except ImportError:
+    pass  # python-dotenv optional; SDK can also use the Claude CLI's own auth
+
+from tracefix.runtime.sdk_adapter.orchestrator import SdkOrchestrator
+
+
+def _print_result(result) -> None:
+    print("\n=== SDK Adapter Result ===")
+    verdict = "SUCCESS" if result.success else "INCOMPLETE"
+    print(f"{verdict} in {result.duration:.1f}s")
+    for r in result.agent_results:
+        print(f"  {r.agent_id}: {r.steps} tool calls, {r.status}, {r.duration:.1f}s"
+              + (f" — {r.error}" if r.error else ""))
+
+    print("\n=== Tool Call Trace ===")
+    for r in result.agent_results:
+        print(f"--- {r.agent_id} ({r.status}, {r.steps} steps, {r.duration:.1f}s) ---")
+        for tc in r.trace:
+            print(f"  R{tc.round:02d} {tc.tool_name}({tc.arguments}) "
+                  f"-> {tc.result.get('status')} [{tc.elapsed:.2f}s]")
+
+
+def cmd_run(args: argparse.Namespace) -> int:
+    orch = SdkOrchestrator(
+        task_id=args.task,
+        workspace=args.workspace,
+        model=args.model,
+        builtins=[b.strip() for b in args.builtins.split(",") if b.strip()],
+        max_rounds=args.max_rounds,
+        verbose=args.verbose,
+        scenario=args.scenario,
+        difficulty=args.difficulty,
+        tool_time=args.tool_time,
+        seed=args.seed,
+    )
+    try:
+        result = asyncio.run(orch.run(timeout=args.timeout))
+    except ImportError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        return 2
+    _print_result(result)
+    return 0 if result.success else 1
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        prog="python -m tracefix.runtime.sdk_adapter",
+        description="Drive tracefix-verified protocols with the Claude Agent SDK.",
+    )
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    p_run = sub.add_parser("run", help="Run a workspace with SDK-driven agents")
+    p_run.add_argument("--task", required=True, help="Task ID (e.g. 3E)")
+    p_run.add_argument("--workspace", required=True, help="Verified workspace path")
+    p_run.add_argument("--model", default=None,
+                       help="Model override (default: SDK/CLI default)")
+    p_run.add_argument("--builtins", default="Read,Write,Edit",
+                       help="Comma-separated SDK built-in tools to allow "
+                            "(e.g. Read,Write,Edit,Bash). Empty to disable.")
+    p_run.add_argument("--max-rounds", type=int, default=50,
+                       help="Per-agent turn cap (default: 50)")
+    p_run.add_argument("--timeout", type=float, default=180.0,
+                       help="Global timeout in seconds (default: 180)")
+    p_run.add_argument("--verbose", action="store_true")
+    # Sim failure injection (scenarios 12-16), mirrors the monitoring CLI.
+    p_run.add_argument("--scenario", type=int, default=None)
+    p_run.add_argument("--difficulty", type=int, default=1)
+    p_run.add_argument("--tool-time", type=float, default=None)
+    p_run.add_argument("--seed", type=int, default=None)
+
+    args = parser.parse_args()
+    handlers = {"run": cmd_run}
+    sys.exit(handlers[args.command](args))
+
+
+if __name__ == "__main__":
+    main()

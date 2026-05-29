@@ -1,0 +1,11 @@
+{
+  "agents": [
+    {"id": "PINGER"},
+    {"id": "PONGER"}
+  ],
+  "resources": [],
+  "channels": [
+    {"id": "ping_ch", "from": "PINGER", "to": "PONGER", "labels": ["ping"]},
+    {"id": "pong_ch", "from": "PONGER", "to": "PINGER", "labels": ["pong"]}
+  ]
+}
