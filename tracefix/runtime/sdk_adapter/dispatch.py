@@ -54,6 +54,7 @@ class CoordToolDispatcher:
         self.verbose = verbose
 
         self.done: bool = False
+        self.premature_done: bool = False
         self.trace: list[ToolCall] = []
         self._round: int = 0
 
@@ -98,18 +99,25 @@ class CoordToolDispatcher:
         """Inner dispatch without trace/event bookkeeping."""
         agent_id = self.agent_id
 
-        # --- signal_done: gated by the state tracker (early-termination check) ---
+        # --- signal_done: the tracker OBSERVES, it does not block ---
+        # The state tracker only advances on coordination ops (acquire/release/
+        # send/receive). Protocols whose tail transitions are domain-tool / local
+        # work (e.g. test -> pass -> done) never reach a tracked terminal state,
+        # so a hard gate would deadlock a fully-finished agent. We therefore
+        # accept signal_done and only flag it when the tracker can't confirm a
+        # terminal state (premature?), consistent with "monitor observes".
         if name == "signal_done":
             tracker = getattr(self.coord, "tracker", None)
-            if tracker is not None and not tracker.can_terminate(agent_id):
-                return {
-                    "status": "error",
-                    "message": ("Cannot terminate yet: your protocol has "
-                                "remaining steps. Continue executing them, then "
-                                "call signal_done again."),
-                }
+            premature = tracker is not None and not tracker.can_terminate(agent_id)
             self.done = True
-            return {"status": "done", "agent": agent_id}
+            result = {"status": "done", "agent": agent_id}
+            if premature:
+                self.premature_done = True
+                result["warning"] = (
+                    "state tracker did not confirm a terminal state; accepting "
+                    "signal_done anyway (monitor observes, does not block)."
+                )
+            return result
 
         # --- coordination tools: forward to CoordinationContext (all async) ---
         if name in COORD_TOOL_NAMES:
@@ -123,8 +131,12 @@ class CoordToolDispatcher:
 
         # --- domain tools: forward to the benchmark ToolRegistry ---
         if self.tools is not None:
+            # Agents sometimes pass agent_id explicitly in the args; drop it so
+            # it doesn't collide with the agent_id we bind from the server side
+            # (ToolRegistry.call already receives agent_id as a keyword).
+            call_args = {k: v for k, v in args.items() if k != "agent_id"}
             try:
-                res = await self.tools.call(name, agent_id=agent_id, **args)
+                res = await self.tools.call(name, agent_id=agent_id, **call_args)
             except Exception as e:  # noqa: BLE001 — surface domain errors to the LLM
                 return {"status": "error", "message": f"{type(e).__name__}: {e}"}
             return {

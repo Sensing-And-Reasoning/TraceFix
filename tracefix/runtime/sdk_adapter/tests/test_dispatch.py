@@ -91,6 +91,61 @@ def test_signal_done_without_tracker_is_allowed():
     asyncio.run(scenario())
 
 
+def test_signal_done_premature_is_accepted_with_warning():
+    """Tracker can't confirm terminal state → accept anyway, flag premature.
+
+    Regression for the 1E run where agents finished all coordination but the
+    tracker (which only advances on coord ops) couldn't reach a terminal state
+    through domain-tool tail transitions — a hard gate would deadlock them.
+    """
+    async def scenario():
+        coord = _make_coord()
+
+        class FakeTracker:
+            def can_terminate(self, agent_id):
+                return False
+
+        coord.tracker = FakeTracker()
+        a = CoordToolDispatcher(coord, "A")
+        r = await a.dispatch("signal_done", {})
+        assert r["status"] == "done"
+        assert "warning" in r
+        assert a.done is True and a.premature_done is True
+
+    asyncio.run(scenario())
+
+
+def test_domain_tool_strips_duplicate_agent_id():
+    """LLM-supplied agent_id in args must not collide with the bound agent_id.
+
+    Regression for the 1E run where an agent passed agent_id explicitly, causing
+    ToolRegistry.call(agent_id=..., agent_id=...) to TypeError.
+    """
+    async def scenario():
+        coord = _make_coord()
+        seen = {}
+
+        class FakeResult:
+            success = True
+            def to_dict(self):
+                return {"ok": True}
+
+        class FakeRegistry:
+            async def call(self, name, agent_id=None, **kwargs):
+                seen["agent_id"] = agent_id
+                seen["kwargs"] = kwargs
+                return FakeResult()
+
+        a = CoordToolDispatcher(coord, "A", tool_registry=FakeRegistry())
+        r = await a.dispatch("design_feature", {"feature_name": "x", "agent_id": "A"})
+        assert r["status"] == "ok"
+        assert seen["agent_id"] == "A"
+        assert "agent_id" not in seen["kwargs"]
+        assert seen["kwargs"] == {"feature_name": "x"}
+
+    asyncio.run(scenario())
+
+
 def test_unknown_tool_without_registry_errors():
     async def scenario():
         coord = _make_coord()

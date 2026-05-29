@@ -43,6 +43,9 @@ You have these coordination tools in addition to your work tools:
 acquire_lock(lock_id), release_lock(lock_id), send_message(channel_id, label, body?),
 receive_message(channel_id), poll_channels(channel_ids), receive_any(channel_ids),
 signal_done(). Call signal_done() only when you have completed every protocol step.
+
+Tool-call note: do NOT pass an `agent_id` argument to any tool — your identity is
+already bound by the runtime. Pass only the arguments listed for each tool.
 """
 
 
@@ -165,7 +168,7 @@ class SdkOrchestrator:
             mcp_server = build_agent_mcp_server(dispatcher, schemas)
             allowed = allowed_tool_names(schemas, SERVER_NAME) + list(self.builtins)
 
-            runners.append((agent_id, run_sdk_agent(
+            runners.append((agent_id, dispatcher, run_sdk_agent(
                 agent_id=agent_id,
                 system_prompt=prompt,
                 dispatcher=dispatcher,
@@ -178,22 +181,25 @@ class SdkOrchestrator:
             )))
 
         start = time.time()
-        tasks = {asyncio.create_task(coro): aid for aid, coro in runners}
+        tasks = {asyncio.create_task(coro): (aid, disp) for aid, disp, coro in runners}
         done, pending = await asyncio.wait(
             tasks.keys(), timeout=timeout, return_when=asyncio.ALL_COMPLETED)
 
         results: list[AgentResult] = []
         for task in done:
+            aid, disp = tasks[task]
             try:
                 results.append(task.result())
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:  # noqa: BLE001 — keep the partial trace
                 results.append(AgentResult(
-                    agent_id=tasks[task], steps=0, status="error", error=str(e)))
+                    agent_id=aid, steps=len(disp.trace), status="error",
+                    error=str(e), trace=disp.trace))
         for task in pending:
             task.cancel()
+            aid, disp = tasks[task]
             results.append(AgentResult(
-                agent_id=tasks[task], steps=0, status="timeout",
-                error=f"exceeded global timeout {timeout}s"))
+                agent_id=aid, steps=len(disp.trace), status="timeout",
+                error=f"exceeded global timeout {timeout}s", trace=disp.trace))
 
         duration = time.time() - start
         success = bool(results) and all(r.status == "completed" for r in results)
