@@ -99,24 +99,24 @@ class CoordToolDispatcher:
         """Inner dispatch without trace/event bookkeeping."""
         agent_id = self.agent_id
 
-        # --- signal_done: the tracker OBSERVES, it does not block ---
-        # The state tracker only advances on coordination ops (acquire/release/
-        # send/receive). Protocols whose tail transitions are domain-tool / local
-        # work (e.g. test -> pass -> done) never reach a tracked terminal state,
-        # so a hard gate would deadlock a fully-finished agent. We therefore
-        # accept signal_done and only flag it when the tracker can't confirm a
-        # terminal state (premature?), consistent with "monitor observes".
+        # --- signal_done: coordination-only termination (the monitor observes) ---
+        # We judge "premature" by whether the agent still HOLDS A LOCK — a pure
+        # control-plane check — NOT by the state machine. The verified safety core
+        # is no-orphan-locks; meanwhile the state machine mixes in domain/local-
+        # work states the tracker can't advance (a protocol tail of test -> pass
+        # -> done), so consulting it would misjudge an agent that finished all
+        # *coordination* but still has domain work to do. Locks are the right
+        # signal: released everything → done; still holding → flagged.
         if name == "signal_done":
-            tracker = getattr(self.coord, "tracker", None)
-            premature = tracker is not None and not tracker.can_terminate(agent_id)
+            held = [lid for lid, holder in self.coord.locks._locks.items()
+                    if holder == agent_id]
             self.done = True
             result = {"status": "done", "agent": agent_id}
-            if premature:
+            if held:
                 self.premature_done = True
                 result["warning"] = (
-                    "state tracker did not confirm a terminal state; accepting "
-                    "signal_done anyway (monitor observes, does not block)."
-                )
+                    f"signal_done while still holding lock(s) {held} — "
+                    f"coordination incomplete (orphan-lock risk)")
             return result
 
         # --- coordination tools: forward to CoordinationContext (all async) ---

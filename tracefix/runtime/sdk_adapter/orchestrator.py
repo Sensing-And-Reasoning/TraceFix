@@ -62,6 +62,9 @@ class SdkRunResult:
     agent_results: list[AgentResult]
     duration: float
     error: str | None = None
+    # Monitoring conclusions (otherwise the monitor runs but leaves no record):
+    state_violations: list = field(default_factory=list)  # StateTracker soft violations
+    premature_dones: list = field(default_factory=list)   # agents that signal_done'd early
 
 
 def _load_json(path: Path) -> dict:
@@ -211,4 +214,23 @@ class SdkOrchestrator:
 
         duration = time.time() - start
         success = bool(results) and all(r.status == "completed" for r in results)
-        return SdkRunResult(success=success, agent_results=results, duration=duration)
+
+        # Surface the monitoring conclusions. ProtocolMonitor violations already
+        # surface as tool errors in the agent traces; the StateTracker is the
+        # monitor's *record* of protocol-conformance, which would otherwise be
+        # discarded when the run ends.
+        state_violations = []
+        if tracker is not None:
+            for v in tracker.violations:
+                state_violations.append({
+                    "agent": getattr(v, "agent", None),
+                    "state": getattr(v, "current_state", None),
+                    "operation": getattr(v, "operation", None),
+                    "args": getattr(v, "args", None),
+                })
+        premature_dones = [aid for (aid, disp) in tasks.values()
+                           if getattr(disp, "premature_done", False)]
+
+        return SdkRunResult(
+            success=success, agent_results=results, duration=duration,
+            state_violations=state_violations, premature_dones=premature_dones)

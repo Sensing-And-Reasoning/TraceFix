@@ -91,26 +91,38 @@ def test_signal_done_without_tracker_is_allowed():
     asyncio.run(scenario())
 
 
-def test_signal_done_premature_is_accepted_with_warning():
-    """Tracker can't confirm terminal state → accept anyway, flag premature.
+def test_signal_done_while_holding_lock_is_flagged_premature():
+    """Coordination-only termination: still holding a lock → premature (#1).
 
-    Regression for the 1E run where agents finished all coordination but the
-    tracker (which only advances on coord ops) couldn't reach a terminal state
-    through domain-tool tail transitions — a hard gate would deadlock them.
+    Termination is judged on locks (control plane), NOT the state machine — which
+    mixes in domain/local-work states the tracker can't advance. An agent that
+    signal_done's while still holding a lock is flagged (orphan-lock risk).
     """
     async def scenario():
         coord = _make_coord()
-
-        class FakeTracker:
-            def can_terminate(self, agent_id):
-                return False
-
-        coord.tracker = FakeTracker()
         a = CoordToolDispatcher(coord, "A")
+        await a.dispatch("acquire_lock", {"lock_id": "lock1"})  # hold, don't release
         r = await a.dispatch("signal_done", {})
-        assert r["status"] == "done"
-        assert "warning" in r
-        assert a.done is True and a.premature_done is True
+        assert r["status"] == "done" and a.done is True
+        assert a.premature_done is True and "warning" in r
+
+    asyncio.run(scenario())
+
+
+def test_signal_done_after_releasing_all_locks_is_clean():
+    """Released all locks → done, not premature — even with no tracked terminal.
+
+    This is the case the old state-machine gate got wrong: an agent finishes all
+    coordination (releases its locks) but its protocol tail is domain work, so the
+    tracker never reaches a terminal state. Judging on locks gets it right.
+    """
+    async def scenario():
+        coord = _make_coord()
+        a = CoordToolDispatcher(coord, "A")
+        await a.dispatch("acquire_lock", {"lock_id": "lock1"})
+        await a.dispatch("release_lock", {"lock_id": "lock1"})
+        r = await a.dispatch("signal_done", {})
+        assert r["status"] == "done" and a.premature_done is False
 
     asyncio.run(scenario())
 
@@ -216,3 +228,28 @@ def test_schema_conversion_and_allowed_names():
     assert "mcp__tracefix__acquire_lock" in names
     assert "mcp__tracefix__signal_done" in names
     assert len(names) == len(COORD_TOOL_SCHEMAS)
+
+
+def test_run_result_exposes_monitoring_fields():
+    """SdkRunResult surfaces the monitor's conclusions (#3); cli prints them.
+
+    Otherwise the monitor runs but leaves no record — a hard gap for a
+    monitoring runtime.
+    """
+    from tracefix.runtime.sdk_adapter.orchestrator import SdkRunResult
+    from tracefix.runtime.sdk_adapter.cli import _print_result
+
+    # defaults: empty, present
+    r0 = SdkRunResult(success=True, agent_results=[], duration=1.0)
+    assert r0.state_violations == [] and r0.premature_dones == []
+
+    # populated: carried through + printable without error
+    r1 = SdkRunResult(
+        success=False, agent_results=[], duration=2.0,
+        state_violations=[{"agent": "A", "state": "s1",
+                           "operation": "send", "args": {"channel": "c"}}],
+        premature_dones=["B"],
+    )
+    assert len(r1.state_violations) == 1 and r1.premature_dones == ["B"]
+    _print_result(r0)
+    _print_result(r1)

@@ -12,6 +12,7 @@ trace can flow into the existing result-saver / visualizer.
 
 from __future__ import annotations
 
+import asyncio
 import time
 
 from tracefix.runtime.sdk_adapter.types import AgentResult
@@ -67,20 +68,38 @@ async def run_sdk_agent(
     status = "incomplete"
     error: str | None = None
 
-    try:
-        async for message in query(prompt=_KICKOFF, options=options):
-            if verbose and isinstance(message, AssistantMessage):
-                import sys
-                for block in message.content:
-                    if isinstance(block, ToolUseBlock):
-                        print(f"  [{agent_id}] sdk tool_use: {block.name}",
-                              file=sys.stderr)
-            if dispatcher.done:
-                # Agent called signal_done successfully — protocol complete.
-                status = "completed"
-    except Exception as e:  # noqa: BLE001 — record and report, don't crash the run
-        error = f"{type(e).__name__}: {e}"
-        status = "error"
+    # Retry the SDK query on failure ONLY while the agent has made no progress
+    # (e.g. an Anthropic/OpenAI 429/529 on the first turn — surfaced by the CLI
+    # as is_error=True + subtype="success"). Retrying after progress would re-run
+    # already-executed tool calls and corrupt coordination state, so we never do.
+    max_query_retries = 2
+    attempt = 0
+    while True:
+        try:
+            async for message in query(prompt=_KICKOFF, options=options):
+                if verbose and isinstance(message, AssistantMessage):
+                    import sys
+                    for block in message.content:
+                        if isinstance(block, ToolUseBlock):
+                            print(f"  [{agent_id}] sdk tool_use: {block.name}",
+                                  file=sys.stderr)
+                if dispatcher.done:
+                    # Agent called signal_done successfully — protocol complete.
+                    status = "completed"
+            break  # query finished normally
+        except Exception as e:  # noqa: BLE001 — record and report, don't crash the run
+            if not dispatcher.trace and attempt < max_query_retries:
+                attempt += 1
+                if verbose:
+                    import sys
+                    print(f"  [{agent_id}] sdk query failed ({type(e).__name__}); "
+                          f"no progress yet — retry {attempt}/{max_query_retries}",
+                          file=sys.stderr)
+                await asyncio.sleep(2 ** attempt)  # backoff: 2s, 4s
+                continue
+            error = f"{type(e).__name__}: {e}"
+            status = "error"
+            break
 
     if dispatcher.done and status != "error":
         status = "completed"

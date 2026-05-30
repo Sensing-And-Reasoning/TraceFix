@@ -30,6 +30,19 @@ def _print_result(result) -> None:
         print(f"  {r.agent_id}: {r.steps} tool calls, {r.status}, {r.duration:.1f}s"
               + (f" — {r.error}" if r.error else ""))
 
+    # Monitoring conclusions — what the protocol monitor actually observed.
+    print("\n=== Monitoring ===")
+    sv = getattr(result, "state_violations", [])
+    pd = getattr(result, "premature_dones", [])
+    print(f"  state-machine violations: {len(sv)}")
+    for v in sv:
+        print(f"    ⚠ {v.get('agent')} @ {v.get('state')}: "
+              f"{v.get('operation')}({v.get('args')})")
+    if pd:
+        print(f"  premature signal_done: {', '.join(pd)}")
+    if not sv and not pd:
+        print("  clean — no protocol violations, no premature termination")
+
     print("\n=== Tool Call Trace ===")
     for r in result.agent_results:
         print(f"--- {r.agent_id} ({r.status}, {r.steps} steps, {r.duration:.1f}s) ---")
