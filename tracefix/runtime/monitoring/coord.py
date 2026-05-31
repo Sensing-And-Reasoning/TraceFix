@@ -298,6 +298,17 @@ class CoordinationContext:
                 except asyncio.TimeoutError:
                     pass  # loop back for one final check
 
+    async def get_held_locks(self, agent_id: str) -> list[str]:
+        """Lock resources currently held by ``agent_id``.
+
+        Replaces consumers reaching into ``self.locks._locks`` directly (e.g. the
+        orphan-lock check at signal_done in sdk_adapter/dispatch.py), so the
+        coordination interface is uniform across the in-process context and the
+        network CoordClient — see tracefix.runtime.coordination.CoordBackend.
+        """
+        return [lid for lid, holder in self.locks._locks.items()
+                if holder == agent_id]
+
 
 # ---------------------------------------------------------------------------
 # Tool schemas for OpenAI function calling

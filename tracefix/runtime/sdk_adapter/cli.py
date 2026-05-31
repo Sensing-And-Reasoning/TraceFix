@@ -63,6 +63,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         difficulty=args.difficulty,
         tool_time=args.tool_time,
         seed=args.seed,
+        coord_url=args.coord_url,
     )
     try:
         result = asyncio.run(orch.run(timeout=args.timeout))
@@ -93,6 +94,11 @@ def main() -> None:
     p_run.add_argument("--timeout", type=float, default=180.0,
                        help="Global timeout in seconds (default: 180)")
     p_run.add_argument("--verbose", action="store_true")
+    p_run.add_argument("--coord-url", default=None,
+                       help="Distributed mode: URL of a running CoordinationService "
+                            "(e.g. http://127.0.0.1:8780). Each agent talks to it via "
+                            "a CoordClient instead of a shared in-process context. "
+                            "Start the service with `python -m tracefix.runtime.coordination`.")
     # Sim failure injection (scenarios 12-16), mirrors the monitoring CLI.
     p_run.add_argument("--scenario", type=int, default=None)
     p_run.add_argument("--difficulty", type=int, default=1)

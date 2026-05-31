@@ -108,8 +108,7 @@ class CoordToolDispatcher:
         # *coordination* but still has domain work to do. Locks are the right
         # signal: released everything → done; still holding → flagged.
         if name == "signal_done":
-            held = [lid for lid, holder in self.coord.locks._locks.items()
-                    if holder == agent_id]
+            held = await self.coord.get_held_locks(agent_id)
             self.done = True
             result = {"status": "done", "agent": agent_id}
             if held:

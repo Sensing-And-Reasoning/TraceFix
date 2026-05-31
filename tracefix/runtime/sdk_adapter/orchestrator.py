@@ -31,6 +31,7 @@ from tracefix.runtime.sdk_adapter.mcp_server import (
 )
 from tracefix.runtime.sdk_adapter.sdk_runner import run_sdk_agent
 from tracefix.runtime.sdk_adapter.types import AgentResult
+from tracefix.runtime.coordination.client import CoordClient
 
 _DEFAULT_BUILTINS = ["Read", "Write", "Edit"]
 
@@ -87,6 +88,7 @@ class SdkOrchestrator:
         difficulty: int = 1,
         tool_time: float | None = None,
         seed: int | None = None,
+        coord_url: str | None = None,
     ):
         self.task_id = task_id
         self.workspace = Path(workspace)
@@ -98,6 +100,9 @@ class SdkOrchestrator:
         self.difficulty = difficulty
         self.tool_time = tool_time
         self.seed = seed
+        # When set, each agent talks to a remote CoordinationService via a
+        # CoordClient instead of sharing one in-process CoordinationContext.
+        self.coord_url = coord_url
         self.sim = None
 
     # -- workspace helpers ---------------------------------------------------
@@ -151,14 +156,17 @@ class SdkOrchestrator:
     async def run(self, timeout: float = 180.0) -> SdkRunResult:
         ir = _load_json(self.workspace / "ir.json")
 
-        monitor = ProtocolMonitor(ir)
-
+        # Coordination backend. Distributed mode (coord_url set): each agent gets
+        # its own CoordClient to a remote CoordinationService, where the monitor +
+        # tracker live. In-process mode (default): one shared CoordinationContext.
         tracker = None
-        states_path = self.workspace / "states.json"
-        if states_path.exists():
-            tracker = StateTracker(_load_json(states_path))
-
-        coord = CoordinationContext(ir, monitor, tracker=tracker)
+        coord = None
+        if not self.coord_url:
+            monitor = ProtocolMonitor(ir)
+            states_path = self.workspace / "states.json"
+            if states_path.exists():
+                tracker = StateTracker(_load_json(states_path))
+            coord = CoordinationContext(ir, monitor, tracker=tracker)
 
         tool_registry = self._load_domain_tools()
 
@@ -174,8 +182,11 @@ class SdkOrchestrator:
             schemas = (flag_only_send_schemas(list(COORD_TOOL_SCHEMAS))
                        + list(domain_schemas))
 
+            agent_coord = (CoordClient(self.coord_url, agent_id)
+                           if self.coord_url else coord)
             dispatcher = CoordToolDispatcher(
-                coord, agent_id, tool_registry=tool_registry, verbose=self.verbose)
+                agent_coord, agent_id, tool_registry=tool_registry,
+                verbose=self.verbose)
             mcp_server = build_agent_mcp_server(dispatcher, schemas)
             allowed = allowed_tool_names(schemas, SERVER_NAME) + list(self.builtins)
 
@@ -220,7 +231,14 @@ class SdkOrchestrator:
         # monitor's *record* of protocol-conformance, which would otherwise be
         # discarded when the run ends.
         state_violations = []
-        if tracker is not None:
+        if self.coord_url:
+            # Distributed: the tracker lives in the service — fetch its record.
+            try:
+                mon = await CoordClient(self.coord_url, "_orchestrator").fetch_monitoring()
+                state_violations = mon.get("state_violations", [])
+            except Exception:  # noqa: BLE001 — monitoring is best-effort
+                pass
+        elif tracker is not None:
             for v in tracker.violations:
                 state_violations.append({
                     "agent": getattr(v, "agent", None),
@@ -228,6 +246,7 @@ class SdkOrchestrator:
                     "operation": getattr(v, "operation", None),
                     "args": getattr(v, "args", None),
                 })
+        # premature_dones is client-side (the dispatcher's lock check) — always available.
         premature_dones = [aid for (aid, disp) in tasks.values()
                            if getattr(disp, "premature_done", False)]
 
