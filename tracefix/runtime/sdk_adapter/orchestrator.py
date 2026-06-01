@@ -66,6 +66,7 @@ class SdkRunResult:
     # Monitoring conclusions (otherwise the monitor runs but leaves no record):
     state_violations: list = field(default_factory=list)  # StateTracker soft violations
     premature_dones: list = field(default_factory=list)   # agents that signal_done'd early
+    corrections_exceeded: list = field(default_factory=list)  # agents that hit the correction cap
 
 
 def _load_json(path: Path) -> dict:
@@ -118,7 +119,21 @@ class SdkOrchestrator:
         return path.read_text() + _COORD_FOOTER
 
     def _load_domain_tools(self):
-        """Auto-discover the benchmark sim + tools (best-effort, same as monitoring)."""
+        """Domain tools, in priority order:
+        1. a workspace-local ``tools.json`` (custom task — schema-only registry);
+        2. the benchmark sim + tools for ``task_id``;
+        3. ``None`` — the SDK builtins (Read/Write/Edit/Bash) ARE the domain layer.
+        """
+        ws_tools = self.workspace / "tools.json"
+        if ws_tools.exists():
+            try:
+                from benchmark.tools import ToolRegistry
+                if self.verbose:
+                    print(f"[sdk] using workspace tools.json: {ws_tools}")
+                return ToolRegistry.from_file(ws_tools)  # schema-only (no sim)
+            except Exception as exc:  # noqa: BLE001
+                if self.verbose:
+                    print(f"[sdk] failed to load workspace tools.json: {exc}")
         try:
             import importlib
             from benchmark.tools import load_tools, ToolConfig
@@ -166,7 +181,7 @@ class SdkOrchestrator:
             states_path = self.workspace / "states.json"
             if states_path.exists():
                 tracker = StateTracker(_load_json(states_path))
-            coord = CoordinationContext(ir, monitor, tracker=tracker)
+            coord = CoordinationContext(ir, monitor, tracker=tracker, correction=True)
 
         tool_registry = self._load_domain_tools()
 
@@ -249,7 +264,10 @@ class SdkOrchestrator:
         # premature_dones is client-side (the dispatcher's lock check) — always available.
         premature_dones = [aid for (aid, disp) in tasks.values()
                            if getattr(disp, "premature_done", False)]
+        corrections_exceeded = [aid for (aid, disp) in tasks.values()
+                                if getattr(disp, "correction_limit_exceeded", False)]
 
         return SdkRunResult(
             success=success, agent_results=results, duration=duration,
-            state_violations=state_violations, premature_dones=premature_dones)
+            state_violations=state_violations, premature_dones=premature_dones,
+            corrections_exceeded=corrections_exceeded)

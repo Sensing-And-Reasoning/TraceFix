@@ -17,7 +17,8 @@ import asyncio
 from dataclasses import dataclass
 
 from tracefix.runtime.enforcement.store import MessageStore, LockStore, CounterStore
-from tracefix.runtime.monitoring.monitor import ProtocolMonitor, ProtocolViolation
+from tracefix.runtime.monitoring.monitor import (
+    ProtocolMonitor, ProtocolViolation, StateGuidanceError)
 
 # Default timeout for coordination operations (seconds)
 _DEFAULT_TIMEOUT = 30.0
@@ -27,13 +28,18 @@ class CoordinationContext:
     """Shared coordination state with async operations for agents."""
 
     def __init__(self, ir: dict, monitor: ProtocolMonitor, tracker=None,
-                 event_bus=None):
+                 event_bus=None, correction: bool = False):
         self.messages = MessageStore()
         self.locks = LockStore()
         self.counters = CounterStore()
         self.monitor = monitor
         self.tracker = tracker
         self.event_bus = event_bus
+        # When True, an out-of-order coordination op is BLOCKED (pre-effect) and
+        # raised as StateGuidanceError with the legal next actions, instead of
+        # being soft-recorded after the fact. Off by default so bare contexts
+        # (and existing tests) keep today's behavior.
+        self.correction = correction
 
         # Track which resource IDs are locks vs counters
         self._lock_ids: set[str] = set()
@@ -72,6 +78,51 @@ class CoordinationContext:
         }
         # Global condition for waking receive_any waiters on any send
         self._any_send_cond = asyncio.Condition()
+
+    def _guard(self, agent_id: str, op_type: str, op_args: dict) -> None:
+        """Pre-check the state machine; raise StateGuidanceError if the op is
+        out of order. No-op unless correction mode is on and a tracker exists.
+
+        Synchronous + read-only (``check_op`` snapshots/restores), so it runs
+        atomically before the operation's effect/await.
+        """
+        if not (self.correction and self.tracker):
+            return
+        ok, legal = self.tracker.check_op(agent_id, op_type, op_args)
+        if not ok:
+            raise StateGuidanceError(
+                agent_id, op_type, op_args, legal,
+                context=self._situational_context(agent_id, op_type, op_args))
+
+    def _situational_context(self, agent_id: str, op_type: str,
+                             op_args: dict) -> str:
+        """Best-effort hint from current store state to aid recovery."""
+        if op_type == "acquire":
+            res = op_args.get("resource")
+            holder = self.locks._locks.get(res) if res in self._lock_ids else None
+            if holder and holder != "FREE":
+                return f"{res} is currently held by {holder}"
+        # Pending messages the agent may need to receive first.
+        waiting = [ch for ch in self.monitor._receive_whitelist.get(agent_id, set())
+                   if self.messages._channels.get(ch)]
+        if waiting:
+            return f"unread message(s) waiting on channel(s): {', '.join(sorted(waiting))}"
+        return ""
+
+    def _guard_any(self, agent_id: str, channel_ids: list[str]) -> None:
+        """Guard a multi-channel poll/receive_any: legal iff at least one of the
+        polled channels is a receivable channel at the agent's current state."""
+        if not (self.correction and self.tracker):
+            return
+        legal = self.tracker.legal_actions(agent_id)
+        legal_recv = {h.get("channel") for h in legal if h.get("op") == "receive"}
+        if legal_recv & set(channel_ids):
+            return
+        # None of the polled channels is receivable now — record one violation + block.
+        self.tracker.check_op(agent_id, "receive", {"channel": channel_ids[0]})
+        raise StateGuidanceError(
+            agent_id, "receive", {"channel": ",".join(channel_ids)}, legal,
+            context=self._situational_context(agent_id, "receive", {}))
 
     async def _track_and_emit(self, agent_id: str, op_type: str, **kwargs):
         """Dispatch to tracker and emit state.transition / state.violation events.
@@ -128,6 +179,7 @@ class CoordinationContext:
 
         if resource_id not in self._lock_ids and resource_id not in self._counter_ids:
             raise ProtocolViolation(f"Unknown resource '{resource_id}'")
+        self._guard(agent_id, "acquire", {"resource": resource_id})
 
         loop = asyncio.get_event_loop()
         deadline = loop.time() + timeout
@@ -166,6 +218,7 @@ class CoordinationContext:
     async def release_lock(self, resource_id: str, agent_id: str) -> dict:
         """Release a resource (Lock or Counter). Wakes waiting acquirers."""
         self.monitor.validate_release(agent_id, resource_id)
+        self._guard(agent_id, "release", {"resource": resource_id})
         await self._track_and_emit(agent_id, "release", resource_id=resource_id)
 
         if resource_id in self._lock_ids:
@@ -189,6 +242,7 @@ class CoordinationContext:
                    agent_id: str, body: str = "") -> dict:
         """Send a labeled message. Non-blocking (unbounded FIFO)."""
         self.monitor.validate_send(agent_id, channel_id, label)
+        self._guard(agent_id, "send", {"channel": channel_id, "label": label})
         await self._track_and_emit(agent_id, "send", channel_id=channel_id, label=label)
         self.messages.send(channel_id, label, agent_id, body=body)
         cond = self._channel_conds[channel_id]
@@ -210,6 +264,7 @@ class CoordinationContext:
         or {"status": "timeout"} if no message within timeout seconds.
         """
         self.monitor.validate_receive(agent_id, channel_id)
+        self._guard(agent_id, "receive", {"channel": channel_id})
         loop = asyncio.get_event_loop()
         deadline = loop.time() + timeout
         cond = self._channel_conds[channel_id]
@@ -243,6 +298,7 @@ class CoordinationContext:
         """
         for ch_id in channel_ids:
             self.monitor.validate_receive(agent_id, ch_id)
+        self._guard_any(agent_id, channel_ids)
 
         for ch_id in channel_ids:
             msgs = self.messages._channels.get(ch_id, [])
@@ -268,6 +324,7 @@ class CoordinationContext:
         """
         for ch_id in channel_ids:
             self.monitor.validate_receive(agent_id, ch_id)
+        self._guard_any(agent_id, channel_ids)
 
         loop = asyncio.get_event_loop()
         deadline = loop.time() + timeout

@@ -17,7 +17,7 @@ import asyncio
 import json
 import sys
 
-from tracefix.runtime.monitoring.monitor import ProtocolViolation
+from tracefix.runtime.monitoring.monitor import ProtocolViolation, StateGuidanceError
 
 # Methods on CoordinationContext exposed over RPC (the CoordBackend surface).
 _RPC_METHODS = frozenset({
@@ -126,6 +126,10 @@ class CoordinationService:
         fn = getattr(self.coord, name)
         try:
             result = await fn(**args)
+        except StateGuidanceError as e:  # subclass — must precede ProtocolViolation
+            result = {"status": "error", "error": "out_of_order",
+                      "message": str(e), "legal_actions": e.legal_actions,
+                      "hint": e.context}
         except ProtocolViolation as e:
             result = {"status": "error", "message": f"Protocol violation: {e}"}
         except Exception as e:  # noqa: BLE001

@@ -13,6 +13,29 @@ class ProtocolViolation(Exception):
     """Raised when an agent attempts an operation not allowed by the IR."""
 
 
+class StateGuidanceError(ProtocolViolation):
+    """A coordination op that is illegal at the agent's CURRENT state (out of
+    order), carrying corrective guidance.
+
+    Subclasses ``ProtocolViolation`` so existing ``except ProtocolViolation``
+    handlers still catch it; consumers that want the guidance read the extra
+    attributes (``legal_actions``, ``context``) or rebuild a rich message via
+    ``tracefix.runtime.monitoring.correction.corrective_result``.
+    """
+
+    def __init__(self, agent_id: str, op_type: str, op_args: dict,
+                 legal_actions: list[dict], context: str = ""):
+        self.agent_id = agent_id
+        self.op_type = op_type
+        self.op_args = op_args
+        self.legal_actions = legal_actions
+        self.context = context
+        target = op_args.get("resource") or op_args.get("channel") or ""
+        super().__init__(
+            f"Agent '{agent_id}' cannot {op_type} '{target}' at its current "
+            f"protocol step (out of order).")
+
+
 @dataclass
 class TraceEntry:
     agent: str

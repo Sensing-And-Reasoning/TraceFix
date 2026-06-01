@@ -35,7 +35,7 @@ async def _serve(args: argparse.Namespace) -> None:
     if states_path.exists():
         tracker = StateTracker(_load_json(states_path))
 
-    coord = CoordinationContext(ir, monitor, tracker=tracker)
+    coord = CoordinationContext(ir, monitor, tracker=tracker, correction=True)
     service = CoordinationService(coord, host=args.host, port=args.port,
                                   verbose=args.verbose)
     await service.start()

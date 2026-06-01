@@ -119,6 +119,17 @@ do NOT route through a central coordinator unless the task says so
 2. Assemble the IR (agents, resources, channels) and write `ir.json` via `write_file`
 3. Call `compile_scaffold()` to generate Protocol.tla with process stubs + macros
 
+### Phase 1.5: Coordination Plan + Self-Critique (do this before writing PlusCal)
+
+Before filling in any PlusCal, write a per-agent **coordination plan** to `notes/plan.md`: an \
+ordered step outline for each agent (receive / send <label> / acquire / release / domain action \
+(+can_fail) / branch / retry-loop → step N / done). Then **critique it against the task \
+description** using `think()` — check that every shared resource has an acquire+release on each \
+agent that touches it, every communication flow has a matching send and receive, every ordering \
+constraint is gated by a receive/acquire, and every `can_fail` action has a recovery branch. \
+Fix the plan first; it is far cheaper to repair here than via a TLC counterexample. The PlusCal \
+in Phase 2 should then encode this plan faithfully.
+
 ### Phase 2: Write PlusCal Process Bodies
 
 For each agent process in Protocol.tla, replace the `skip` placeholder with PlusCal code \

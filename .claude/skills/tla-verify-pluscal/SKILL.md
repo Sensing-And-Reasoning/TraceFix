@@ -89,6 +89,41 @@ This hazard table directly feeds into Steps 2–3 below.
 1. Assemble the IR (agents, resources, channels) and write `ir.json` via Write tool
 2. Run `tla-verify-pluscal scaffold ir.json` to generate Protocol.tla with process stubs + macros and Protocol.cfg
 
+### Phase 1.5: Coordination Plan (review gate — do NOT skip)
+
+Before writing any PlusCal, produce a **coordination plan**: a per-agent, human-readable
+step outline anyone can review WITHOUT knowing TLA+. This catches semantic errors (wrong
+topology, missing failure path, wrong order) while they are still cheap to fix — before the
+PlusCal + TLC round, which is the most common source of wasted effort.
+
+Write `plan.md` (Write tool), one block per agent. Each step is one line tagged with its type:
+- `[receive]` / `[send <label>]` — a coordination message
+- `[lock]` / `[unlock]` — acquire / release a resource
+- `[domain: tool_name(...)]` — real work (becomes a `skip` label); add `, can_fail` if it can fail
+- `[branch ...]` / `[retry loop → step N]` — a decision or recovery loop
+- `[done]` — terminal
+
+Example (one agent):
+```
+Agent: DBA   shares: PROD_DB(lock)   listens: oncall_to_dba(migrate)   notifies: dba_to_oncall(migrated)
+  1. [receive] migrate ← ONCALL
+  2. [lock] acquire PROD_DB
+  3. [domain: apply_migration()]
+  4. [domain: verify_schema(), can_fail]
+       ├─ clean  → 5
+       └─ failed → [domain: rollback_migration()] → [retry loop → 4]
+  5. [unlock] release PROD_DB ; [send migrated] → ONCALL
+  6. [done]
+```
+
+See [references/coordination-plan.md](references/coordination-plan.md) for the full format
+and the step-type → PlusCal mapping.
+
+**Review gate**: present `plan.md` to the user and get confirmation (or corrections) BEFORE
+Phase 2. Only proceed once approved. (Running head-less with no user? Critique the plan against
+`description.md` yourself — verify every hazard, channel, ordering constraint, and failure path
+is represented — then proceed.)
+
 ### Phase 2: Write PlusCal Process Bodies
 
 1. Read the generated Protocol.tla to see the scaffold
@@ -118,6 +153,11 @@ See [references/pluscal-guide.md](references/pluscal-guide.md) for syntax and pa
     - Every `skip` label comment must name a specific tool call from `tools.json` (see anti-pattern #13) — vague comments like `\* investigation` or `\* do work` are not sufficient
 
 11. **Revision loop fidelity check**: if the task description specifies an open-ended revision process ("until accepted", "as many times as needed", "can resubmit"), verify the PlusCal uses `goto` to loop back to the submission label — NOT a fixed `either/or` with one revision branch that then `goto done`. TLC does NOT require explicit loop bounds: cycle detection via state identity handles loops, and `ChannelBound` (default 3) caps channel depth to keep the state space finite. Artificially bounding an open loop to one revision changes the protocol semantics and will conflict with runtime scenarios that exercise multiple revision rounds (see anti-pattern #17).
+
+12. **Terminal-state check**: every process ends by reaching its `*_done:` label (the scaffold
+    now generates one per agent) — via fall-through or `goto`. A process that ends on an action
+    (a release/send) instead leaves its agent with NO terminal state in `states.json`, which the
+    runtime needs; keep the `*_done:` label and make sure it is reachable.
 
 Fix any gaps found BEFORE running verification.
 
@@ -356,6 +396,7 @@ User: /tla-verify-pluscal  (workspace: agent_workspace/3E)
 
 Phase 1  → analyze description.md → write ir.json (3 agents, 2 locks, 3 channels)
          → tla-verify-pluscal scaffold ir.json → Protocol.tla + Protocol.cfg
+Phase 1.5→ write plan.md (per-agent step outline) → user reviews / approves
 
 Phase 2  → fill PlusCal process bodies for each agent
 Phase 2.5→ semantic fidelity check — all 11 items pass
@@ -378,6 +419,7 @@ User: /tla-verify-pluscal  (workspace: workspace/my_task, description provided i
 
 Phase 1  → identify 2 agents, 1 lock, 2 channels → write ir.json
          → scaffold → Protocol.tla
+Phase 1.5→ plan.md → review
 
 Phase 2  → fill process bodies
 Phase 3  → tla-verify-pluscal verify . → PASS on first attempt

@@ -26,6 +26,7 @@ class RunResult:
     duration: float
     error: str | None = None
     state_violations: list = field(default_factory=list)
+    corrections_exceeded: list = field(default_factory=list)  # agents that hit the correction cap
 
 
 _ROOT = Path(__file__).resolve().parent.parent
@@ -128,7 +129,8 @@ class RuntimeB:
             webbrowser.open(url)
 
         # 3b. Create CoordinationContext (after event_bus is available)
-        coord = CoordinationContext(ir, monitor, tracker=tracker, event_bus=event_bus)
+        coord = CoordinationContext(ir, monitor, tracker=tracker, event_bus=event_bus,
+                                    correction=True)
         self._coord = coord
 
         # 4. Load domain tools (optional, with fast config for runtime)
@@ -283,6 +285,8 @@ class RuntimeB:
                     agent_results=results,
                     duration=dur,
                     state_violations=tracker.violations if tracker else [],
+                    corrections_exceeded=[r.agent_id for r in results
+                                          if r.status == "correction_failed"],
                 )
 
         except Exception as e:

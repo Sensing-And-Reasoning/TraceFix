@@ -175,6 +175,11 @@ def generate_pluscal_scaffold(ir_data: dict, *, channel_bound: int = 3, depth_bo
         emit("{")
         emit(f"  {label_prefix}_start:")
         emit(f"    skip; \\* TODO: replace with {aid}'s protocol logic")
+        # Explicit terminal label so every agent has a clean terminal state in
+        # states.json. Fill in _start's body above and end by reaching _done
+        # (fall through or `goto {label_prefix}_done`).
+        emit(f"  {label_prefix}_done:")
+        emit("    skip;")
         emit("}")
         emit()
 

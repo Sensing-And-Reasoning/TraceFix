@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TraceFix tools.json — domain-tool contract",
+  "description": "The domain tools an agent may call at runtime. OpenAI function-calling schema plus two TraceFix extensions (agent_ids, can_fail). User-providable for custom tasks; when absent, the runtime's SDK builtins (Read/Write/Edit/Bash) are the domain layer.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["function"],
+    "additionalProperties": true,
+    "properties": {
+      "type": {"const": "function"},
+      "function": {
+        "type": "object",
+        "required": ["name"],
+        "additionalProperties": true,
+        "properties": {
+          "name": {"type": "string", "description": "Tool name (used in skip-label comments and prompts)."},
+          "description": {"type": "string"},
+          "agent_ids": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Agent IDs allowed to call this tool. Empty array or absent = every agent may call it."
+          },
+          "can_fail": {
+            "type": "boolean",
+            "default": false,
+            "description": "If true, the tool may return a failure outcome — the protocol must model both outcomes (an either/or branch, plus a retry loop if recovery re-coordinates)."
+          },
+          "parameters": {
+            "type": "object",
+            "description": "OpenAI/JSON-Schema parameter object (type/properties/required)."
+          }
+        }
+      }
+    }
+  }
+}

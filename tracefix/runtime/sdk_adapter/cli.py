@@ -34,13 +34,16 @@ def _print_result(result) -> None:
     print("\n=== Monitoring ===")
     sv = getattr(result, "state_violations", [])
     pd = getattr(result, "premature_dones", [])
+    ce = getattr(result, "corrections_exceeded", [])
     print(f"  state-machine violations: {len(sv)}")
     for v in sv:
         print(f"    ⚠ {v.get('agent')} @ {v.get('state')}: "
               f"{v.get('operation')}({v.get('args')})")
     if pd:
         print(f"  premature signal_done: {', '.join(pd)}")
-    if not sv and not pd:
+    if ce:
+        print(f"  correction cap exceeded (honest failure): {', '.join(ce)}")
+    if not sv and not pd and not ce:
         print("  clean — no protocol violations, no premature termination")
 
     print("\n=== Tool Call Trace ===")

@@ -13,15 +13,22 @@ You are a per-agent prompt generator for multi-agent coordination systems. Your 
 
 ## Inputs
 
-A workspace directory containing (ALL required):
-- `ir.json` — IR specification (agents, resources, channels)
-- `states.json` — Per-agent state machine extracted by `tla-verify-pluscal extract-states`
-- `Protocol.tla` — Verified PlusCal source
-- `summary.json` — Repair tracking (`total_repairs`, error types)
-- `tools.json` — Domain tool schemas (from `benchmark/descriptions/{id}/tools.json`)
-- `description.md` — Task description (from `benchmark/descriptions/{id}/description.md`)
+A workspace directory containing:
+- `ir.json` — IR specification (agents, resources, channels) — **required**
+- `states.json` — Per-agent state machine from `tla-verify-pluscal extract-states` — **required**
+- `Protocol.tla` — Verified PlusCal source — **required**
+- `summary.json` — Repair tracking (`total_repairs`, error types) — **required**
+- `description.md` — Task description — **required**
+- `tools.json` — Domain tool schemas (OpenAI function schema + `agent_ids`/`can_fail`) — **optional**
 
-If the user provides a workspace path, look there for the first four files. Look for `tools.json` and `description.md` in `benchmark/descriptions/{id}/` where `{id}` matches the workspace directory name. If any required file is missing, ask the user for its location before proceeding.
+Look in the workspace directory first. For a **benchmark** task, `tools.json` and `description.md`
+also live in `benchmark/descriptions/{id}/` (where `{id}` matches the workspace dir name) — use
+those if not in the workspace. If a *required* file is missing, ask the user for its location.
+
+**Custom task with no `tools.json`:** the domain layer is the runtime's **SDK builtins**
+(`Read`/`Write`/`Edit`/`Bash`). Generate domain steps that instruct the agent to use those
+builtins (read/write files, run commands) rather than named domain tools, and skip the per-tool
+fidelity checks. The coordination contract (from `states.json`) is unchanged either way.
 
 ## Outputs
 
@@ -40,7 +47,7 @@ Read ALL required inputs before generating any prompts:
 2. Read `states.json` — per-agent state machines with `tool_hint` annotations
 3. Read `Protocol.tla` — the verified PlusCal source (for context)
 4. Read `summary.json` — note `total_repairs` and error types. If repairs were needed, prioritize Critical Rules that prevent the encountered error types when generating Runtime B prompts.
-5. Read `tools.json` — domain tool schemas; filter by `agent_ids` to get each agent's tools. Required for correct domain tool calls and parameter values in Step 2c.
+5. Read `tools.json` if present — domain tool schemas; filter by `agent_ids` to get each agent's tools, for correct domain tool calls + parameter values in Step 2c. **If absent (custom task)**, the domain layer is the SDK builtins (Read/Write/Edit/Bash) — instruct accordingly and skip per-tool fidelity checks.
 6. Read `description.md` — task description; required for semantic mapping of domain tool parameters in Step 2c.
 
 ### Step 2 — Generate Runtime B Prompts (do this FIRST)

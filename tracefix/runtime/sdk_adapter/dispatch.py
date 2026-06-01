@@ -18,7 +18,9 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from tracefix.runtime.monitoring.monitor import ProtocolViolation
+from tracefix.runtime.monitoring.monitor import ProtocolViolation, StateGuidanceError
+from tracefix.runtime.monitoring.correction import (
+    corrective_result, describe_hint, CORRECTION_CAP)
 from tracefix.runtime.sdk_adapter.types import ToolCall
 
 # The 7 coordination tool names (must match COORD_TOOL_SCHEMAS in coord.py and
@@ -55,6 +57,11 @@ class CoordToolDispatcher:
 
         self.done: bool = False
         self.premature_done: bool = False
+        # Set when the agent makes CORRECTION_CAP consecutive out-of-order
+        # coordination attempts at one step without recovering — the run then
+        # fails honestly (never loops forever, never fakes success).
+        self.correction_limit_exceeded: bool = False
+        self._local_corrections: int = 0  # distributed-mode streak (no local tracker)
         self.trace: list[ToolCall] = []
         self._round: int = 0
 
@@ -121,12 +128,24 @@ class CoordToolDispatcher:
         # --- coordination tools: forward to CoordinationContext (all async) ---
         if name in COORD_TOOL_NAMES:
             try:
-                return await self._run_coord(name, args)
+                result = await self._run_coord(name, args)
+            except StateGuidanceError as e:  # out-of-order: guide the agent back
+                return self._handle_correction(
+                    e.op_type, e.op_args, e.legal_actions, e.context)
             except ProtocolViolation as e:
                 return {"status": "error", "message": f"Protocol violation: {e}"}
             except KeyError as e:
                 return {"status": "error",
                         "message": f"Missing required argument: {e}"}
+            # Distributed mode: the service returns the out-of-order error as a
+            # dict instead of raising — funnel it through the same handler.
+            if isinstance(result, dict) and result.get("error") == "out_of_order":
+                return self._handle_correction(
+                    name, args, result.get("legal_actions", []), result.get("hint", ""))
+            # Progress made — reset the distributed-mode correction streak.
+            if isinstance(result, dict) and result.get("status") != "error":
+                self._local_corrections = 0
+            return result
 
         # --- domain tools: forward to the benchmark ToolRegistry ---
         if self.tools is not None:
@@ -144,6 +163,29 @@ class CoordToolDispatcher:
             }
 
         return {"status": "error", "message": f"Unknown tool: {name}"}
+
+    def _handle_correction(self, op_type: str, op_args: dict,
+                           legal: list[dict], context: str) -> dict:
+        """Turn an out-of-order rejection into corrective guidance; trip honest
+        failure once the same step is missed ``CORRECTION_CAP`` times in a row."""
+        tracker = getattr(self.coord, "tracker", None)
+        if tracker is not None:               # in-process: authoritative streak
+            streak = tracker.correction_streak(self.agent_id)
+        else:                                  # distributed: local fallback
+            self._local_corrections += 1
+            streak = self._local_corrections
+        if streak >= CORRECTION_CAP:
+            self.correction_limit_exceeded = True
+            self.done = True  # end the agent; the runner maps this → "correction_failed"
+            do = ", ".join(describe_hint(h) for h in legal) or "signal_done()"
+            return {
+                "status": "error", "error": "correction_limit",
+                "message": (f"Stopped: {streak} consecutive out-of-order coordination "
+                            f"attempts at the same protocol step. This run will end as a "
+                            f"FAILURE. The correct next step was: {do}."),
+                "legal_actions": legal,
+            }
+        return corrective_result(op_type, op_args, legal, context, attempt=streak)
 
     async def _run_coord(self, name: str, args: dict[str, Any]) -> dict:
         agent_id = self.agent_id

@@ -15,7 +15,9 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from tracefix.runtime.monitoring.coord import CoordinationContext
-from tracefix.runtime.monitoring.monitor import ProtocolViolation
+from tracefix.runtime.monitoring.monitor import ProtocolViolation, StateGuidanceError
+from tracefix.runtime.monitoring.correction import (
+    corrective_result, describe_hint, CORRECTION_CAP)
 
 if TYPE_CHECKING:
     from tracefix.runtime.monitoring.event_bus import EventBus
@@ -70,6 +72,7 @@ class AgentRunner:
         self.event_bus = event_bus
         self.messages: list[dict] = []
         self.done = False
+        self.correction_limit_exceeded = False
         self._steps = 0
         self.trace: list[ToolCall] = []
         self._total_input_tokens: int = 0
@@ -164,15 +167,17 @@ class AgentRunner:
                         await self._execute_one_tool(tc, _round)
 
             dur = time.monotonic() - t0
+            final_status = ("correction_failed"
+                            if self.correction_limit_exceeded else "completed")
             ar = AgentResult(
-                self.config.agent_id, self._steps, "completed", dur,
+                self.config.agent_id, self._steps, final_status, dur,
                 trace=list(self.trace),
                 input_tokens=self._total_input_tokens,
                 output_tokens=self._total_output_tokens)
             if self.event_bus:
                 await self.event_bus.emit("agent.done", {
                     "agent_id": self.config.agent_id,
-                    "status": "completed", "steps": self._steps,
+                    "status": final_status, "steps": self._steps,
                     "duration": dur,
                     "input_tokens": self._total_input_tokens,
                     "output_tokens": self._total_output_tokens,
@@ -304,6 +309,25 @@ class AgentRunner:
                 else:
                     raise
 
+    def _handle_correction(self, op_type: str, op_args: dict,
+                           legal: list[dict], context: str) -> dict:
+        """Corrective guidance for an out-of-order op; honest failure after the cap."""
+        agent_id = self.config.agent_id
+        tracker = self.coord.tracker if self.coord else None
+        streak = tracker.correction_streak(agent_id) if tracker else 1
+        if streak >= CORRECTION_CAP:
+            self.correction_limit_exceeded = True
+            self.done = True  # end the agent; the run will report correction_failed
+            do = ", ".join(describe_hint(h) for h in legal) or "signal_done()"
+            return {
+                "status": "error", "error": "correction_limit",
+                "message": (f"Stopped: {streak} consecutive out-of-order coordination "
+                            f"attempts at the same protocol step. This run will end as a "
+                            f"FAILURE. The correct next step was: {do}."),
+                "legal_actions": legal,
+            }
+        return corrective_result(op_type, op_args, legal, context, attempt=streak)
+
     async def _execute_tool(self, tool_call) -> str:
         """Dispatch to coordination tool or domain tool."""
         name = tool_call.function.name
@@ -337,6 +361,11 @@ class AgentRunner:
                 elif name == "receive_any":
                     r = await self.coord.receive_any(
                         channel_ids=args["channel_ids"], agent_id=agent_id)
+            except StateGuidanceError as e:  # out-of-order: guide the agent back
+                r = self._handle_correction(
+                    e.op_type, e.op_args, e.legal_actions, e.context)
+                if self.config.verbose:
+                    print(f"  [{agent_id}] correction: {r['message']}")
             except ProtocolViolation as e:
                 r = {"status": "error", "message": f"Protocol violation: {e}"}
                 if self.config.verbose:

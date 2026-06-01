@@ -84,8 +84,10 @@ async def run_sdk_agent(
                             print(f"  [{agent_id}] sdk tool_use: {block.name}",
                                   file=sys.stderr)
                 if dispatcher.done:
-                    # Agent called signal_done successfully — protocol complete.
-                    status = "completed"
+                    # done set either by a clean signal_done or by the correction
+                    # cap (honest failure) — the latter must NOT read as completed.
+                    status = ("correction_failed"
+                              if dispatcher.correction_limit_exceeded else "completed")
             break  # query finished normally
         except Exception as e:  # noqa: BLE001 — record and report, don't crash the run
             if not dispatcher.trace and attempt < max_query_retries:
@@ -102,7 +104,8 @@ async def run_sdk_agent(
             break
 
     if dispatcher.done and status != "error":
-        status = "completed"
+        status = ("correction_failed"
+                  if dispatcher.correction_limit_exceeded else "completed")
 
     duration = time.time() - start
     return AgentResult(

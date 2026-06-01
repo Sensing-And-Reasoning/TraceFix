@@ -105,6 +105,56 @@ def cmd_scaffold(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_init(args: argparse.Namespace) -> int:
+    """Scaffold a custom-task workspace: description.md + ir.json stub (+ tools.json)."""
+    out = Path(args.dir)
+    out.mkdir(parents=True, exist_ok=True)
+    agents = [a.strip() for a in (args.agents or "").split(",") if a.strip()]
+
+    desc_path = out / "description.md"
+    if not desc_path.exists():
+        desc = args.task or (
+            "# <task title>\n\n"
+            "Describe the multi-agent coordination scenario in prose: the concurrent agents,\n"
+            "the shared resources they contend over, the ordering constraints between them, and\n"
+            "what happens on failure. TraceFix derives the protocol from this.\n")
+        desc_path.write_text(desc if desc.endswith("\n") else desc + "\n")
+
+    ir_path = out / "ir.json"
+    if not ir_path.exists():
+        ir = {
+            "agents": [{"id": a} for a in agents] or [{"id": "AGENT_A"}, {"id": "AGENT_B"}],
+            "resources": [],
+            "channels": [],
+        }
+        ir_path.write_text(json.dumps(ir, indent=2) + "\n")
+
+    if args.with_tools:
+        tools_path = out / "tools.json"
+        if not tools_path.exists():
+            template = [{
+                "type": "function",
+                "function": {
+                    "name": "do_work",
+                    "description": "Replace with a real domain tool (or delete this file to "
+                                   "use the runtime's SDK builtins as the domain layer).",
+                    "agent_ids": agents,
+                    "can_fail": False,
+                    "parameters": {"type": "object", "properties": {}, "required": []},
+                },
+            }]
+            tools_path.write_text(json.dumps(template, indent=2) + "\n")
+
+    print(f"OK — initialized custom workspace at {out}")
+    print("  - description.md  (edit: describe your scenario)")
+    print("  - ir.json         (edit: fill resources + channels"
+          f"{'' if agents else ' + agent ids'})")
+    if args.with_tools:
+        print("  - tools.json      (edit domain tools, or delete to use SDK builtins)")
+    print("Next: edit ir.json, then run: tla-verify-pluscal scaffold ir.json")
+    return 0
+
+
 # ---------------------------------------------------------------------------
 # attempt history helper
 # ---------------------------------------------------------------------------
@@ -335,6 +385,14 @@ def main():
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
+    # init
+    p_ini = sub.add_parser("init", help="Scaffold a custom-task workspace (description + ir stub)")
+    p_ini.add_argument("dir", help="Workspace directory to create")
+    p_ini.add_argument("--task", help="Task description text (else a template is written)")
+    p_ini.add_argument("--agents", help="Comma-separated agent IDs (e.g. ONCALL,DBA,RELEASER)")
+    p_ini.add_argument("--with-tools", action="store_true",
+                       help="Also write a tools.json template (omit to use SDK builtins)")
+
     # validate
     p_val = sub.add_parser("validate", help="Validate IR (agents/resources/channels)")
     p_val.add_argument("ir_json", help="Path to IR JSON file")
@@ -363,6 +421,7 @@ def main():
     args = parser.parse_args()
 
     handlers = {
+        "init": cmd_init,
         "validate": cmd_validate,
         "scaffold": cmd_scaffold,
         "verify": cmd_verify,

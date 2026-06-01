@@ -11,11 +11,21 @@ before a state transition fires.
 
 from __future__ import annotations
 
+import copy
 import logging
 import time
 from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
+
+
+def _dedupe_hints(hints) -> list[dict]:
+    """Order-preserving de-duplication of legal-action hint dicts."""
+    seen: list[dict] = []
+    for h in hints:
+        if h not in seen:
+            seen.append(h)
+    return seen
 
 
 @dataclass
@@ -212,6 +222,131 @@ class StateTracker:
                 if self._can_reach_terminal(agent_id, action["next_state"], visited):
                     return True
         return False
+
+    # --- Corrective guidance (read-only) ---
+
+    def legal_actions(self, agent_id: str) -> list[dict]:
+        """The coordination operations legal from the agent's current position.
+
+        Read-only. Each hint is e.g. ``{"op": "acquire", "resource": "PROD_DB"}``,
+        ``{"op": "send", "channel": "c", "label": "go"}``, or ``{"op": "done"}``
+        for a terminal state. Skip-resolved + guard-filtered; reflects pending /
+        candidate remaining ops when mid-compound-action. Used to turn a rejected
+        coordination call into "here is what you may legally do now".
+        """
+        if agent_id not in self._current:
+            return []
+        if agent_id in self._pending:
+            return _dedupe_hints(
+                self._op_hint(t, a) for t, a in self._pending[agent_id]["remaining"])
+        if agent_id in self._candidates:
+            hints: list[dict] = []
+            for cand in self._candidates[agent_id]:
+                if cand["remaining"]:
+                    t, a = cand["remaining"][0]
+                    hints.append(self._op_hint(t, a))
+            return _dedupe_hints(hints)
+
+        state_id = self._resolve_skip_chain(agent_id, self._current[agent_id])
+        actions = self._filter_actions_by_guard(
+            self._state_map.get(agent_id, {}).get(state_id, []))
+        if not actions:
+            return [{"op": "done"}]
+
+        hints = []
+        for action in actions:
+            if self._is_skip_action(action):
+                target = self._resolve_skip_chain(agent_id, action["next_state"])
+                target_actions = self._state_map.get(agent_id, {}).get(target, [])
+                if not target_actions:
+                    hints.append({"op": "done"})
+                for ta in self._filter_actions_by_guard(target_actions):
+                    hints.extend(self._action_op_hints(ta))
+            else:
+                hints.extend(self._action_op_hints(action))
+        return _dedupe_hints(hints)
+
+    def check_op(self, agent_id: str, op_type: str,
+                 op_args: dict) -> tuple[bool, list[dict]]:
+        """Read-only legality check: would this op match a legal action *now*?
+
+        Runs the real matching gate (``_try_match``) against a snapshot of the
+        agent's position, then restores the position — so there is zero logic
+        drift from the committing path. A miss still records a ``StateViolation``
+        (kept after restore) so the monitoring record is accurate; on a miss the
+        legal next actions are returned for corrective guidance.
+
+        MUST be called synchronously (no ``await`` between snapshot and restore);
+        ``coord.py`` calls it under its per-agent lock.
+        """
+        if agent_id not in self._current:
+            return False, []
+        snap = self._snapshot(agent_id)
+        ok = self._try_match(agent_id, op_type, op_args)
+        self._restore(agent_id, snap)  # restore position; keep any recorded violation
+        return ok, ([] if ok else self.legal_actions(agent_id))
+
+    def correction_streak(self, agent_id: str) -> int:
+        """Number of trailing violations for ``agent_id`` at its current state.
+
+        Resets to 0 once the agent makes a legal move (its current state changes),
+        so the dispatcher can cap *unrecovered* corrections at one position.
+        """
+        state_id = self._current.get(agent_id)
+        streak = 0
+        for v in reversed(self._violations):
+            if v.agent != agent_id:
+                continue
+            if v.current_state == state_id:
+                streak += 1
+            else:
+                break
+        return streak
+
+    # --- Snapshot / restore (for read-only check_op) ---
+
+    def _snapshot(self, agent_id: str) -> dict:
+        return {
+            "current": self._current.get(agent_id),
+            "pending": copy.deepcopy(self._pending.get(agent_id)),
+            "candidates": copy.deepcopy(self._candidates.get(agent_id)),
+            "counters": dict(self._counters),
+        }
+
+    def _restore(self, agent_id: str, snap: dict):
+        if snap["current"] is None:
+            self._current.pop(agent_id, None)
+        else:
+            self._current[agent_id] = snap["current"]
+        for store, key in ((self._pending, "pending"), (self._candidates, "candidates")):
+            if snap[key] is None:
+                store.pop(agent_id, None)
+            else:
+                store[agent_id] = snap[key]
+        self._counters.clear()
+        self._counters.update(snap["counters"])
+
+    @staticmethod
+    def _action_op_hints(action: dict) -> list[dict]:
+        """All observable coordination ops in an action, as readable hints."""
+        hints: list[dict] = []
+        for r in StateTracker._normalize_resource(action.get("acquire")):
+            hints.append({"op": "acquire", "resource": r})
+        for r in StateTracker._normalize_resource(action.get("release")):
+            hints.append({"op": "release", "resource": r})
+        for item in StateTracker._normalize_send_receive(action.get("send")):
+            hints.append({"op": "send", "channel": item["channel"],
+                          "label": item.get("label")})
+        for item in StateTracker._normalize_send_receive(action.get("receive")):
+            h = {"op": "receive", "channel": item["channel"]}
+            if item.get("label"):
+                h["label"] = item["label"]
+            hints.append(h)
+        return hints
+
+    @staticmethod
+    def _op_hint(op_type: str, op_args: dict) -> dict:
+        return {"op": op_type, **op_args}
 
     # --- Public on_* methods ---
 

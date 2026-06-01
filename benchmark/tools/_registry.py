@@ -42,14 +42,19 @@ class ToolRegistry:
         self._load()
 
     def _load(self):
-        schema_path = _TASKS_DIR / self.task_id / "tools.json"
+        self._load_path(_TASKS_DIR / self.task_id / "tools.json")
+
+    def _load_path(self, schema_path: Path):
         if not schema_path.exists():
-            raise FileNotFoundError(f"No schema file: {schema_path}")
+            raise FileNotFoundError(f"No tools.json: {schema_path}")
 
         with open(schema_path) as f:
             raw_schemas = json.load(f)
 
-        sim_tools: dict[str, Any] = self._sim.make_tools()
+        # Schema-only registry (custom task, sim=None): expose schemas for
+        # prompt-gen + tool declaration; domain work runs on the SDK builtins.
+        sim_tools: dict[str, Any] = (
+            self._sim.make_tools() if self._sim is not None else {})
 
         for entry in raw_schemas:
             fn_def = entry.get("function", entry)
@@ -61,12 +66,32 @@ class ToolRegistry:
 
             self._schemas.append(entry)
 
+            if self._sim is None:
+                continue
             if tool_name not in sim_tools:
                 raise KeyError(
                     f"Sim for task '{self.task_id}' does not implement tool '{tool_name}'. "
                     f"Available: {', '.join(sim_tools) or '(none)'}"
                 )
             self._tool_fns[tool_name] = sim_tools[tool_name]
+
+    @classmethod
+    def from_file(cls, tools_path, *, sim: Any = None,
+                  config: ToolConfig | None = None) -> "ToolRegistry":
+        """Build a registry from an arbitrary ``tools.json`` (e.g. a custom-task
+        workspace). With ``sim=None`` it is schema-only: ``openai_schemas`` works
+        (for prompt-gen + declaring tools to the harness), but there is nothing to
+        ``call`` — custom domain work runs on the runtime's SDK builtins instead.
+        """
+        obj = cls.__new__(cls)
+        obj.task_id = None
+        obj.config = config or ToolConfig()
+        obj._sim = sim
+        obj._schemas = []
+        obj._tool_agents = {}
+        obj._tool_fns = {}
+        obj._load_path(Path(tools_path))
+        return obj
 
     @property
     def tool_names(self) -> list[str]:
