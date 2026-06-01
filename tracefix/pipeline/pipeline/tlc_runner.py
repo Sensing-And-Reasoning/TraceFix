@@ -164,39 +164,23 @@ def _parse_tlc_output(raw_output: str, elapsed: float) -> TLCResult:
             stats=stats,
         )
 
-    # Check for successful completion
-    if "Model checking completed" in raw_output or "finished" in raw_output.lower():
-        # Also check there were no errors
-        if "Error" not in raw_output or "0 errors" in raw_output:
-            return TLCResult(
-                success=True,
-                raw_output=raw_output,
-                stats=stats,
-            )
+    # Positive success confirmation. A verifier must *prove* a pass, never infer
+    # one from the absence of error markers — a false "success" silently ships an
+    # unverified protocol. TLC prints this exact pair only on a clean run, so we
+    # require it before declaring success.
+    if "Model checking completed" in raw_output and (
+        "No error has been found" in raw_output or "0 errors" in raw_output
+    ):
+        return TLCResult(success=True, raw_output=raw_output, stats=stats)
 
-    # If we got states but no error, likely success
-    # But only if there's no "Error" in the output
-    if stats.get("states_generated", 0) > 0 and "Error" not in raw_output:
-        return TLCResult(
-            success=True,
-            raw_output=raw_output,
-            stats=stats,
-        )
-
-    # Fallback: check for explicit errors
-    if "Error" in raw_output:
-        return TLCResult(
-            success=False,
-            violation_type="error",
-            error_trace=_extract_error(raw_output),
-            raw_output=raw_output,
-            stats=stats,
-        )
-
+    # No recognized verdict and no positive completion signal. Fail closed:
+    # report an error rather than guessing success (the old heuristic — "states
+    # generated and no 'Error' substring" — could pass a truncated or unfamiliar
+    # TLC failure off as verified).
     return TLCResult(
         success=False,
         violation_type="error",
-        error_trace="Could not determine TLC result",
+        error_trace=_extract_error(raw_output) or "Could not determine TLC verdict from output.",
         raw_output=raw_output,
         stats=stats,
     )
@@ -212,9 +196,6 @@ def _extract_trace(raw_output: str) -> str:
             in_trace = True
         if in_trace:
             trace_lines.append(line)
-        if in_trace and line.strip() == "" and len(trace_lines) > 3:
-            # Check if we're past the trace
-            pass
     if trace_lines:
         return "\n".join(trace_lines)
     return raw_output
