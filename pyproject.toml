@@ -9,6 +9,15 @@ description = "TraceFix: TLA+-verified coordination protocols for LLM multi-agen
 requires-python = ">=3.11"
 dependencies = ["jsonschema"]
 
+[project.optional-dependencies]
+# Install with: pip install -e ".[test]"
+test = [
+    "pytest",
+    "pytest-asyncio",   # monitoring/tests/test_coord.py uses @pytest.mark.asyncio
+    "tree-sitter",       # extract-states + pluscal_parser tests
+    "tree-sitter-tlaplus",
+]
+
 [project.scripts]
 tla-verify-pluscal = "tracefix.cli.cli:main"
 

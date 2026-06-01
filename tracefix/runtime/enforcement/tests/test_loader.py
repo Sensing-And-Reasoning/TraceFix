@@ -11,6 +11,13 @@ from tracefix.runtime.enforcement.topology import build_topology
 _ROOT = next(p for p in Path(__file__).resolve().parents if (p / "pyproject.toml").exists())
 _EXP_DIR = _ROOT / "workspace" / "claude46_exp2"
 
+# These integration fixtures live in an experiment workspace that is NOT committed to
+# the repo. When it's absent (fresh checkout / CI), the integration tests skip — matching
+# the `test_all_33_tasks_*` guards below — instead of hard-failing on a missing fixture.
+_REQUIRES_EXP = pytest.mark.skipif(
+    not _EXP_DIR.exists(),
+    reason=f"experiment workspace not present: {_EXP_DIR}")
+
 # All 33 task IDs
 _ALL_TASKS = [
     f"{n}{d}"
@@ -23,6 +30,7 @@ _ALL_TASKS = [
 # Integration: load real task dirs and run through engine
 # ---------------------------------------------------------------------------
 
+@_REQUIRES_EXP
 class TestLoad3E:
     def test_load_and_run(self):
         ir = load_task(_EXP_DIR / "3E")
@@ -31,6 +39,7 @@ class TestLoad3E:
         assert result.steps > 0
 
 
+@_REQUIRES_EXP
 class TestLoad10H:
     def test_load_and_run(self):
         ir = load_task(_EXP_DIR / "10H")
@@ -486,9 +495,34 @@ def test_all_33_tasks_run(task_id):
 # Topology compatibility
 # ---------------------------------------------------------------------------
 
+@_REQUIRES_EXP
 class TestTopologyCompatible:
     def test_loaded_ir_works_with_topology(self):
         ir = load_task(_EXP_DIR / "3E")
         topo = build_topology(ir)
         assert topo.analysis.agent_count == 3
         assert topo.analysis.channel_count == 4
+
+
+# A committed example workspace (engine-format: ir.json + states.json), so the
+# enforcement load → run → topology path is exercised even on a fresh checkout
+# without the (uncommitted) experiment workspace above.
+_EXAMPLE = (_ROOT / "tracefix" / "runtime" / "sdk_adapter"
+            / "examples" / "mas_doc_report")
+
+
+@pytest.mark.skipif(not (_EXAMPLE / "states.json").exists(),
+                    reason=f"example workspace not present: {_EXAMPLE}")
+class TestLoadCommittedExample:
+    def test_loads_and_runs_through_engine(self):
+        ir = load_task(_EXAMPLE)
+        result = run_ir(ir, seed=42, timeout=10)
+        assert result.success, f"mas_doc_report failed: {result.error}"
+        assert result.steps > 0
+        assert len(ir["agents"]) == 3
+
+    def test_topology_builds(self):
+        ir = load_task(_EXAMPLE)
+        topo = build_topology(ir)
+        assert topo.analysis.agent_count == 3
+        assert topo.analysis.channel_count > 0
