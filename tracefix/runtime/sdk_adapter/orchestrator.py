@@ -250,6 +250,7 @@ class SdkOrchestrator:
                 model=self.model,
                 max_rounds=self.max_rounds,
                 verbose=self.verbose,
+                cwd=str(self.workspace.resolve()),
             )))
 
         start = time.time()

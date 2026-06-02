@@ -108,6 +108,10 @@ def cmd_scaffold(args: argparse.Namespace) -> int:
 def cmd_init(args: argparse.Namespace) -> int:
     """Scaffold a custom-task workspace: description.md + ir.json stub (+ tools.json)."""
     out = Path(args.dir)
+    # Bare name (no path separator) → default under the gitignored workspace/ root,
+    # keeping generated artifacts out of the repo. An explicit path is used as-is.
+    if out.parent == Path("."):
+        out = Path("workspace") / out
     out.mkdir(parents=True, exist_ok=True)
     agents = [a.strip() for a in (args.agents or "").split(",") if a.strip()]
 
@@ -151,7 +155,7 @@ def cmd_init(args: argparse.Namespace) -> int:
           f"{'' if agents else ' + agent ids'})")
     if args.with_tools:
         print("  - tools.json      (edit domain tools, or delete to use SDK builtins)")
-    print("Next: edit ir.json, then run: tla-verify-pluscal scaffold ir.json")
+    print(f"Next: edit {out}/ir.json, then run: tla-verify-pluscal scaffold {out}/ir.json")
     return 0
 
 
@@ -387,7 +391,8 @@ def main():
 
     # init
     p_ini = sub.add_parser("init", help="Scaffold a custom-task workspace (description + ir stub)")
-    p_ini.add_argument("dir", help="Workspace directory to create")
+    p_ini.add_argument("dir", help="Workspace name (a bare name is created under "
+                                   "workspace/; an explicit path is used as-is)")
     p_ini.add_argument("--task", help="Task description text (else a template is written)")
     p_ini.add_argument("--agents", help="Comma-separated agent IDs (e.g. ONCALL,DBA,RELEASER)")
     p_ini.add_argument("--with-tools", action="store_true",

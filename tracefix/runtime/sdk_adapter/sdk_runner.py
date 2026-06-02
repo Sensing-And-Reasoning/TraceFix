@@ -32,6 +32,7 @@ async def run_sdk_agent(
     model: str | None = None,
     max_rounds: int = 50,
     verbose: bool = False,
+    cwd: str | None = None,
 ) -> AgentResult:
     """Drive one agent to completion (or its turn cap) via the SDK.
 
@@ -62,6 +63,10 @@ async def run_sdk_agent(
     )
     if model:
         opt_kwargs["model"] = model
+    if cwd:
+        # Domain file ops (Read/Write/Edit/Bash) happen here, so runtime artifacts
+        # land in the workspace instead of wherever the command was launched.
+        opt_kwargs["cwd"] = cwd
     options = ClaudeAgentOptions(**opt_kwargs)
 
     start = time.time()
