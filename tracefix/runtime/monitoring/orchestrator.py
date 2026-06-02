@@ -15,6 +15,7 @@ from pathlib import Path
 
 from tracefix.runtime.monitoring.monitor import ProtocolMonitor
 from tracefix.runtime.monitoring.coord import CoordinationContext, COORD_TOOL_SCHEMAS
+from tracefix.runtime.workspace_layout import spec_path
 from tracefix.runtime.monitoring.agent_runner import AgentRunner, AgentConfig, AgentResult
 from tracefix.runtime.monitoring.state_tracker import StateTracker
 
@@ -99,12 +100,12 @@ class RuntimeB:
         t0 = time.monotonic()
 
         # 1. Load IR (topology only)
-        ir = _load_json(self.workspace / "ir.json")
+        ir = _load_json(spec_path(self.workspace, "ir.json"))
 
         # 2. Create Monitor + StateTracker
         monitor = ProtocolMonitor(ir)
         tracker = None
-        states_path = self.workspace / "states.json"
+        states_path = spec_path(self.workspace, "states.json")
         if states_path.exists():
             states_data = json.loads(states_path.read_text())
             tracker = StateTracker(states_data)

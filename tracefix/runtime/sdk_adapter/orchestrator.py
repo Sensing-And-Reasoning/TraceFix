@@ -32,6 +32,7 @@ from tracefix.runtime.sdk_adapter.mcp_server import (
 from tracefix.runtime.sdk_adapter.sdk_runner import run_sdk_agent
 from tracefix.runtime.sdk_adapter.types import AgentResult
 from tracefix.runtime.coordination.client import CoordClient
+from tracefix.runtime.workspace_layout import spec_path, output_dir
 
 _DEFAULT_BUILTINS = ["Read", "Write", "Edit"]
 
@@ -125,7 +126,23 @@ class SdkOrchestrator:
 
     def _read_prompt(self, agent_id: str) -> str:
         path = self._prompts_dir() / f"{agent_id}.md"
-        return path.read_text() + _COORD_FOOTER
+        return path.read_text() + _COORD_FOOTER + self._output_footer()
+
+    def _output_footer(self) -> str:
+        """Pin the agents' file output to the workspace's output/ directory.
+
+        The claude CLI resolves relative Write paths against the project (git)
+        root, not its cwd — so a bare filename would leak into the repo root.
+        Giving the absolute output directory makes file writes land in
+        workspace/<task>/output/ regardless.
+        """
+        out = output_dir(self.workspace).resolve()
+        return (
+            f"\n\n## Where to write files\n"
+            f"Write EVERY file you produce into this exact directory, using the full "
+            f"path: `{out}`\n"
+            f"For example, to create `report.md`, write to `{out}/report.md`. "
+            f"Do NOT write files anywhere else.\n")
 
     def _load_domain_tools(self):
         """Domain tools, in priority order:
@@ -178,7 +195,7 @@ class SdkOrchestrator:
     # -- run -----------------------------------------------------------------
 
     async def run(self, timeout: float = 180.0) -> SdkRunResult:
-        ir = _load_json(self.workspace / "ir.json")
+        ir = _load_json(spec_path(self.workspace, "ir.json"))
 
         # Live visualization (in-process mode only — in distributed mode the
         # coordination events live in the CoordinationService, not here).
@@ -212,7 +229,7 @@ class SdkOrchestrator:
         coord = None
         if not self.coord_url:
             monitor = ProtocolMonitor(ir)
-            states_path = self.workspace / "states.json"
+            states_path = spec_path(self.workspace, "states.json")
             if states_path.exists():
                 tracker = StateTracker(_load_json(states_path))
             coord = CoordinationContext(ir, monitor, tracker=tracker, correction=True,
@@ -250,7 +267,7 @@ class SdkOrchestrator:
                 model=self.model,
                 max_rounds=self.max_rounds,
                 verbose=self.verbose,
-                cwd=str(self.workspace.resolve()),
+                cwd=str(output_dir(self.workspace).resolve()),
             )))
 
         start = time.time()

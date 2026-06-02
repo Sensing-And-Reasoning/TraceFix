@@ -39,6 +39,20 @@ Use `-o dir` with scaffold to write output to a specific directory. By default, 
 - For IR schema and the 2PC example, see [references/schema-and-examples.md](references/schema-and-examples.md)
 - For per-agent prompt generation (Runtime A + B), use the `/tla-prompt-gen` skill after Phase 4
 
+## Workspace layout
+
+A task workspace is organized into subfolders — put artifacts in the right one:
+- **`spec/`** — ALL verification artifacts: `ir.json`, `Protocol.tla`, `Protocol_translated.tla`,
+  `Protocol.cfg`, `states.json`, `summary.json`, `tlc_output.log`, `tlc_error.md`, `history/`.
+  Write `ir.json` to `spec/ir.json`, and run the CLI on the `spec/` dir:
+  `scaffold spec/ir.json`, `verify spec/`, `extract-states spec/`.
+- **`prompts/`** — per-agent prompts (written later by `/tla-prompt-gen`).
+- **`output/`** — runtime artifacts the agents produce (written at run time).
+- `description.md`, `tools.json` — task inputs, at the workspace root.
+
+`tla-verify-pluscal init <name>` creates this layout. (The CLI also accepts a flat workspace —
+everything at the root — for older workspaces.)
+
 ## Recommended Workflow
 
 ### Phase 1: Structured Analysis

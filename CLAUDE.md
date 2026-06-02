@@ -53,7 +53,7 @@ python -m tracefix.runtime.coordination --workspace workspace/3E --port 8780
 ```
 Add `--live` (sdk_adapter: `--live-port`/`--live-warmup`/`--live-hold`) for real-time D3 + SSE visualization in the browser. Sim-enabled scenarios (12–16) accept `--difficulty 0-3`, `--scenario N`, `--tool-time FLOAT`, `--seed INT`.
 
-**Workspaces (repo cleanliness):** `tla-verify-pluscal init <name>` creates `workspace/<name>/`, which is **gitignored**. All generated artifacts live there — verified spec (`ir.json`, `Protocol.tla`, `states.json`, `prompts/`) AND runtime domain output (the sdk_adapter runs agents with `cwd=<workspace>`, so files they write land in the workspace, not the repo root). Curated, committed examples live separately under `tracefix/runtime/sdk_adapter/examples/`.
+**Workspaces (repo cleanliness):** `tla-verify-pluscal init <name>` creates `workspace/<name>/` (**gitignored**), organized into subfolders: **`spec/`** (verification artifacts — `ir.json`, `Protocol*.tla`, `Protocol.cfg`, `states.json`, `summary.json`, tlc logs, `history/`), **`prompts/`** (per-agent prompts), **`output/`** (runtime artifacts the agents produce). Inputs `description.md` / `tools.json` sit at the workspace root. The runtimes resolve spec files via `tracefix/runtime/workspace_layout.py` (backward-compatible: a flat workspace with everything at the root still works). The sdk_adapter pins agents' file writes to `output/` by giving them the absolute output dir in the prompt (the claude CLI resolves relative writes against the git root, not cwd). Curated, committed examples live separately under `tracefix/runtime/sdk_adapter/examples/`.
 
 ### Tests
 ```bash

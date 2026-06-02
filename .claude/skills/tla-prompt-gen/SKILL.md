@@ -21,9 +21,12 @@ A workspace directory containing:
 - `description.md` — Task description — **required**
 - `tools.json` — Domain tool schemas (OpenAI function schema + `agent_ids`/`can_fail`) — **optional**
 
-Look in the workspace directory first. For a **benchmark** task, `tools.json` and `description.md`
-also live in `benchmark/descriptions/{id}/` (where `{id}` matches the workspace dir name) — use
-those if not in the workspace. If a *required* file is missing, ask the user for its location.
+**Layout:** the spec files (`ir.json`, `states.json`, `Protocol.tla`, `summary.json`) live in the
+workspace's `spec/` subdir; `description.md` and `tools.json` are at the workspace root; write the
+generated prompts to `prompts/runtime_a/` and `prompts/runtime_b/`. (Older flat workspaces keep
+everything at the root — check there if `spec/` is absent.) For a **benchmark** task, `tools.json`
+and `description.md` also live in `benchmark/descriptions/{id}/` — use those if not in the
+workspace. If a *required* file is missing, ask the user for its location.
 
 **Custom task with no `tools.json`:** the domain layer is the runtime's **SDK builtins**
 (`Read`/`Write`/`Edit`/`Bash`). Generate domain steps that instruct the agent to use those

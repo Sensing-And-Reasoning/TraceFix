@@ -124,8 +124,10 @@ def cmd_init(args: argparse.Namespace) -> int:
             "what happens on failure. TraceFix derives the protocol from this.\n")
         desc_path.write_text(desc if desc.endswith("\n") else desc + "\n")
 
-    ir_path = out / "ir.json"
+    # Spec artifacts (ir.json now, Protocol.tla/states.json later) live in spec/.
+    ir_path = out / "spec" / "ir.json"
     if not ir_path.exists():
+        ir_path.parent.mkdir(parents=True, exist_ok=True)
         ir = {
             "agents": [{"id": a} for a in agents] or [{"id": "AGENT_A"}, {"id": "AGENT_B"}],
             "resources": [],
@@ -150,12 +152,14 @@ def cmd_init(args: argparse.Namespace) -> int:
             tools_path.write_text(json.dumps(template, indent=2) + "\n")
 
     print(f"OK — initialized custom workspace at {out}")
-    print("  - description.md  (edit: describe your scenario)")
-    print("  - ir.json         (edit: fill resources + channels"
+    print("  - description.md  (input: describe your scenario)")
+    print("  - spec/ir.json    (edit: fill resources + channels"
           f"{'' if agents else ' + agent ids'})")
     if args.with_tools:
-        print("  - tools.json      (edit domain tools, or delete to use SDK builtins)")
-    print(f"Next: edit {out}/ir.json, then run: tla-verify-pluscal scaffold {out}/ir.json")
+        print("  - tools.json      (input: domain tools, or delete to use SDK builtins)")
+    print("  layout: spec/ (verification artifacts) · prompts/ (per-agent prompts) "
+          "· output/ (runtime artifacts)")
+    print(f"Next: edit {out}/spec/ir.json, then run: tla-verify-pluscal scaffold {out}/spec/ir.json")
     return 0
 
 
