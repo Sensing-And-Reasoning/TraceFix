@@ -1,6 +1,6 @@
 """CoordinationContext: shared state + async coordination operations.
 
-Reuses MessageStore, LockStore, and CounterStore from tracefix.runtime.enforcement.store.
+Reuses MessageStore, LockStore, and CounterStore from tracefix.runtime.store.
 Each operation is validated by the ProtocolMonitor before execution.
 
 acquire_lock / release_lock handle both Lock and Counter resources:
@@ -16,7 +16,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 
-from tracefix.runtime.enforcement.store import MessageStore, LockStore, CounterStore
+from tracefix.runtime.store import MessageStore, LockStore, CounterStore
 from tracefix.runtime.monitoring.monitor import (
     ProtocolMonitor, ProtocolViolation, StateGuidanceError)
 

@@ -7,9 +7,8 @@ Both the in-process ``CoordinationContext`` (shared memory) and the network
 the MAS distributed is just handing each agent's dispatcher a ``CoordClient``
 instead of a shared ``CoordinationContext``.
 
-There is already a de-facto precedent: ``baselines/shared_chat/chat_coord.py``
-duck-types these same methods and ``AgentRunner`` consumes it unchanged. This
-Protocol formalizes that interface.
+The in-process ``CoordinationContext`` already satisfies these methods; this
+Protocol formalizes that interface so the network ``CoordClient`` is a drop-in.
 """
 
 from __future__ import annotations

@@ -20,7 +20,7 @@ The split:
   * ``orchestrator.py`` — loads a workspace, wires the shared coord layer, runs N agents concurrently
   * ``cli.py``          — ``python -m tracefix.runtime.sdk_adapter run --task ... --workspace ...``
 
-Only Architecture B (monitoring) is supported — Architecture A (enforcement)
-has the engine drive agents, which is incompatible with the SDK's
-self-driven agent model.
+Agents are self-driven (the SDK runs each agent's loop) and coordination is
+validated by the shared ProtocolMonitor + StateTracker — the same monitoring
+model reused from ``tracefix.runtime.monitoring``.
 """
