@@ -67,6 +67,10 @@ def cmd_run(args: argparse.Namespace) -> int:
         tool_time=args.tool_time,
         seed=args.seed,
         coord_url=args.coord_url,
+        live=args.live,
+        live_port=args.live_port,
+        live_warmup=args.live_warmup,
+        live_hold=args.live_hold,
     )
     try:
         result = asyncio.run(orch.run(timeout=args.timeout))
@@ -97,6 +101,16 @@ def main() -> None:
     p_run.add_argument("--timeout", type=float, default=180.0,
                        help="Global timeout in seconds (default: 180)")
     p_run.add_argument("--verbose", action="store_true")
+    p_run.add_argument("--live", action="store_true",
+                       help="Real-time D3/SSE visualization (in-process mode only); opens a browser")
+    p_run.add_argument("--live-port", type=int, default=8765,
+                       help="Port for the live view (default: 8765)")
+    p_run.add_argument("--live-warmup", type=float, default=4.0,
+                       help="Seconds to wait (after opening the browser) before agents start, "
+                            "so the whole run is visible (default: 4)")
+    p_run.add_argument("--live-hold", type=float, default=0.0,
+                       help="Seconds to keep the live view up AFTER the run, for inspection "
+                            "(default: 0 = stop when the run ends)")
     p_run.add_argument("--coord-url", default=None,
                        help="Distributed mode: URL of a running CoordinationService "
                             "(e.g. http://127.0.0.1:8780). Each agent talks to it via "

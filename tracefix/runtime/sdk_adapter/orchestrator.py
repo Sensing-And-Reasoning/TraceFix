@@ -90,6 +90,10 @@ class SdkOrchestrator:
         tool_time: float | None = None,
         seed: int | None = None,
         coord_url: str | None = None,
+        live: bool = False,
+        live_port: int = 8765,
+        live_warmup: float = 4.0,
+        live_hold: float = 0.0,
     ):
         self.task_id = task_id
         self.workspace = Path(workspace)
@@ -104,6 +108,11 @@ class SdkOrchestrator:
         # When set, each agent talks to a remote CoordinationService via a
         # CoordClient instead of sharing one in-process CoordinationContext.
         self.coord_url = coord_url
+        # Real-time D3/SSE visualization (in-process mode only — see run()).
+        self.live = live
+        self.live_port = live_port
+        self.live_warmup = live_warmup  # delay before agents start, so the browser connects first
+        self.live_hold = live_hold      # keep the view up this long AFTER the run (inspection)
         self.sim = None
 
     # -- workspace helpers ---------------------------------------------------
@@ -171,6 +180,31 @@ class SdkOrchestrator:
     async def run(self, timeout: float = 180.0) -> SdkRunResult:
         ir = _load_json(self.workspace / "ir.json")
 
+        # Live visualization (in-process mode only — in distributed mode the
+        # coordination events live in the CoordinationService, not here).
+        event_bus = None
+        live_server = None
+        if self.live and not self.coord_url:
+            from tracefix.runtime.monitoring.event_bus import EventBus
+            from tracefix.runtime.monitoring.live_server import start_live_server
+            event_bus = EventBus()
+            live_server = await start_live_server(
+                ir, event_bus, port=self.live_port,
+                title=f"Task {self.task_id} | SDK | {self.model or 'default'}",
+                model=self.model or "")
+            url = f"http://127.0.0.1:{self.live_port}"
+            print(f"[sdk] Live view: {url}  (opening browser; agents start in "
+                  f"{self.live_warmup:.0f}s)")
+            try:
+                import webbrowser
+                webbrowser.open(url)
+            except Exception:  # noqa: BLE001 — headless is fine, the URL is printed
+                pass
+            # Warmup: let the browser open + connect to the SSE stream BEFORE the
+            # agents act, so the whole run is visible (no missed early events).
+            if self.live_warmup > 0:
+                await asyncio.sleep(self.live_warmup)
+
         # Coordination backend. Distributed mode (coord_url set): each agent gets
         # its own CoordClient to a remote CoordinationService, where the monitor +
         # tracker live. In-process mode (default): one shared CoordinationContext.
@@ -181,7 +215,8 @@ class SdkOrchestrator:
             states_path = self.workspace / "states.json"
             if states_path.exists():
                 tracker = StateTracker(_load_json(states_path))
-            coord = CoordinationContext(ir, monitor, tracker=tracker, correction=True)
+            coord = CoordinationContext(ir, monitor, tracker=tracker, correction=True,
+                                        event_bus=event_bus)
 
         tool_registry = self._load_domain_tools()
 
@@ -201,7 +236,7 @@ class SdkOrchestrator:
                            if self.coord_url else coord)
             dispatcher = CoordToolDispatcher(
                 agent_coord, agent_id, tool_registry=tool_registry,
-                verbose=self.verbose)
+                event_bus=event_bus, verbose=self.verbose)
             mcp_server = build_agent_mcp_server(dispatcher, schemas)
             allowed = allowed_tool_names(schemas, SERVER_NAME) + list(self.builtins)
 
@@ -267,7 +302,31 @@ class SdkOrchestrator:
         corrections_exceeded = [aid for (aid, disp) in tasks.values()
                                 if getattr(disp, "correction_limit_exceeded", False)]
 
-        return SdkRunResult(
+        result = SdkRunResult(
             success=success, agent_results=results, duration=duration,
             state_violations=state_violations, premature_dones=premature_dones,
             corrections_exceeded=corrections_exceeded)
+
+        # Live viz: emit the terminal event, then shut the server down (the
+        # browser keeps its rendered final state — the D3 view is client-side).
+        if event_bus:
+            await event_bus.emit("run.done", {
+                "success": result.success,
+                "duration": result.duration,
+                "error": result.error,
+                "protocol": {
+                    "violations": state_violations,
+                    "final_states": tracker.current_states if tracker else {},
+                },
+            })
+            await asyncio.sleep(1.0)  # let a connected browser receive final events
+            if self.live_hold > 0:
+                print(f"[sdk] holding live view at http://127.0.0.1:{self.live_port} "
+                      f"for {self.live_hold:.0f}s — inspect the final state now")
+                await asyncio.sleep(self.live_hold)
+            await event_bus.close()
+        if live_server:
+            from tracefix.runtime.monitoring.live_server import stop_live_server
+            await stop_live_server(live_server)
+
+        return result
