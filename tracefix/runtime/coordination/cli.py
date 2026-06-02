@@ -19,6 +19,7 @@ from tracefix.runtime.monitoring.coord import CoordinationContext
 from tracefix.runtime.monitoring.monitor import ProtocolMonitor
 from tracefix.runtime.monitoring.state_tracker import StateTracker
 from tracefix.runtime.coordination.service import CoordinationService
+from tracefix.runtime.workspace_layout import spec_path
 
 
 def _load_json(path: Path) -> dict:
@@ -27,11 +28,11 @@ def _load_json(path: Path) -> dict:
 
 async def _serve(args: argparse.Namespace) -> None:
     ws = Path(args.workspace)
-    ir = _load_json(ws / "ir.json")
+    ir = _load_json(spec_path(ws, "ir.json"))
 
     monitor = ProtocolMonitor(ir)
     tracker = None
-    states_path = ws / "states.json"
+    states_path = spec_path(ws, "states.json")
     if states_path.exists():
         tracker = StateTracker(_load_json(states_path))
 

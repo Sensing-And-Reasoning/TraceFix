@@ -17,9 +17,16 @@ test = [
     "tree-sitter",       # extract-states + pluscal_parser tests
     "tree-sitter-tlaplus",
 ]
+# Install with: pip install -e ".[opencode]"
+# Only the standalone `tracefix-coord` MCP server (coord_mcp/server.py) needs mcp;
+# the opencode_adapter orchestrator/driver/config-gen import fine without it.
+opencode = [
+    "mcp",   # official Model Context Protocol SDK
+]
 
 [project.scripts]
 tla-verify-pluscal = "tracefix.cli.cli:main"
+tracefix-coord = "tracefix.runtime.coord_mcp.server:main"
 
 [tool.setuptools.packages.find]
 include = ["tracefix*", "benchmark*"]
