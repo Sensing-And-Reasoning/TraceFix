@@ -26,3 +26,6 @@ tracefix.pipeline/
 # `tla-verify-pluscal init <name>` creates workspace/<name>; the sdk_adapter
 # runtime writes agent file output here (its cwd). Never commit generated artifacts.
 workspace/
+# Re-running a committed example writes fresh agent output to its output/ dir;
+# keep those run artifacts out of git (committed sample runs live in sample_run/).
+tracefix/runtime/sdk_adapter/examples/*/output/

@@ -1,0 +1,403 @@
+{
+  "states": [
+    {
+      "id": "RESEARCHER_FM_draft",
+      "agent": "RESEARCHER_FM",
+      "actions": [
+        {
+          "next_state": "RESEARCHER_FM_acquire"
+        }
+      ]
+    },
+    {
+      "id": "RESEARCHER_FM_acquire",
+      "agent": "RESEARCHER_FM",
+      "actions": [
+        {
+          "next_state": "RESEARCHER_FM_write",
+          "acquire": "DOC"
+        }
+      ]
+    },
+    {
+      "id": "RESEARCHER_FM_write",
+      "agent": "RESEARCHER_FM",
+      "actions": [
+        {
+          "next_state": "RESEARCHER_FM_release"
+        }
+      ]
+    },
+    {
+      "id": "RESEARCHER_FM_release",
+      "agent": "RESEARCHER_FM",
+      "actions": [
+        {
+          "next_state": "RESEARCHER_FM_notify_plotter",
+          "release": "DOC"
+        }
+      ]
+    },
+    {
+      "id": "RESEARCHER_FM_notify_plotter",
+      "agent": "RESEARCHER_FM",
+      "actions": [
+        {
+          "next_state": "RESEARCHER_FM_notify_checker",
+          "send": {
+            "channel": "research_to_plotter",
+            "label": "ready"
+          }
+        }
+      ]
+    },
+    {
+      "id": "RESEARCHER_FM_notify_checker",
+      "agent": "RESEARCHER_FM",
+      "actions": [
+        {
+          "next_state": "RESEARCHER_FM_done",
+          "send": {
+            "channel": "research_to_checker",
+            "label": "ready"
+          }
+        }
+      ]
+    },
+    {
+      "id": "RESEARCHER_FM_done",
+      "agent": "RESEARCHER_FM",
+      "actions": []
+    },
+    {
+      "id": "RESEARCHER_RT_draft",
+      "agent": "RESEARCHER_RT",
+      "actions": [
+        {
+          "next_state": "RESEARCHER_RT_acquire"
+        }
+      ]
+    },
+    {
+      "id": "RESEARCHER_RT_acquire",
+      "agent": "RESEARCHER_RT",
+      "actions": [
+        {
+          "next_state": "RESEARCHER_RT_write",
+          "acquire": "DOC"
+        }
+      ]
+    },
+    {
+      "id": "RESEARCHER_RT_write",
+      "agent": "RESEARCHER_RT",
+      "actions": [
+        {
+          "next_state": "RESEARCHER_RT_release"
+        }
+      ]
+    },
+    {
+      "id": "RESEARCHER_RT_release",
+      "agent": "RESEARCHER_RT",
+      "actions": [
+        {
+          "next_state": "RESEARCHER_RT_notify_plotter",
+          "release": "DOC"
+        }
+      ]
+    },
+    {
+      "id": "RESEARCHER_RT_notify_plotter",
+      "agent": "RESEARCHER_RT",
+      "actions": [
+        {
+          "next_state": "RESEARCHER_RT_notify_checker",
+          "send": {
+            "channel": "research_to_plotter",
+            "label": "ready"
+          }
+        }
+      ]
+    },
+    {
+      "id": "RESEARCHER_RT_notify_checker",
+      "agent": "RESEARCHER_RT",
+      "actions": [
+        {
+          "next_state": "RESEARCHER_RT_done",
+          "send": {
+            "channel": "research_to_checker",
+            "label": "ready"
+          }
+        }
+      ]
+    },
+    {
+      "id": "RESEARCHER_RT_done",
+      "agent": "RESEARCHER_RT",
+      "actions": []
+    },
+    {
+      "id": "RESEARCHER_EVAL_draft",
+      "agent": "RESEARCHER_EVAL",
+      "actions": [
+        {
+          "next_state": "RESEARCHER_EVAL_acquire"
+        }
+      ]
+    },
+    {
+      "id": "RESEARCHER_EVAL_acquire",
+      "agent": "RESEARCHER_EVAL",
+      "actions": [
+        {
+          "next_state": "RESEARCHER_EVAL_write",
+          "acquire": "DOC"
+        }
+      ]
+    },
+    {
+      "id": "RESEARCHER_EVAL_write",
+      "agent": "RESEARCHER_EVAL",
+      "actions": [
+        {
+          "next_state": "RESEARCHER_EVAL_release"
+        }
+      ]
+    },
+    {
+      "id": "RESEARCHER_EVAL_release",
+      "agent": "RESEARCHER_EVAL",
+      "actions": [
+        {
+          "next_state": "RESEARCHER_EVAL_notify_plotter",
+          "release": "DOC"
+        }
+      ]
+    },
+    {
+      "id": "RESEARCHER_EVAL_notify_plotter",
+      "agent": "RESEARCHER_EVAL",
+      "actions": [
+        {
+          "next_state": "RESEARCHER_EVAL_notify_checker",
+          "send": {
+            "channel": "research_to_plotter",
+            "label": "ready"
+          }
+        }
+      ]
+    },
+    {
+      "id": "RESEARCHER_EVAL_notify_checker",
+      "agent": "RESEARCHER_EVAL",
+      "actions": [
+        {
+          "next_state": "RESEARCHER_EVAL_done",
+          "send": {
+            "channel": "research_to_checker",
+            "label": "ready"
+          }
+        }
+      ]
+    },
+    {
+      "id": "RESEARCHER_EVAL_done",
+      "agent": "RESEARCHER_EVAL",
+      "actions": []
+    },
+    {
+      "id": "PLOTTER_recv1",
+      "agent": "PLOTTER",
+      "actions": [
+        {
+          "next_state": "PLOTTER_recv2",
+          "receive": {
+            "channel": "research_to_plotter"
+          }
+        }
+      ]
+    },
+    {
+      "id": "PLOTTER_recv2",
+      "agent": "PLOTTER",
+      "actions": [
+        {
+          "next_state": "PLOTTER_recv3",
+          "receive": {
+            "channel": "research_to_plotter"
+          }
+        }
+      ]
+    },
+    {
+      "id": "PLOTTER_recv3",
+      "agent": "PLOTTER",
+      "actions": [
+        {
+          "next_state": "PLOTTER_acquire",
+          "receive": {
+            "channel": "research_to_plotter"
+          }
+        }
+      ]
+    },
+    {
+      "id": "PLOTTER_acquire",
+      "agent": "PLOTTER",
+      "actions": [
+        {
+          "next_state": "PLOTTER_write",
+          "acquire": "DOC"
+        }
+      ]
+    },
+    {
+      "id": "PLOTTER_write",
+      "agent": "PLOTTER",
+      "actions": [
+        {
+          "next_state": "PLOTTER_release"
+        }
+      ]
+    },
+    {
+      "id": "PLOTTER_release",
+      "agent": "PLOTTER",
+      "actions": [
+        {
+          "next_state": "PLOTTER_notify",
+          "release": "DOC"
+        }
+      ]
+    },
+    {
+      "id": "PLOTTER_notify",
+      "agent": "PLOTTER",
+      "actions": [
+        {
+          "next_state": "PLOTTER_done",
+          "send": {
+            "channel": "plotter_to_approver",
+            "label": "figures"
+          }
+        }
+      ]
+    },
+    {
+      "id": "PLOTTER_done",
+      "agent": "PLOTTER",
+      "actions": []
+    },
+    {
+      "id": "CHECKER_recv1",
+      "agent": "CHECKER",
+      "actions": [
+        {
+          "next_state": "CHECKER_recv2",
+          "receive": {
+            "channel": "research_to_checker"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CHECKER_recv2",
+      "agent": "CHECKER",
+      "actions": [
+        {
+          "next_state": "CHECKER_recv3",
+          "receive": {
+            "channel": "research_to_checker"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CHECKER_recv3",
+      "agent": "CHECKER",
+      "actions": [
+        {
+          "next_state": "CHECKER_verify",
+          "receive": {
+            "channel": "research_to_checker"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CHECKER_verify",
+      "agent": "CHECKER",
+      "actions": [
+        {
+          "next_state": "CHECKER_notify"
+        }
+      ]
+    },
+    {
+      "id": "CHECKER_notify",
+      "agent": "CHECKER",
+      "actions": [
+        {
+          "next_state": "CHECKER_done",
+          "send": {
+            "channel": "checker_to_approver",
+            "label": "verified"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CHECKER_done",
+      "agent": "CHECKER",
+      "actions": []
+    },
+    {
+      "id": "APPROVER_recv_figures",
+      "agent": "APPROVER",
+      "actions": [
+        {
+          "next_state": "APPROVER_recv_verified",
+          "receive": {
+            "channel": "plotter_to_approver"
+          }
+        }
+      ]
+    },
+    {
+      "id": "APPROVER_recv_verified",
+      "agent": "APPROVER",
+      "actions": [
+        {
+          "next_state": "APPROVER_finalize",
+          "receive": {
+            "channel": "checker_to_approver"
+          }
+        }
+      ]
+    },
+    {
+      "id": "APPROVER_finalize",
+      "agent": "APPROVER",
+      "actions": [
+        {
+          "next_state": "APPROVER_done"
+        }
+      ]
+    },
+    {
+      "id": "APPROVER_done",
+      "agent": "APPROVER",
+      "actions": []
+    }
+  ],
+  "initial_states": {
+    "RESEARCHER_FM": "RESEARCHER_FM_draft",
+    "RESEARCHER_RT": "RESEARCHER_RT_draft",
+    "RESEARCHER_EVAL": "RESEARCHER_EVAL_draft",
+    "PLOTTER": "PLOTTER_recv1",
+    "CHECKER": "CHECKER_recv1",
+    "APPROVER": "APPROVER_recv_figures"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "agents": [
+    {"id": "RESEARCHER_FM"},
+    {"id": "RESEARCHER_RT"},
+    {"id": "RESEARCHER_EVAL"},
+    {"id": "PLOTTER"},
+    {"id": "CHECKER"},
+    {"id": "APPROVER"}
+  ],
+  "resources": [
+    {"id": "DOC", "type": "Lock"}
+  ],
+  "channels": [
+    {"id": "research_to_plotter", "from": ["RESEARCHER_FM", "RESEARCHER_RT", "RESEARCHER_EVAL"], "to": "PLOTTER", "labels": ["ready"]},
+    {"id": "research_to_checker", "from": ["RESEARCHER_FM", "RESEARCHER_RT", "RESEARCHER_EVAL"], "to": "CHECKER", "labels": ["ready"]},
+    {"id": "plotter_to_approver", "from": "PLOTTER", "to": "APPROVER", "labels": ["figures"]},
+    {"id": "checker_to_approver", "from": "CHECKER", "to": "APPROVER", "labels": ["verified"]}
+  ]
+}

@@ -1,0 +1,36 @@
+TLC2 Version 2026.05.26.235334 (rev: 4ba7d88)
+Warning: Please run the Java VM, which executes TLC with a throughput optimized garbage collector, by passing the "-XX:+UseParallelGC" property.
+(Use the -nowarning option to disable this warning.)
+Running breadth-first search Model-Checking with fp 120 and seed -8764664797587132834 with 12 workers on 12 cores with 4096MB heap and 64MB offheap memory [pid: 51107] (Mac OS X 26.1 aarch64, Homebrew 17.0.18 64bit, MSBDiskFPSet, DiskStateQueue).
+Parsing file /private/tmp/claude-501/tlc_v3_ti6_xfxy/Protocol.tla
+Warning: symbols were renamed.
+Parsing file /private/var/folders/tp/f8_bj4z934jdw9428qtcnrs40000gn/T/tlc-8883751303274755087/Integers.tla (jar:file:/Users/shurenxia/tracefix-public/lib/tla2tools.jar!/tla2sany/StandardModules/Integers.tla)
+Parsing file /private/var/folders/tp/f8_bj4z934jdw9428qtcnrs40000gn/T/tlc-8883751303274755087/Sequences.tla (jar:file:/Users/shurenxia/tracefix-public/lib/tla2tools.jar!/tla2sany/StandardModules/Sequences.tla)
+Parsing file /private/var/folders/tp/f8_bj4z934jdw9428qtcnrs40000gn/T/tlc-8883751303274755087/TLC.tla (jar:file:/Users/shurenxia/tracefix-public/lib/tla2tools.jar!/tla2sany/StandardModules/TLC.tla)
+Parsing file /private/var/folders/tp/f8_bj4z934jdw9428qtcnrs40000gn/T/tlc-8883751303274755087/_TLCTrace.tla (jar:file:/Users/shurenxia/tracefix-public/lib/tla2tools.jar!/tla2sany/StandardModules/_TLCTrace.tla)
+Parsing file /private/var/folders/tp/f8_bj4z934jdw9428qtcnrs40000gn/T/tlc-8883751303274755087/Naturals.tla (jar:file:/Users/shurenxia/tracefix-public/lib/tla2tools.jar!/tla2sany/StandardModules/Naturals.tla)
+Parsing file /private/var/folders/tp/f8_bj4z934jdw9428qtcnrs40000gn/T/tlc-8883751303274755087/FiniteSets.tla (jar:file:/Users/shurenxia/tracefix-public/lib/tla2tools.jar!/tla2sany/StandardModules/FiniteSets.tla)
+Parsing file /private/var/folders/tp/f8_bj4z934jdw9428qtcnrs40000gn/T/tlc-8883751303274755087/TLCExt.tla (jar:file:/Users/shurenxia/tracefix-public/lib/tla2tools.jar!/tla2sany/StandardModules/TLCExt.tla)
+Semantic processing of module Naturals
+Semantic processing of module Integers
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module TLC
+Semantic processing of module TLCExt
+Semantic processing of module _TLCTrace
+Semantic processing of module Protocol
+Linting of module TLCExt
+Linting of module _TLCTrace
+Linting of module Protocol
+Starting... (2026-06-02 12:04:18)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-06-02 12:04:18.
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 1.1E-12
+10007 states generated, 2907 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 40.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 5 and the 95th percentile is 3).
+Finished in 00s at (2026-06-02 12:04:18)
+

@@ -1,0 +1,25 @@
+# LiteLLM proxy config — route the Claude Agent SDK's sub-agents to OpenAI.
+#
+# The claude CLI speaks the Anthropic Messages API to ANTHROPIC_BASE_URL; this
+# proxy serves that on /v1/messages, translates to OpenAI, and translates the
+# response back. So `claude-agent-sdk` runs unchanged while the underlying model
+# is GPT. See this example's README for the exact run commands.
+#
+#   set -a && . ./.env && set +a
+#   litellm --config <this file> --port 4000
+
+model_list:
+  - model_name: gpt-5-mini
+    litellm_params:
+      model: openai/gpt-5-mini
+      api_key: os.environ/OPENAI_API_KEY
+  - model_name: gpt-4.1-mini        # non-reasoning fallback (simpler tool-call translation)
+    litellm_params:
+      model: openai/gpt-4.1-mini
+      api_key: os.environ/OPENAI_API_KEY
+
+litellm_settings:
+  drop_params: true        # silently drop params OpenAI rejects (from Anthropic->OpenAI translation)
+
+general_settings:
+  master_key: sk-tracefix-local   # the claude CLI authenticates to the proxy with this (ANTHROPIC_AUTH_TOKEN)
