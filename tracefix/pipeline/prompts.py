@@ -265,6 +265,8 @@ Read `states.json` and for each agent list:
 - All state IDs belonging to this agent + initial state
 - Per-state: action count, coordination ops (`acquire`/`release`/`send`/`receive` + resource/channel IDs), `next_state`
 - `tool_hint` value for multi-action states (if present)
+- The optional `task` field on a state — a business-work description (lifted from the PlusCal \
+`\\* domain:` comment); note it so you can render it in that state's prompt step
 - Terminal states (empty `actions` array or `next_state: "__done__"`)
 
 **Step 2b — Label-to-Step Mapping Table (MANDATORY before writing any prose)**
@@ -302,7 +304,7 @@ Translate each mapping-table row into prompt prose using these rules.
 | Multiple actions (either/or) | "**Nondeterministic Choice:** Based on your judgment, choose one: (a) ... (b) ..." |
 | `tool_hint: receive_any` | "Call `receive_any([list])` to block until ANY of these channels has a message." |
 | `tool_hint: poll_channels` | "Call `poll_channels([list])` — non-blocking check. If none, retry after doing other work." |
-| `skip` label (domain work) | Map to the domain tool call from `tools.json` (exact name + concrete parameter values) |
+| `skip` label (domain work) | Map to the domain tool call from `tools.json` (exact name + concrete parameter values). If the state has a `task` field, render it as the step's **Work (business)** line, kept distinct from the **Coordinate (control)** line — make the coordination-vs-business separation explicit |
 | Terminal state (no actions) | "Call `signal_done()`. You are DONE. Stop calling tools." |
 | `goto` / `next_state` loop | "Go back to Step N" |
 
@@ -312,6 +314,8 @@ the task description for semantic mapping)
 - When `either/or` branches receive from different channels, map each channel source to the appropriate \
 domain tool parameters — do NOT hardcode a single parameter value
 - The final step must say `Call signal_done()`
+- The agent MAY optionally call `report_progress("<sub-phase>")` to announce a finer business sub-phase \
+(telemetry only — never required, never affects success); the runtime injects this tool automatically
 - Do NOT include a `## Tools` section — the runtime injects tool schemas automatically
 
 ##### Domain Tool Integration
@@ -1203,6 +1207,8 @@ Read `states.json` and for each agent list:
 - All state IDs belonging to this agent + initial state
 - Per-state: action count, coordination ops (`acquire`/`release`/`send`/`receive` + resource/channel IDs), `next_state`
 - `tool_hint` value for multi-action states (if present)
+- The optional `task` field on a state — a business-work description (lifted from the PlusCal \
+`\\* domain:` comment); note it so you can render it in that state's prompt step
 - Terminal states (empty `actions` array or `next_state: "__done__"`)
 
 **Step 2b — Label-to-Step Mapping Table (MANDATORY before writing any prose)**
@@ -1229,6 +1235,11 @@ Translate each mapping-table row into prompt prose. Key requirements:
 the task description for semantic mapping)
 - When `either/or` branches receive from different channels, map each channel source to the appropriate \
 domain tool parameters — do NOT hardcode a single parameter value
+- If a state has a `task` field, render it as that step's **Work (business)** line, kept distinct from \
+the **Coordinate (control)** line (the exact coordination call) — make the coordination-vs-business \
+separation explicit. `task` is observability-only; it never changes step order or the coordination contract.
+- The agent MAY optionally call `report_progress("<sub-phase>")` to announce a finer business sub-phase \
+(telemetry only — never required, never affects success); the runtime injects this tool automatically.
 - The final step must say `Call signal_done()`
 - Do NOT include a `## Tools` or `## Your Tools` section — the runtime injects tool schemas automatically
 
