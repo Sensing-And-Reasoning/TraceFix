@@ -985,3 +985,34 @@ def test_inject_overrides_lifted_and_returns_orphans():
     assert states[0]["task"] == "IR override"                   # IR overrides the comment
     assert states[1]["task"] == "write the file under lock"     # comment kept where no override
     assert orphans == ["GHOST"]                                 # unmatched key surfaced
+
+
+# The AGENTIC pipeline (prompts.py) writes `(* call: tool *)` / `(* work *)` block
+# comments instead of the skill's `\* domain:` line comments — lift those too.
+_TLA_AGENTIC = r"""
+(* --algorithm Foo {
+  process (B \in {"B"}) {
+    B_prep:
+      skip; (* call: prepare_ingredients *)
+    B_cook:
+      skip; (* saute the vegetables *)
+    B_done:
+      skip;
+  }
+} *)
+"""
+
+
+def test_lift_domain_tasks_agentic_block_comment():
+    from tracefix.pipeline.pipeline.pluscal_parser import lift_domain_tasks
+    states = [
+        {"id": "B_prep", "agent": "B", "actions": [{"next_state": "B_cook"}]},
+        {"id": "B_cook", "agent": "B", "actions": [{"next_state": "B_done"}]},
+        {"id": "B_done", "agent": "B", "actions": []},
+    ]
+    lift_domain_tasks(states, _TLA_AGENTIC)
+    assert states[0]["task"] == "prepare_ingredients"   # `call:` prefix stripped
+    assert states[1]["task"] == "saute the vegetables"
+    assert "task" not in states[2]                       # terminal skip, no comment
+    # the `(* --algorithm ... *)` wrapper must NOT be mistaken for a task
+    assert all("algorithm" not in (s.get("task") or "") for s in states)

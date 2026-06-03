@@ -688,7 +688,9 @@ mapping between PlusCal labels and domain tools.
 
 13. **Vague skip comments without tool names**: Every `skip` label that represents domain work \
 MUST include the tool function name in its comment. Vague comments like "do work" or "process" \
-make prompt generation unreliable.
+make prompt generation unreliable. Note: `extract-states` LIFTS this comment into the state's \
+runtime `task` (the per-agent business phase the runtime monitor shows), so write it as a clear, \
+self-contained description of the work — observability-only, never affects TLC.
 ```
   (* WRONG — vague comment *)
   a_work:

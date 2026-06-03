@@ -1103,24 +1103,37 @@ def lint_adjacent_acquire_release(states: list[dict]) -> list[str]:
 
 # A PlusCal label line, e.g. ``    RESEARCHER_FM_draft:``
 _LABEL_RE = re.compile(r'^[ \t]*([A-Za-z_][A-Za-z0-9_]*)[ \t]*:', re.M)
-# A ``\* domain: <text>`` end-of-line comment — the design flow (tla-verify-pluscal)
-# MANDATES one on every skip work-state label, and it survives PlusCal translation.
+# Both design paths write a per-state work description on every skip work-state label,
+# in their own comment dialect (and both MANDATE it; the comments survive translation):
+#   - tla-verify-pluscal SKILL:        `\* domain: <work>`     (line comment)
+#   - agentic pipeline (prompts.py):   `(* call: tool *)` / `(* <work> *)`  (block comment)
+# Lift either so a workspace from EITHER workflow gets its per-state phase task.
 _DOMAIN_RE = re.compile(r'\\\*[ \t]*domain:[ \t]*(.+?)[ \t]*$', re.M)
+# Require the block comment to follow a `skip` (the work placeholder) so the
+# algorithm wrapper `(* --algorithm ... *)` and stray block comments aren't matched.
+_BLOCK_RE = re.compile(r'skip[ \t]*;?[ \t]*\(\*[ \t]*(.+?)[ \t]*\*\)')
+_CALL_PREFIX_RE = re.compile(r'^(?:call|domain)[ \t]*:[ \t]*', re.I)
 
 
 def _extract_domain_tasks(tla_content: str) -> dict[str, str]:
-    """Map each PlusCal label id -> its ``\\* domain: ...`` comment text, if present.
+    """Map each PlusCal label id -> its work-description comment text, if present.
 
-    Lifts the business-work descriptions the design flow already writes (and the
-    verify skill mandates) so the per-state task flows for free from existing output.
+    Recognizes BOTH design dialects (`\\* domain:` line comment and `(* ... *)` block
+    comment), preferring the explicit `domain:` marker. Lifts the descriptions the
+    design flow already writes so the per-state task flows for free from existing output.
     """
     labels = [(m.group(1), m.start()) for m in _LABEL_RE.finditer(tla_content)]
     out: dict[str, str] = {}
     for i, (label, start) in enumerate(labels):
         end = labels[i + 1][1] if i + 1 < len(labels) else len(tla_content)
         m = _DOMAIN_RE.search(tla_content, start, end)
-        if m:
-            out[label] = m.group(1).strip()
+        text = m.group(1) if m else None
+        if text is None:  # fall back to a `(* ... *)` block comment (agentic dialect)
+            bm = _BLOCK_RE.search(tla_content, start, end)
+            if bm and "--algorithm" not in bm.group(1) and "--fair" not in bm.group(1):
+                text = bm.group(1)
+        if text:
+            out[label] = _CALL_PREFIX_RE.sub("", text.strip()).strip()
     return out
 
 
