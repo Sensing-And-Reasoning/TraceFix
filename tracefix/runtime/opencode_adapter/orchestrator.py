@@ -31,6 +31,7 @@ from tracefix.runtime.monitoring.coord import CoordinationContext
 from tracefix.runtime.monitoring.monitor import ProtocolMonitor
 from tracefix.runtime.monitoring.state_tracker import StateTracker
 from tracefix.runtime.coordination.service import CoordinationService
+from tracefix.runtime.coordination.client import CoordClient
 from tracefix.runtime.workspace_layout import spec_path, snapshot_run_workspace, new_run_stamp
 from tracefix.runtime.opencode_adapter.config_gen import agent_key, build_agent_config
 from tracefix.runtime.opencode_adapter.driver import run_opencode_agent
@@ -96,6 +97,9 @@ class OpencodeOrchestrator:
         live_port: int = 8765,
         live_warmup: float = 4.0,
         live_hold: float = 0.0,
+        coord_url: str | None = None,
+        agents: list[str] | None = None,
+        output_dir: Path | str | None = None,
     ):
         self.task_id = task_id
         self.workspace = Path(workspace)
@@ -111,6 +115,14 @@ class OpencodeOrchestrator:
         self.live_port = live_port
         self.live_warmup = live_warmup
         self.live_hold = live_hold
+        # Distributed/mixed mode: connect to an EXTERNAL CoordinationService instead
+        # of starting one — the authoritative monitor+tracker+correction live there.
+        self.coord_url = coord_url
+        # Run only this subset of the IR's agents (mixed/partial run); None = all.
+        self.agents = agents
+        # Write to this exact output dir (shared across a mixed run) instead of
+        # creating a per-run snapshot; None = own snapshot.
+        self.output_override = Path(output_dir) if output_dir is not None else None
         self.snapshot_dir: Path | None = None  # set per run() → <workspace>-<stamp>/
         self.run_dir: Path | None = None        # = snapshot_dir/output (agents' cwd)
 
@@ -139,13 +151,18 @@ class OpencodeOrchestrator:
 
     async def run(self) -> OpencodeRunResult:
         ir = _load_json(spec_path(self.workspace, "ir.json"))
-        # Snapshot this run to a timestamped sibling workspace
-        # `<workspace>-<stamp>/` (inputs + verified spec/ + prompts/ copied from
-        # the base, fresh output/), so every run is a self-contained, traceable
-        # record of which verified spec produced which artifacts.
-        # `<workspace>-latest` → newest run. Agents' cwd is its output/ subdir.
-        self.snapshot_dir = snapshot_run_workspace(self.workspace, new_run_stamp())
-        self.run_dir = self.snapshot_dir / "output"
+        # Output dir: a shared override (mixed/distributed run writes alongside
+        # another harness) or this run's OWN timestamped snapshot workspace
+        # `<workspace>-<stamp>/` (inputs + verified spec/ + prompts/ copied, fresh
+        # output/) — a self-contained, traceable record of which spec produced
+        # which artifacts; `<workspace>-latest` → it. Agents' cwd is output/.
+        if self.output_override is not None:
+            self.run_dir = self.output_override
+            self.run_dir.mkdir(parents=True, exist_ok=True)
+            self.snapshot_dir = self.run_dir.parent
+        else:
+            self.snapshot_dir = snapshot_run_workspace(self.workspace, new_run_stamp())
+            self.run_dir = self.snapshot_dir / "output"
 
         # Optional real-time D3/SSE visualization. The CoordinationContext emits
         # state.transition / state.violation as the service processes each RPC, so
@@ -153,7 +170,7 @@ class OpencodeOrchestrator:
         # OpenCode JSONL streams.
         event_bus = None
         live_server = None
-        if self.live:
+        if self.live and not self.coord_url:  # distributed: events live in the service
             from tracefix.runtime.monitoring.event_bus import EventBus
             from tracefix.runtime.monitoring.live_server import start_live_server
             event_bus = EventBus()
@@ -172,21 +189,32 @@ class OpencodeOrchestrator:
             if self.live_warmup > 0:
                 await asyncio.sleep(self.live_warmup)
 
-        monitor = ProtocolMonitor(ir)
-        states_path = spec_path(self.workspace, "states.json")
-        tracker = StateTracker(_load_json(states_path)) if states_path.exists() else None
-        coord = CoordinationContext(ir, monitor, tracker=tracker, correction=True,
-                                    event_bus=event_bus)
-        service = CoordinationService(coord, host=self.host, port=self.port,
-                                      verbose=self.verbose)
-        await service.start()
-        coord_url = f"http://{self.host}:{self.port}"
+        # Coordination: connect to an EXTERNAL service (mixed/distributed) or start
+        # our OWN in-process one (standalone). The monitor+tracker+correction are
+        # authoritative wherever the service runs.
+        if self.coord_url:
+            coord_url = self.coord_url
+            service = None
+            tracker = None  # lives in the external service
+        else:
+            monitor = ProtocolMonitor(ir)
+            states_path = spec_path(self.workspace, "states.json")
+            tracker = StateTracker(_load_json(states_path)) if states_path.exists() else None
+            coord = CoordinationContext(ir, monitor, tracker=tracker, correction=True,
+                                        event_bus=event_bus)
+            service = CoordinationService(coord, host=self.host, port=self.port,
+                                          verbose=self.verbose)
+            await service.start()
+            coord_url = f"http://{self.host}:{self.port}"
         coord_cmd = [sys.executable, "-m", "tracefix.runtime.coord_mcp"]
         out = str(self.run_dir.resolve())
+        run_agents = [a for a in ir["agents"]
+                      if self.agents is None or a["id"] in self.agents]
         print(f"[opencode] run snapshot → {self.snapshot_dir}", file=sys.stderr)
         if self.verbose:
-            print(f"[opencode] CoordinationService on {coord_url} | "
-                  f"agents={len(ir['agents'])} | output={out}", file=sys.stderr)
+            print(f"[opencode] coord={coord_url} | "
+                  f"agents={[a['id'] for a in run_agents]} | output={out}",
+                  file=sys.stderr)
 
         def _on_event(agent_id: str, ev: dict) -> None:
             if event_bus is None or ev.get("type") != "tool_use":
@@ -204,7 +232,7 @@ class OpencodeOrchestrator:
         try:
             tasks = []
             inst_root = Path(out) / ".agents"
-            for idx, agent in enumerate(ir["agents"]):
+            for idx, agent in enumerate(run_agents):
                 agent_id = agent["id"]
                 # Stagger spawns so OpenCode's per-instance cold-start + one-time DB
                 # migration don't storm simultaneously. Peers may start at different
@@ -245,7 +273,7 @@ class OpencodeOrchestrator:
             duration = time.time() - start
 
             agent_results: list[dict] = []
-            for agent, res in zip(ir["agents"], raw):
+            for agent, res in zip(run_agents, raw):
                 aid = agent["id"]
                 if isinstance(res, BaseException):
                     agent_results.append({"agent_id": aid, "status": "error",
@@ -257,7 +285,16 @@ class OpencodeOrchestrator:
                 r.get("status") == "completed" for r in agent_results)
 
             state_violations, current_states = [], {}
-            if tracker is not None:
+            if self.coord_url:
+                # tracker lives in the external service — fetch its record.
+                try:
+                    mon = await CoordClient(self.coord_url,
+                                            "_orchestrator").fetch_monitoring()
+                    state_violations = mon.get("state_violations", [])
+                    current_states = mon.get("current_states", {})
+                except Exception:  # noqa: BLE001 — monitoring is best-effort
+                    pass
+            elif tracker is not None:
                 for v in tracker.violations:
                     state_violations.append({
                         "agent": getattr(v, "agent", None),
@@ -292,7 +329,8 @@ class OpencodeOrchestrator:
                 await event_bus.close()
             return result
         finally:
-            await service.stop()
+            if service is not None:
+                await service.stop()
             if live_server is not None:
                 from tracefix.runtime.monitoring.live_server import stop_live_server
                 await stop_live_server(live_server)

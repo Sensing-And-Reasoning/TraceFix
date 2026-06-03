@@ -92,6 +92,8 @@ class SdkOrchestrator:
         tool_time: float | None = None,
         seed: int | None = None,
         coord_url: str | None = None,
+        agents: list[str] | None = None,
+        output_dir: Path | str | None = None,
         live: bool = False,
         live_port: int = 8765,
         live_warmup: float = 4.0,
@@ -110,6 +112,11 @@ class SdkOrchestrator:
         # When set, each agent talks to a remote CoordinationService via a
         # CoordClient instead of sharing one in-process CoordinationContext.
         self.coord_url = coord_url
+        # Run only this subset of the IR's agents (mixed/partial run); None = all.
+        self.agents = agents
+        # Write to this exact output dir (shared across a mixed run) instead of
+        # creating a per-run snapshot; None = own snapshot.
+        self.output_override = Path(output_dir) if output_dir is not None else None
         # Real-time D3/SSE visualization (in-process mode only — see run()).
         self.live = live
         self.live_port = live_port
@@ -199,12 +206,18 @@ class SdkOrchestrator:
 
     async def run(self, timeout: float = 180.0) -> SdkRunResult:
         ir = _load_json(spec_path(self.workspace, "ir.json"))
-        # Snapshot this run to a timestamped sibling workspace (inputs + verified
-        # spec/ + prompts/ copied from the base, fresh output/), mirroring the
-        # opencode adapter so BOTH harnesses produce the same traceable per-run
-        # layout: workspace/<task>-<stamp>/{spec,prompts,output}.
-        self.snapshot_dir = snapshot_run_workspace(self.workspace, new_run_stamp())
-        self.run_dir = self.snapshot_dir / "output"
+        # Output dir: a shared override (mixed/distributed run writes alongside
+        # another harness) or this run's OWN timestamped snapshot workspace
+        # (inputs + verified spec/ + prompts/ copied, fresh output/), mirroring the
+        # opencode adapter so BOTH harnesses produce the same traceable layout:
+        # workspace/<task>-<stamp>/{spec,prompts,output}.
+        if self.output_override is not None:
+            self.run_dir = self.output_override
+            self.run_dir.mkdir(parents=True, exist_ok=True)
+            self.snapshot_dir = self.run_dir.parent
+        else:
+            self.snapshot_dir = snapshot_run_workspace(self.workspace, new_run_stamp())
+            self.run_dir = self.snapshot_dir / "output"
         print(f"[sdk] run snapshot → {self.snapshot_dir}")
 
         # Live visualization (in-process mode only — in distributed mode the
@@ -247,9 +260,11 @@ class SdkOrchestrator:
 
         tool_registry = self._load_domain_tools()
 
-        # Build a dispatcher + per-agent MCP server for every agent.
+        # Build a dispatcher + per-agent MCP server for every agent (or the subset).
+        run_agents = [a for a in ir["agents"]
+                      if self.agents is None or a["id"] in self.agents]
         runners = []
-        for agent in ir["agents"]:
+        for agent in run_agents:
             agent_id = agent["id"]
             prompt = self._read_prompt(agent_id)
 
