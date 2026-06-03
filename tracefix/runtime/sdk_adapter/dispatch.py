@@ -125,6 +125,12 @@ class CoordToolDispatcher:
                     f"coordination incomplete (orphan-lock risk)")
             return result
 
+        # --- report_progress: observability-plane beacon, NOT a coordination op.
+        # Routed here BEFORE the COORD_TOOL_NAMES gate so it never enters the
+        # validate/correction path — it can never be out of order or a violation. ---
+        if name == "report_progress":
+            return await self.coord.report_progress(args.get("label", ""), agent_id)
+
         # --- coordination tools: forward to CoordinationContext (all async) ---
         if name in COORD_TOOL_NAMES:
             try:

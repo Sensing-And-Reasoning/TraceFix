@@ -57,8 +57,22 @@ class StateTracker:
                 self._state_map[agent] = {}
             self._state_map[agent][state["id"]] = state["actions"]
 
+        # Optional per-state BUSINESS-task descriptions (observability plane only;
+        # ignored by the verified control core). Keyed by state id.
+        self._state_tasks: dict[str, str] = {
+            s["id"]: s["task"]
+            for s in states_data.get("states", [])
+            if s.get("task")
+        }
+
         # Initialize current states
         self._current: dict[str, str] = dict(states_data.get("initial_states", {}))
+
+        # Per-agent current BUSINESS phase = the no-op "business" state the agent is
+        # currently working in (auto-derived). The coordination current_state reads
+        # the NEXT coord op because business states are skipped; this records which
+        # business state the agent passed into. Telemetry only — never validated.
+        self._current_phases: dict[str, str] = {}
 
         # Pending ops for compound actions: agent_id → {remaining, next_state}
         self._pending: dict[str, dict] = {}
@@ -88,6 +102,18 @@ class StateTracker:
     @property
     def current_states(self) -> dict[str, str]:
         return dict(self._current)
+
+    @property
+    def current_phases(self) -> dict[str, str]:
+        """Per-agent current BUSINESS phase: the state id of the no-op business
+        state the agent is working in, or absent when it is at a pure coordination
+        step. Observability only — never affects validation."""
+        return dict(self._current_phases)
+
+    @property
+    def state_tasks(self) -> dict[str, str]:
+        """Optional per-state business-task descriptions (state id -> prose)."""
+        return dict(self._state_tasks)
 
     @property
     def violation_count(self) -> int:
@@ -310,6 +336,7 @@ class StateTracker:
             "current": self._current.get(agent_id),
             "pending": copy.deepcopy(self._pending.get(agent_id)),
             "candidates": copy.deepcopy(self._candidates.get(agent_id)),
+            "current_phases": self._current_phases.get(agent_id),
             "counters": dict(self._counters),
         }
 
@@ -318,7 +345,9 @@ class StateTracker:
             self._current.pop(agent_id, None)
         else:
             self._current[agent_id] = snap["current"]
-        for store, key in ((self._pending, "pending"), (self._candidates, "candidates")):
+        for store, key in ((self._pending, "pending"),
+                           (self._candidates, "candidates"),
+                           (self._current_phases, "current_phases")):
             if snap[key] is None:
                 store.pop(agent_id, None)
             else:
@@ -673,6 +702,10 @@ class StateTracker:
 
     def _advance(self, agent_id: str, next_state: str):
         self._current[agent_id] = next_state
+        # The agent just landed on a coordination position via a real op; clear any
+        # business phase. _auto_advance re-sets it if this transition steps through a
+        # (no-op) business state on the way to the next coordination checkpoint.
+        self._current_phases.pop(agent_id, None)
         self._auto_advance(agent_id)
 
     def _auto_advance(self, agent_id: str):
@@ -693,6 +726,9 @@ class StateTracker:
             if not self._is_skip_action(filtered[0]):
                 break
             self._apply_increment(filtered[0])
+            # state_id is a no-op BUSINESS state the agent is passing through —
+            # record it as the agent's current business phase (observability only).
+            self._current_phases[agent_id] = state_id
             self._current[agent_id] = filtered[0]["next_state"]
 
     def _resolve_skip_chain(self, agent_id: str, state_id: str) -> str:

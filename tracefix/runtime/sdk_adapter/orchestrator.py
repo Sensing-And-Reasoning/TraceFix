@@ -46,6 +46,11 @@ acquire_lock(lock_id), release_lock(lock_id), send_message(channel_id, label),
 receive_message(channel_id), poll_channels(channel_ids), receive_any(channel_ids),
 signal_done(). Call signal_done() only when you have completed every protocol step.
 
+Optional telemetry: report_progress(label) — announce a finer business sub-phase you
+are working on (e.g. "reading_research", "generating_figure"). It is NEVER required,
+never affects success, and can never be out of order. Use it sparingly to make your
+progress visible; it does not replace any coordination step.
+
 Control plane vs data plane: coordination channels carry ONLY a label (a signal
 flag like "submit"/"revise"/"accept") — never data or content. To hand another
 agent some data/feedback, write it to a file (the data plane) at a path both
@@ -69,6 +74,8 @@ class SdkRunResult:
     premature_dones: list = field(default_factory=list)   # agents that signal_done'd early
     corrections_exceeded: list = field(default_factory=list)  # agents that hit the correction cap
     run_dir: str = ""                                     # this run's snapshot workspace
+    current_phases: dict = field(default_factory=dict)    # agent → business phase (observability)
+    beacons: list = field(default_factory=list)           # report_progress beacons
 
 
 def _load_json(path: Path) -> dict:
@@ -324,11 +331,15 @@ class SdkOrchestrator:
         # monitor's *record* of protocol-conformance, which would otherwise be
         # discarded when the run ends.
         state_violations = []
+        current_phases: dict = {}
+        beacons: list = []
         if self.coord_url:
             # Distributed: the tracker lives in the service — fetch its record.
             try:
                 mon = await CoordClient(self.coord_url, "_orchestrator").fetch_monitoring()
                 state_violations = mon.get("state_violations", [])
+                current_phases = mon.get("current_phases", {})
+                beacons = mon.get("beacons", [])
             except Exception:  # noqa: BLE001 — monitoring is best-effort
                 pass
         elif tracker is not None:
@@ -339,6 +350,8 @@ class SdkOrchestrator:
                     "operation": getattr(v, "operation", None),
                     "args": getattr(v, "args", None),
                 })
+            current_phases = dict(tracker.current_phases)
+            beacons = list(getattr(coord, "beacons", []))
         # premature_dones is client-side (the dispatcher's lock check) — always available.
         premature_dones = [aid for (aid, disp) in tasks.values()
                            if getattr(disp, "premature_done", False)]
@@ -349,7 +362,8 @@ class SdkOrchestrator:
             success=success, agent_results=results, duration=duration,
             state_violations=state_violations, premature_dones=premature_dones,
             corrections_exceeded=corrections_exceeded,
-            run_dir=str(self.snapshot_dir))
+            run_dir=str(self.snapshot_dir),
+            current_phases=current_phases, beacons=beacons)
 
         # Live viz: emit the terminal event, then shut the server down (the
         # browser keeps its rendered final state — the D3 view is client-side).
@@ -361,6 +375,8 @@ class SdkOrchestrator:
                 "protocol": {
                     "violations": state_violations,
                     "final_states": tracker.current_states if tracker else {},
+                    "phases": current_phases,
+                    "beacons": beacons,
                 },
             })
             await asyncio.sleep(1.0)  # let a connected browser receive final events

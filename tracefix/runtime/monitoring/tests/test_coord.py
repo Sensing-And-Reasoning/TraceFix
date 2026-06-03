@@ -257,6 +257,87 @@ class TestConditionSignaling:
         assert result["status"] == "acquired"
         assert elapsed < 1.0  # should not wait for full timeout
 
+
+# ---------------------------------------------------------------------------
+# Observability plane: report_progress beacons + agent.phase emission
+# ---------------------------------------------------------------------------
+
+class _FakeBus:
+    def __init__(self):
+        self.events = []
+
+    async def emit(self, event_type, data=None):
+        self.events.append((event_type, data or {}))
+
+
+def _phase_states():
+    """researcherA: acquire doc_lock -> [write] (skip, business) -> release -> done."""
+    return {
+        "initial_states": {"researcherA": "rA_acquire"},
+        "states": [
+            {"id": "rA_acquire", "agent": "researcherA",
+             "actions": [{"next_state": "rA_write", "acquire": "doc_lock"}]},
+            {"id": "rA_write", "agent": "researcherA", "task": "write the section",
+             "actions": [{"next_state": "rA_release"}]},
+            {"id": "rA_release", "agent": "researcherA",
+             "actions": [{"next_state": "rA_done", "release": "doc_lock"}]},
+            {"id": "rA_done", "agent": "researcherA", "actions": []},
+        ],
+    }
+
+
+class TestReportProgress:
+    @pytest.mark.asyncio
+    async def test_records_beacon_and_returns_ok(self, coord):
+        res = await coord.report_progress("generating_figure", "researcherA")
+        assert res == {"status": "ok", "label": "generating_figure"}
+        assert len(coord.beacons) == 1
+        b = coord.beacons[0]
+        assert b["agent"] == "researcherA" and b["label"] == "generating_figure"
+        assert isinstance(b["ts"], float)
+
+    @pytest.mark.asyncio
+    async def test_no_bus_does_not_raise(self, coord):
+        res = await coord.report_progress("x", "researcherA")  # coord has event_bus=None
+        assert res["status"] == "ok"
+
+    @pytest.mark.asyncio
+    async def test_emits_agent_progress(self, ir_3m):
+        bus = _FakeBus()
+        coord = CoordinationContext(ir_3m, ProtocolMonitor(ir_3m), event_bus=bus)
+        await coord.report_progress("phase-x", "researcherA")
+        assert ("agent.progress",
+                {"agent_id": "researcherA", "label": "phase-x"}) in bus.events
+
+    @pytest.mark.asyncio
+    async def test_non_enforced_no_violation_no_state_change(self, ir_3m):
+        from tracefix.runtime.monitoring.state_tracker import StateTracker
+        tracker = StateTracker(_phase_states())
+        coord = CoordinationContext(ir_3m, ProtocolMonitor(ir_3m),
+                                    tracker=tracker, correction=True)
+        before = dict(tracker.current_states)
+        res = await coord.report_progress("anything", "researcherA")
+        assert res["status"] == "ok"
+        assert tracker.violation_count == 0
+        assert dict(tracker.current_states) == before  # coordination untouched
+
+
+class TestAgentPhaseEmission:
+    @pytest.mark.asyncio
+    async def test_phase_emitted_on_skip_then_cleared(self, ir_3m):
+        from tracefix.runtime.monitoring.state_tracker import StateTracker
+        bus = _FakeBus()
+        tracker = StateTracker(_phase_states())
+        coord = CoordinationContext(ir_3m, ProtocolMonitor(ir_3m),
+                                    tracker=tracker, event_bus=bus)
+        await coord.acquire_lock("doc_lock", "researcherA")
+        phases = [d for (t, d) in bus.events if t == "agent.phase"]
+        assert any(d["to_phase"] == "rA_write" and d["task"] == "write the section"
+                   for d in phases)
+        await coord.release_lock("doc_lock", "researcherA")
+        phases = [d for (t, d) in bus.events if t == "agent.phase"]
+        assert phases[-1]["to_phase"] is None  # cleared after release
+
     @pytest.mark.asyncio
     async def test_no_signal_loss_on_send(self, coord):
         """Send during receive wait wakes the receiver immediately (Condition)."""

@@ -23,6 +23,7 @@ from tracefix.runtime.monitoring.monitor import ProtocolViolation, StateGuidance
 _RPC_METHODS = frozenset({
     "acquire_lock", "release_lock", "send", "receive",
     "poll_channels", "receive_any", "get_held_locks",
+    "report_progress",  # observability-plane beacon (non-enforced)
 })
 
 
@@ -144,6 +145,8 @@ class CoordinationService:
         tracker = getattr(self.coord, "tracker", None)
         violations = []
         current_states = {}
+        current_phases = {}
+        state_tasks = {}
         if tracker is not None:
             for v in tracker.violations:
                 violations.append({
@@ -153,8 +156,14 @@ class CoordinationService:
                     "args": getattr(v, "args", None),
                 })
             current_states = dict(tracker.current_states)
+            current_phases = dict(tracker.current_phases)   # business phases
+            state_tasks = dict(tracker.state_tasks)         # state id -> task prose
+        beacons = list(getattr(self.coord, "beacons", []))  # progress beacons
         return json.dumps({"state_violations": violations,
-                           "current_states": current_states}).encode()
+                           "current_states": current_states,
+                           "current_phases": current_phases,
+                           "state_tasks": state_tasks,
+                           "beacons": beacons}).encode()
 
     async def start(self) -> asyncio.Server:
         self._server = await asyncio.start_server(self._handle, self.host, self.port)

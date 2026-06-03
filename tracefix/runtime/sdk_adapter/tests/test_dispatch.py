@@ -109,6 +109,49 @@ def test_signal_done_while_holding_lock_is_flagged_premature():
     asyncio.run(scenario())
 
 
+# --- report_progress: observability beacon, must bypass the control plane ---
+
+# State machine where A's only legal first op is `send` — so an `acquire` is
+# out-of-order and (with correction on) would be blocked + recorded.
+_REJECT_STATES = {
+    "initial_states": {"A": "a_send", "B": "b_recv"},
+    "states": [
+        {"id": "a_send", "agent": "A",
+         "actions": [{"next_state": "a_done", "send": {"channel": "a_to_b", "label": "ping"}}]},
+        {"id": "a_done", "agent": "A", "actions": []},
+        {"id": "b_recv", "agent": "B",
+         "actions": [{"next_state": "b_done", "receive": {"channel": "a_to_b"}}]},
+        {"id": "b_done", "agent": "B", "actions": []},
+    ],
+}
+
+
+def test_report_progress_not_a_coordination_tool():
+    from tracefix.runtime.sdk_adapter.dispatch import COORD_TOOL_NAMES
+    assert "report_progress" not in COORD_TOOL_NAMES
+
+
+def test_report_progress_bypasses_correction():
+    from tracefix.runtime.monitoring.state_tracker import StateTracker
+
+    async def scenario():
+        coord = CoordinationContext(IR, ProtocolMonitor(IR),
+                                    tracker=StateTracker(_REJECT_STATES), correction=True)
+        a = CoordToolDispatcher(coord, "A")
+        # An out-of-order coordination op IS gated (proves correction is active here).
+        bad = await a.dispatch("acquire_lock", {"lock_id": "lock1"})
+        assert bad["status"] != "ok"
+        v_after_bad = coord.tracker.violation_count
+        # report_progress must NOT be gated by the state machine.
+        ok = await a.dispatch("report_progress", {"label": "thinking"})
+        assert ok == {"status": "ok", "label": "thinking"}
+        assert coord.tracker.violation_count == v_after_bad   # tracker untouched
+        assert a.correction_limit_exceeded is False
+        assert coord.beacons[-1]["label"] == "thinking"
+
+    asyncio.run(scenario())
+
+
 def test_signal_done_after_releasing_all_locks_is_clean():
     """Released all locks → done, not premature — even with no tracked terminal.
 

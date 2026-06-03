@@ -560,19 +560,23 @@ function renderSimPanel(progress) {
 
 // ========== PROTOCOL STATE TRACKING ==========
 const protocolState = {};   // agent_id → current state name
+const currentPhase = {};    // agent_id → {id, task}: business phase (observability)
 const protocolViolations = [];
 
 function updateAgentStateLabel(agentId) {
+  const p = currentPhase[agentId];
+  const phaseLabel = p ? " \u00b7 \u2699 " + (p.task || p.id) : "";   // \u2699 working: <task>
   const el = document.querySelector(`[data-agent-state="${agentId}"]`);
   if (el && protocolState[agentId]) {
-    el.textContent = " @ " + protocolState[agentId];
+    el.textContent = " @ " + protocolState[agentId] + phaseLabel;
   }
-  // Update graph node sub-label to include state
+  // Update graph node sub-label to include state (+ business phase, if any)
   const node = graphNodeMap[agentId];
   if (node) {
     const steps = agentState[agentId] ? agentState[agentId].steps : 0;
     const stateStr = protocolState[agentId] ? " \u00b7 " + protocolState[agentId] : "";
-    node.select(".node-sub").text(steps + " calls" + stateStr);
+    const phaseStr = p ? " \u00b7 \u2699" + (p.id || "").replace(agentId + "_", "") : "";
+    node.select(".node-sub").text(steps + " calls" + stateStr + phaseStr);
   }
 }
 
@@ -593,6 +597,28 @@ function appendStateTransitionTrace(agentId, fromState, toState, trigger) {
     <div class="trace-body">
       <span style="color:var(--text2)">${fromState || "?"} \u2192 ${toState}</span>
       <div class="trace-args">${trigger}</div>
+    </div>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function appendProgressTrace(agentId, label) {
+  // A report_progress beacon (observability plane) \u2014 distinct from a coord op.
+  const container = document.getElementById("traceScroll");
+  const div = document.createElement("div");
+  div.className = "trace-item trace-state";
+  div.dataset.agent = agentId;
+  if (activeChannelFilter) {
+    div.style.display = "none";
+  } else if (activeFilter !== "all" && activeFilter !== agentId) {
+    div.style.display = "none";
+  }
+  div.innerHTML = `
+    <span class="trace-agent">${agentId}</span>
+    <span class="trace-round" style="color:var(--text2)">\u2699</span>
+    <div class="trace-body">
+      <span style="color:var(--cyan,#22d3ee)">progress</span>
+      <div class="trace-args">${label}</div>
     </div>`;
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
@@ -1156,6 +1182,21 @@ evtSource.addEventListener("state.transition", (e) => {
   appendStateTransitionTrace(data.agent_id, data.from_state, data.to_state, data.trigger);
 });
 
+evtSource.addEventListener("agent.phase", (e) => {
+  const data = JSON.parse(e.data);
+  if (data.to_phase) {
+    currentPhase[data.agent_id] = {id: data.to_phase, task: data.task};
+  } else {
+    delete currentPhase[data.agent_id];
+  }
+  updateAgentStateLabel(data.agent_id);
+});
+
+evtSource.addEventListener("agent.progress", (e) => {
+  const data = JSON.parse(e.data);
+  appendProgressTrace(data.agent_id, data.label);
+});
+
 evtSource.addEventListener("state.violation", (e) => {
   const data = JSON.parse(e.data);
   protocolViolations.push(data);
@@ -1215,6 +1256,14 @@ evtSource.addEventListener("run.done", (e) => {
     if (data.protocol.final_states) {
       Object.entries(data.protocol.final_states).forEach(([aid, st]) => {
         protocolState[aid] = st;
+        updateAgentStateLabel(aid);
+      });
+    }
+    // Final business phases (authoritative; mostly cleared since agents finished).
+    if (data.protocol.phases) {
+      Object.keys(protocolState).forEach(aid => { delete currentPhase[aid]; });
+      Object.entries(data.protocol.phases).forEach(([aid, ph]) => {
+        if (ph) currentPhase[aid] = {id: ph, task: null};
         updateAgentStateLabel(aid);
       });
     }

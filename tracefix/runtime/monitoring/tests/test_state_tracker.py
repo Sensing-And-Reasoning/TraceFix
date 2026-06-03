@@ -942,3 +942,72 @@ class TestExistingBehaviorUnchanged:
         tracker.on_release("agent1", "lock1")
         assert tracker.current_states["agent1"] == "s3_done"
         assert tracker.can_terminate("agent1") is True
+
+
+class TestBusinessPhase:
+    """current_phase: the no-op BUSINESS state the agent is working in (observability)."""
+
+    def test_phase_set_during_skip_window(self, with_skip):
+        # s1 --acquire--> s2_skip(business) --> s3 --release--> s4_done
+        tracker = StateTracker(with_skip)
+        assert "agent1" not in tracker.current_phases  # no skip traversed yet (at s1)
+        tracker.on_acquire("agent1", "lock1")
+        # coordination position advanced past the skip to s3...
+        assert tracker.current_states["agent1"] == "s3"
+        # ...but the business phase records the skip state being worked in.
+        assert tracker.current_phases["agent1"] == "s2_skip"
+        tracker.on_release("agent1", "lock1")
+        # released → landed on a non-skip terminal; business phase cleared.
+        assert tracker.current_states["agent1"] == "s4_done"
+        assert "agent1" not in tracker.current_phases
+
+    def test_phase_never_set_without_skips(self, simple_linear):
+        tracker = StateTracker(simple_linear)
+        assert tracker.current_phases == {}
+        tracker.on_acquire("agent1", "lock1")
+        assert tracker.current_phases == {}
+        tracker.on_release("agent1", "lock1")
+        assert tracker.current_phases == {}
+
+    def test_initial_skip_sets_initial_phase(self, initial_skip):
+        # initial state s0_skip is a skip → constructor auto-advance sets the phase.
+        tracker = StateTracker(initial_skip)
+        assert tracker.current_states["agent1"] == "s1"
+        assert tracker.current_phases["agent1"] == "s0_skip"
+        # advancing past s1 (a non-skip) clears it.
+        tracker.on_acquire("agent1", "lock1")
+        assert "agent1" not in tracker.current_phases
+
+    def test_snapshot_restore_preserves_phase_on_hit(self, with_skip):
+        tracker = StateTracker(with_skip)
+        tracker.on_acquire("agent1", "lock1")  # phase = s2_skip, state = s3
+        assert tracker.current_phases["agent1"] == "s2_skip"
+        # a legal probe (release IS legal at s3) must not mutate the phase.
+        ok, _ = tracker.check_op("agent1", "release", {"resource": "lock1"})
+        assert ok is True
+        assert tracker.current_phases["agent1"] == "s2_skip"
+        assert tracker.current_states["agent1"] == "s3"
+
+    def test_snapshot_restore_preserves_phase_on_miss(self, with_skip):
+        tracker = StateTracker(with_skip)
+        tracker.on_acquire("agent1", "lock1")  # phase = s2_skip, state = s3
+        # an illegal probe (acquire is NOT legal at s3) records a violation but must
+        # restore the phase exactly.
+        ok, _ = tracker.check_op("agent1", "acquire", {"resource": "lock1"})
+        assert ok is False
+        assert tracker.current_phases["agent1"] == "s2_skip"
+        assert tracker.current_states["agent1"] == "s3"
+
+    def test_state_tasks_populated_from_states_data(self):
+        states_data = {
+            "initial_states": {"agent1": "s1"},
+            "states": [
+                {"id": "s1", "agent": "agent1", "task": "draft the section",
+                 "actions": [{"next_state": "s2", "acquire": "lock1"}]},
+                {"id": "s2", "agent": "agent1",
+                 "actions": [{"next_state": "s3_done", "release": "lock1"}]},
+                {"id": "s3_done", "agent": "agent1", "actions": []},
+            ],
+        }
+        tracker = StateTracker(states_data)
+        assert tracker.state_tasks == {"s1": "draft the section"}

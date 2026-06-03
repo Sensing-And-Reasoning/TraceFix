@@ -14,6 +14,7 @@ waking) so agents don't burn tool-call rounds on retry loops.
 from __future__ import annotations
 
 import asyncio
+import time
 from dataclasses import dataclass
 
 from tracefix.runtime.store import MessageStore, LockStore, CounterStore
@@ -40,6 +41,9 @@ class CoordinationContext:
         # being soft-recorded after the fact. Off by default so bare contexts
         # (and existing tests) keep today's behavior.
         self.correction = correction
+        # Observability plane: optional progress beacons reported by agents via
+        # report_progress(). Pure telemetry — never validated, never a violation.
+        self.beacons: list[dict] = []
 
         # Track which resource IDs are locks vs counters
         self._lock_ids: set[str] = set()
@@ -136,6 +140,7 @@ class CoordinationContext:
 
         async with self._agent_locks[agent_id]:
             old_state = self.tracker.current_states.get(agent_id)
+            old_phase = self.tracker.current_phases.get(agent_id)
             old_count = self.tracker.violation_count
 
             if op_type == "acquire":
@@ -157,6 +162,15 @@ class CoordinationContext:
                     "from_state": old_state,
                     "to_state": new_state,
                     "trigger": op_type,
+                })
+            new_phase = self.tracker.current_phases.get(agent_id)
+            if new_phase != old_phase:
+                await self.event_bus.emit("agent.phase", {
+                    "agent_id": agent_id,
+                    "from_phase": old_phase,
+                    "to_phase": new_phase,
+                    "task": (self.tracker.state_tasks.get(new_phase)
+                             if new_phase else None),
                 })
             if self.tracker.violation_count > old_count:
                 v = self.tracker.violations[-1]
@@ -366,6 +380,21 @@ class CoordinationContext:
         return [lid for lid, holder in self.locks._locks.items()
                 if holder == agent_id]
 
+    async def report_progress(self, label: str, agent_id: str) -> dict:
+        """Observability-plane telemetry: record a business-progress beacon.
+
+        Deliberately bypasses the control plane — it calls NONE of the monitor, the
+        state-machine guard, or the tracker, so it can never be a violation or a
+        correction and never touches coordination state. It only appends a beacon
+        and (if a live bus is attached) emits an ``agent.progress`` event.
+        """
+        self.beacons.append({"agent": agent_id, "label": label, "ts": time.time()})
+        if self.event_bus is not None:
+            await self.event_bus.emit("agent.progress", {
+                "agent_id": agent_id, "label": label,
+            })
+        return {"status": "ok", "label": label}
+
 
 # ---------------------------------------------------------------------------
 # Tool schemas for OpenAI function calling
@@ -475,6 +504,20 @@ COORD_TOOL_SCHEMAS = [
                 "type": "object",
                 "properties": {},
                 "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "report_progress",
+            "description": "OPTIONAL progress beacon. Announce a finer-grained business sub-phase you are currently working on (e.g. 'reading_research', 'generating_figure', 'saving'). This is telemetry ONLY — it is never required, never affects coordination or correctness, and can never be out of order. Use it sparingly to make your progress observable.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "label": {"type": "string", "description": "Short business sub-phase label"},
+                },
+                "required": ["label"],
             },
         },
     },

@@ -110,6 +110,11 @@ class CoordClient:
         result = await self._rpc("get_held_locks", {"agent_id": agent_id})
         return result if isinstance(result, list) else []
 
+    async def report_progress(self, label: str, agent_id: str) -> dict:
+        result = await self._rpc("report_progress",
+                                 {"label": label, "agent_id": agent_id})
+        return result if isinstance(result, dict) else {"status": "ok", "label": label}
+
     # --- orchestrator helper (not part of CoordBackend) ---
 
     async def fetch_monitoring(self) -> dict:

@@ -128,3 +128,77 @@ def test_remote_receive_timeout():
             await svc.stop()
 
     asyncio.run(scenario())
+
+
+# --- Observability plane over the network: report_progress + monitoring snapshot ---
+
+_PHASE_STATES = {
+    "initial_states": {"A": "a_acquire"},
+    "states": [
+        {"id": "a_acquire", "agent": "A",
+         "actions": [{"next_state": "a_write", "acquire": "lock1"}]},
+        {"id": "a_write", "agent": "A", "task": "do the work",
+         "actions": [{"next_state": "a_release"}]},
+        {"id": "a_release", "agent": "A",
+         "actions": [{"next_state": "a_done", "release": "lock1"}]},
+        {"id": "a_done", "agent": "A", "actions": []},
+    ],
+}
+
+
+def test_rpc_methods_includes_report_progress():
+    from tracefix.runtime.coordination.service import _RPC_METHODS
+    assert "report_progress" in _RPC_METHODS
+
+
+def test_remote_report_progress_roundtrip():
+    async def scenario():
+        port = _free_port()
+        svc = await _start_service(port)
+        try:
+            a = CoordClient(f"http://127.0.0.1:{port}", "A")
+            r = await a.report_progress("generating", "A")
+            assert r == {"status": "ok", "label": "generating"}
+            assert len(svc.coord.beacons) == 1
+            assert svc.coord.beacons[0]["label"] == "generating"
+        finally:
+            await svc.stop()
+
+    asyncio.run(scenario())
+
+
+def test_dispatch_report_progress_via_service():
+    import json
+    from tracefix.runtime.monitoring.coord import CoordinationContext
+    from tracefix.runtime.monitoring.monitor import ProtocolMonitor
+
+    async def scenario():
+        coord = CoordinationContext(IR, ProtocolMonitor(IR))
+        svc = CoordinationService(coord, host="127.0.0.1", port=_free_port())
+        body = json.dumps({"method": "report_progress",
+                           "args": {"label": "x", "agent_id": "A"}}).encode()
+        out = json.loads(await svc._dispatch(body))
+        assert out == {"status": "ok", "label": "x"}
+        assert coord.beacons[-1]["label"] == "x"
+
+    asyncio.run(scenario())
+
+
+def test_monitoring_snapshot_has_phases_and_beacons():
+    import json
+    from tracefix.runtime.monitoring.coord import CoordinationContext
+    from tracefix.runtime.monitoring.monitor import ProtocolMonitor
+    from tracefix.runtime.monitoring.state_tracker import StateTracker
+
+    async def scenario():
+        coord = CoordinationContext(IR, ProtocolMonitor(IR),
+                                    tracker=StateTracker(_PHASE_STATES))
+        await coord.acquire_lock("lock1", "A")        # → business phase a_write
+        await coord.report_progress("sub-step", "A")  # → a beacon
+        svc = CoordinationService(coord, host="127.0.0.1", port=_free_port())
+        snap = json.loads(svc._monitoring_snapshot().decode())
+        assert snap["current_phases"]["A"] == "a_write"
+        assert snap["state_tasks"]["a_write"] == "do the work"
+        assert any(bk["label"] == "sub-step" for bk in snap["beacons"])
+
+    asyncio.run(scenario())

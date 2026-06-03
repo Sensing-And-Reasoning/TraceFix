@@ -52,6 +52,11 @@ When your protocol steps name a coordination tool WITHOUT the prefix (e.g.
 `acquire_lock`), call the prefixed tool (`tracefix_acquire_lock`). Call
 `tracefix_signal_done()` only after you have completed every protocol step.
 
+Optional telemetry: `tracefix_report_progress(label)` — announce a finer business
+sub-phase you are working on (e.g. "reading_research", "generating_figure"). It is
+NEVER required, never affects success, and can never be out of order. Use it sparingly
+to make your progress visible; it does not replace any coordination step.
+
 Control plane vs data plane: coordination channels carry ONLY a label (a signal
 flag like "ready"/"submit") — never data or content. To hand another agent data,
 write it to a file in your working directory and send the label to signal it.
@@ -71,6 +76,8 @@ class OpencodeRunResult:
     premature_dones: list = field(default_factory=list)
     corrections_exceeded: list = field(default_factory=list)
     run_dir: str = ""
+    current_phases: dict = field(default_factory=dict)  # agent → business phase
+    beacons: list = field(default_factory=list)          # report_progress beacons
 
 
 def _load_json(path: Path) -> dict:
@@ -285,6 +292,8 @@ class OpencodeOrchestrator:
                 r.get("status") == "completed" for r in agent_results)
 
             state_violations, current_states = [], {}
+            current_phases: dict = {}
+            beacons: list = []
             if self.coord_url:
                 # tracker lives in the external service — fetch its record.
                 try:
@@ -292,6 +301,8 @@ class OpencodeOrchestrator:
                                             "_orchestrator").fetch_monitoring()
                     state_violations = mon.get("state_violations", [])
                     current_states = mon.get("current_states", {})
+                    current_phases = mon.get("current_phases", {})
+                    beacons = mon.get("beacons", [])
                 except Exception:  # noqa: BLE001 — monitoring is best-effort
                     pass
             elif tracker is not None:
@@ -302,6 +313,8 @@ class OpencodeOrchestrator:
                         "operation": getattr(v, "operation", None),
                         "args": getattr(v, "args", None)})
                 current_states = dict(tracker.current_states)
+                current_phases = dict(tracker.current_phases)
+                beacons = list(getattr(coord, "beacons", []))
             premature_dones = [r["agent_id"] for r in agent_results
                                if r.get("premature_done")]
             corrections_exceeded = [r["agent_id"] for r in agent_results
@@ -312,14 +325,17 @@ class OpencodeOrchestrator:
                 state_violations=state_violations, current_states=current_states,
                 premature_dones=premature_dones,
                 corrections_exceeded=corrections_exceeded,
-                run_dir=str(self.snapshot_dir))
+                run_dir=str(self.snapshot_dir),
+                current_phases=current_phases, beacons=beacons)
 
             if event_bus is not None:
                 await event_bus.emit("run.done", {
                     "success": result.success, "duration": result.duration,
                     "error": result.error,
                     "protocol": {"violations": state_violations,
-                                 "final_states": current_states}})
+                                 "final_states": current_states,
+                                 "phases": current_phases,
+                                 "beacons": beacons}})
                 await asyncio.sleep(1.0)
                 if self.live_hold > 0:
                     print(f"[opencode] holding live view at "

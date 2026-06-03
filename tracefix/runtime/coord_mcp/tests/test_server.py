@@ -17,6 +17,7 @@ from tracefix.runtime.monitoring.coord import COORD_TOOL_SCHEMAS
 EXPECTED_TOOLS = {
     "acquire_lock", "release_lock", "send_message", "receive_message",
     "poll_channels", "receive_any", "signal_done",
+    "report_progress",  # observability beacon — auto-propagates to the MCP layer
 }
 
 
@@ -38,9 +39,9 @@ def _schemas():
 
 # --- schema → Tool conversion -------------------------------------------------
 
-def test_tools_from_schemas_covers_the_7_coord_tools():
+def test_tools_from_schemas_covers_the_coord_tools():
     tools = srv._tools_from_schemas(_schemas())
-    assert len(tools) == 7
+    assert len(tools) == len(EXPECTED_TOOLS)
     assert {t.name for t in tools} == EXPECTED_TOOLS
 
 
