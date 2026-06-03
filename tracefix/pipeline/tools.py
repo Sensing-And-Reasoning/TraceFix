@@ -516,6 +516,7 @@ def extract_states(ws: Workspace) -> str:
         parse_pluscal,
         lint_adjacent_acquire_release,
         inject_state_tasks,
+        lift_domain_tasks,
     )
 
     translated = ws.read_file("Protocol_translated.tla")
@@ -539,9 +540,11 @@ def extract_states(ws: Workspace) -> str:
         elif any(has_recv):
             state["tool_hint"] = "poll_channels"
 
-    # Inject optional per-state BUSINESS-task annotations (observability only;
-    # shared helper with cli.py so the two extract paths never drift).
-    inject_state_tasks(result.states, ir_data.get("state_tasks", {}))
+    # Per-state BUSINESS-task annotation (observability only; shared helpers with
+    # cli.py so the two extract paths never drift). Default from the `\* domain:`
+    # PlusCal comment; the IR's optional state_tasks then overrides. Orphans warn.
+    lift_domain_tasks(result.states, translated)
+    task_orphans = inject_state_tasks(result.states, ir_data.get("state_tasks", {}))
 
     lint_warnings = lint_adjacent_acquire_release(result.states)
 
@@ -559,6 +562,9 @@ def extract_states(ws: Workspace) -> str:
     if lint_warnings:
         parts.append(f"LINT: {len(lint_warnings)} work-state warning(s):")
         parts.extend(f"  - {w}" for w in lint_warnings)
+    if task_orphans:
+        parts.append(f"WARNING: {len(task_orphans)} state_tasks key(s) match no state "
+                     f"(typo or stale after a repair?): {', '.join(sorted(task_orphans))}")
     parts.append("Next: read states.json, then generate per-agent prompts (Phase 4).")
     return "\n".join(parts)
 

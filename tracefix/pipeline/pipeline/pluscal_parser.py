@@ -1101,19 +1101,63 @@ def lint_adjacent_acquire_release(states: list[dict]) -> list[str]:
     return warnings
 
 
-def inject_state_tasks(states: list[dict], state_tasks: dict | None) -> None:
-    """Annotate ``states`` in place with optional per-state BUSINESS-task prose.
+# A PlusCal label line, e.g. ``    RESEARCHER_FM_draft:``
+_LABEL_RE = re.compile(r'^[ \t]*([A-Za-z_][A-Za-z0-9_]*)[ \t]*:', re.M)
+# A ``\* domain: <text>`` end-of-line comment — the design flow (tla-verify-pluscal)
+# MANDATES one on every skip work-state label, and it survives PlusCal translation.
+_DOMAIN_RE = re.compile(r'\\\*[ \t]*domain:[ \t]*(.+?)[ \t]*$', re.M)
 
-    ``state_tasks`` maps a state id -> task description (from the IR's optional
-    ``state_tasks`` field). Observability only — ignored by TLC; consumed by runtime
+
+def _extract_domain_tasks(tla_content: str) -> dict[str, str]:
+    """Map each PlusCal label id -> its ``\\* domain: ...`` comment text, if present.
+
+    Lifts the business-work descriptions the design flow already writes (and the
+    verify skill mandates) so the per-state task flows for free from existing output.
+    """
+    labels = [(m.group(1), m.start()) for m in _LABEL_RE.finditer(tla_content)]
+    out: dict[str, str] = {}
+    for i, (label, start) in enumerate(labels):
+        end = labels[i + 1][1] if i + 1 < len(labels) else len(tla_content)
+        m = _DOMAIN_RE.search(tla_content, start, end)
+        if m:
+            out[label] = m.group(1).strip()
+    return out
+
+
+def lift_domain_tasks(states: list[dict], tla_content: str) -> None:
+    """Default each state's ``task`` (in place) from its ``\\* domain:`` PlusCal comment.
+
+    Does NOT override an already-set task — an explicit IR ``state_tasks`` entry,
+    applied afterwards via ``inject_state_tasks``, takes precedence. Only real state
+    ids get a task, so spurious label-regex matches are harmless. Because the comment
+    travels with its label, a repair that renames/moves a state keeps its task in sync
+    automatically (no orphaned annotation).
+    """
+    domain = _extract_domain_tasks(tla_content)
+    for s in states:
+        t = domain.get(s.get("id"))
+        if t and not s.get("task"):
+            s["task"] = t
+
+
+def inject_state_tasks(states: list[dict], state_tasks: dict | None) -> list[str]:
+    """Annotate ``states`` in place with per-state BUSINESS-task prose from the IR's
+    optional ``state_tasks`` map, returning keys that matched NO state (orphans).
+
+    ``state_tasks`` (state id -> description) OVERRIDES any comment-derived task
+    (``lift_domain_tasks``). Observability only — ignored by TLC; consumed by runtime
     prompt generation + the StateTracker's phase monitoring. Shared by both
-    extract-states paths (cli.py + tools.py) so they can never drift.
+    extract-states paths (cli.py + tools.py) so they can never drift. Orphan keys
+    (a typo, or a stale key after a repair renamed a state) are returned so the caller
+    can warn instead of silently dropping them.
     """
     tasks = state_tasks or {}
+    ids = {s.get("id") for s in states}
     for s in states:
         task = tasks.get(s.get("id"))
         if task:
             s["task"] = task
+    return [k for k in tasks if k not in ids]
 
 
 # ---------------------------------------------------------------------------

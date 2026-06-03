@@ -352,10 +352,16 @@ def cmd_extract_states(args: argparse.Namespace) -> int:
     # Annotate multi-action states with tool_hint for prompt generation
     _annotate_tool_hints(result.states)
 
-    # Inject optional per-state BUSINESS-task annotations from the IR (observability
-    # only; ignored by TLC) -> each state's `task` field.
-    from tracefix.pipeline.pipeline.pluscal_parser import inject_state_tasks
-    inject_state_tasks(result.states, ir_data.get("state_tasks", {}))
+    # Per-state BUSINESS-task annotation (observability only; ignored by TLC).
+    # Default each task from the `\* domain:` PlusCal comment the design flow already
+    # writes; the IR's optional `state_tasks` map then overrides. Orphan keys warn.
+    from tracefix.pipeline.pipeline.pluscal_parser import (
+        inject_state_tasks, lift_domain_tasks)
+    lift_domain_tasks(result.states, tla_content)
+    task_orphans = inject_state_tasks(result.states, ir_data.get("state_tasks", {}))
+    if task_orphans:
+        print(f"WARNING: {len(task_orphans)} state_tasks key(s) match no state "
+              f"(typo, or stale after a repair?): {', '.join(sorted(task_orphans))}")
 
     # Lint: check for adjacent acquire→release without intermediate work
     from tracefix.pipeline.pipeline.pluscal_parser import lint_adjacent_acquire_release

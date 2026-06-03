@@ -941,3 +941,47 @@ def test_unknown_top_level_key_still_rejected():
     ir = copy.deepcopy(_MIN_IR)
     ir["bogus_field"] = 123
     assert validate_ir(ir).valid is False
+
+
+_TLA_WITH_DOMAIN = r"""
+A_draft:
+    skip; \* domain: research and compose the section
+A_write:
+    skip; \* domain: write the file under lock
+A_done:
+    skip;
+"""
+
+
+def test_lift_domain_tasks_from_comments():
+    from tracefix.pipeline.pipeline.pluscal_parser import lift_domain_tasks
+    states = [
+        {"id": "A_draft", "agent": "A", "actions": [{"next_state": "A_write"}]},
+        {"id": "A_write", "agent": "A", "actions": [{"next_state": "A_done"}]},
+        {"id": "A_done", "agent": "A", "actions": []},
+    ]
+    lift_domain_tasks(states, _TLA_WITH_DOMAIN)
+    assert states[0]["task"] == "research and compose the section"
+    assert states[1]["task"] == "write the file under lock"
+    assert "task" not in states[2]  # A_done has no domain comment
+
+
+def test_lift_does_not_override_existing_task():
+    from tracefix.pipeline.pipeline.pluscal_parser import lift_domain_tasks
+    states = [{"id": "A_draft", "agent": "A", "task": "preset", "actions": []}]
+    lift_domain_tasks(states, _TLA_WITH_DOMAIN)
+    assert states[0]["task"] == "preset"  # comment must NOT override an existing task
+
+
+def test_inject_overrides_lifted_and_returns_orphans():
+    from tracefix.pipeline.pipeline.pluscal_parser import (
+        lift_domain_tasks, inject_state_tasks)
+    states = [
+        {"id": "A_draft", "agent": "A", "actions": []},
+        {"id": "A_write", "agent": "A", "actions": []},
+    ]
+    lift_domain_tasks(states, _TLA_WITH_DOMAIN)                  # comment defaults
+    orphans = inject_state_tasks(states, {"A_draft": "IR override", "GHOST": "x"})
+    assert states[0]["task"] == "IR override"                   # IR overrides the comment
+    assert states[1]["task"] == "write the file under lock"     # comment kept where no override
+    assert orphans == ["GHOST"]                                 # unmatched key surfaced
