@@ -32,7 +32,7 @@ from tracefix.runtime.sdk_adapter.mcp_server import (
 from tracefix.runtime.sdk_adapter.sdk_runner import run_sdk_agent
 from tracefix.runtime.sdk_adapter.types import AgentResult
 from tracefix.runtime.coordination.client import CoordClient
-from tracefix.runtime.workspace_layout import spec_path, output_dir
+from tracefix.runtime.workspace_layout import spec_path, snapshot_run_workspace, new_run_stamp
 
 _DEFAULT_BUILTINS = ["Read", "Write", "Edit"]
 
@@ -68,6 +68,7 @@ class SdkRunResult:
     state_violations: list = field(default_factory=list)  # StateTracker soft violations
     premature_dones: list = field(default_factory=list)   # agents that signal_done'd early
     corrections_exceeded: list = field(default_factory=list)  # agents that hit the correction cap
+    run_dir: str = ""                                     # this run's snapshot workspace
 
 
 def _load_json(path: Path) -> dict:
@@ -115,6 +116,8 @@ class SdkOrchestrator:
         self.live_warmup = live_warmup  # delay before agents start, so the browser connects first
         self.live_hold = live_hold      # keep the view up this long AFTER the run (inspection)
         self.sim = None
+        self.snapshot_dir: Path | None = None  # set per run() → <workspace>-<stamp>/
+        self.run_dir: Path | None = None        # = snapshot_dir/output (agents' cwd)
 
     # -- workspace helpers ---------------------------------------------------
 
@@ -133,10 +136,10 @@ class SdkOrchestrator:
 
         The claude CLI resolves relative Write paths against the project (git)
         root, not its cwd — so a bare filename would leak into the repo root.
-        Giving the absolute output directory makes file writes land in
-        workspace/<task>/output/ regardless.
+        Giving the absolute output directory makes file writes land in this
+        run's snapshot output/ regardless.
         """
-        out = output_dir(self.workspace).resolve()
+        out = self.run_dir.resolve()
         return (
             f"\n\n## Where to write files\n"
             f"Write EVERY file you produce into this exact directory, using the full "
@@ -196,6 +199,13 @@ class SdkOrchestrator:
 
     async def run(self, timeout: float = 180.0) -> SdkRunResult:
         ir = _load_json(spec_path(self.workspace, "ir.json"))
+        # Snapshot this run to a timestamped sibling workspace (inputs + verified
+        # spec/ + prompts/ copied from the base, fresh output/), mirroring the
+        # opencode adapter so BOTH harnesses produce the same traceable per-run
+        # layout: workspace/<task>-<stamp>/{spec,prompts,output}.
+        self.snapshot_dir = snapshot_run_workspace(self.workspace, new_run_stamp())
+        self.run_dir = self.snapshot_dir / "output"
+        print(f"[sdk] run snapshot → {self.snapshot_dir}")
 
         # Live visualization (in-process mode only — in distributed mode the
         # coordination events live in the CoordinationService, not here).
@@ -267,7 +277,7 @@ class SdkOrchestrator:
                 model=self.model,
                 max_rounds=self.max_rounds,
                 verbose=self.verbose,
-                cwd=str(output_dir(self.workspace).resolve()),
+                cwd=str(self.run_dir.resolve()),
             )))
 
         start = time.time()
@@ -323,7 +333,8 @@ class SdkOrchestrator:
         result = SdkRunResult(
             success=success, agent_results=results, duration=duration,
             state_violations=state_violations, premature_dones=premature_dones,
-            corrections_exceeded=corrections_exceeded)
+            corrections_exceeded=corrections_exceeded,
+            run_dir=str(self.snapshot_dir))
 
         # Live viz: emit the terminal event, then shut the server down (the
         # browser keeps its rendered final state — the D3 view is client-side).

@@ -26,6 +26,8 @@ def _print_result(result) -> None:
     print("\n=== SDK Adapter Result ===")
     verdict = "SUCCESS" if result.success else "INCOMPLETE"
     print(f"{verdict} in {result.duration:.1f}s")
+    if getattr(result, "run_dir", ""):
+        print(f"run snapshot: {result.run_dir}  (data-plane artifacts in output/)")
     for r in result.agent_results:
         print(f"  {r.agent_id}: {r.steps} tool calls, {r.status}, {r.duration:.1f}s"
               + (f" — {r.error}" if r.error else ""))
