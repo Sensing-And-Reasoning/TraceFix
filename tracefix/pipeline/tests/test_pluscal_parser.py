@@ -897,3 +897,47 @@ class TestLintAdjacentAcquireRelease:
         ]
         warnings = lint_adjacent_acquire_release(states)
         assert len(warnings) == 0
+
+
+# ---------------------------------------------------------------------------
+# state_tasks: optional per-state business-task annotation (observability)
+# ---------------------------------------------------------------------------
+
+_MIN_IR = {
+    "agents": [{"id": "A"}, {"id": "B"}],
+    "resources": [{"id": "L", "type": "Lock"}],
+    "channels": [{"id": "c", "from": "A", "to": "B", "labels": ["x"]}],
+}
+
+
+def test_inject_state_tasks_annotates_matching_states():
+    from tracefix.pipeline.pipeline.pluscal_parser import inject_state_tasks
+    states = [
+        {"id": "A_draft", "agent": "A", "actions": [{"next_state": "A_write"}]},
+        {"id": "A_write", "agent": "A", "actions": [{"next_state": "A_done"}]},
+        {"id": "A_done", "agent": "A", "actions": []},
+    ]
+    inject_state_tasks(states, {"A_write": "write the section", "NOPE": "ignored"})
+    assert states[1]["task"] == "write the section"
+    assert "task" not in states[0] and "task" not in states[2]
+
+
+def test_inject_state_tasks_handles_none():
+    from tracefix.pipeline.pipeline.pluscal_parser import inject_state_tasks
+    states = [{"id": "A_x", "agent": "A", "actions": []}]
+    inject_state_tasks(states, None)
+    assert "task" not in states[0]
+
+
+def test_state_tasks_accepted_by_validator():
+    from tracefix.pipeline.pipeline.validator import validate_ir
+    ir = copy.deepcopy(_MIN_IR)
+    ir["state_tasks"] = {"A_write": "write the thing"}
+    assert validate_ir(ir).valid is True
+
+
+def test_unknown_top_level_key_still_rejected():
+    from tracefix.pipeline.pipeline.validator import validate_ir
+    ir = copy.deepcopy(_MIN_IR)
+    ir["bogus_field"] = 123
+    assert validate_ir(ir).valid is False

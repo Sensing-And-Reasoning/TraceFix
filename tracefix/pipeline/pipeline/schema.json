@@ -96,6 +96,12 @@
           }
         }
       }
+    },
+
+    "state_tasks": {
+      "description": "Optional per-state BUSINESS-task descriptions (observability only; IGNORED by TLA+/TLC — not part of the verified model). Keys are PlusCal state ids (e.g. 'PLOTTER_write'); values are short prose describing the domain work to do at that state. Injected into states.json as each state's `task` field, used for runtime prompts + phase monitoring.",
+      "type": "object",
+      "additionalProperties": {"type": "string", "minLength": 1}
     }
   }
 }

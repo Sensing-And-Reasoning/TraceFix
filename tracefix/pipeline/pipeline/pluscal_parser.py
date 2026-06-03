@@ -1101,6 +1101,21 @@ def lint_adjacent_acquire_release(states: list[dict]) -> list[str]:
     return warnings
 
 
+def inject_state_tasks(states: list[dict], state_tasks: dict | None) -> None:
+    """Annotate ``states`` in place with optional per-state BUSINESS-task prose.
+
+    ``state_tasks`` maps a state id -> task description (from the IR's optional
+    ``state_tasks`` field). Observability only — ignored by TLC; consumed by runtime
+    prompt generation + the StateTracker's phase monitoring. Shared by both
+    extract-states paths (cli.py + tools.py) so they can never drift.
+    """
+    tasks = state_tasks or {}
+    for s in states:
+        task = tasks.get(s.get("id"))
+        if task:
+            s["task"] = task
+
+
 # ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------

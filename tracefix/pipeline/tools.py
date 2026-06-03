@@ -515,6 +515,7 @@ def extract_states(ws: Workspace) -> str:
     from tracefix.pipeline.pipeline.pluscal_parser import (
         parse_pluscal,
         lint_adjacent_acquire_release,
+        inject_state_tasks,
     )
 
     translated = ws.read_file("Protocol_translated.tla")
@@ -537,6 +538,10 @@ def extract_states(ws: Workspace) -> str:
             state["tool_hint"] = "receive_any"
         elif any(has_recv):
             state["tool_hint"] = "poll_channels"
+
+    # Inject optional per-state BUSINESS-task annotations (observability only;
+    # shared helper with cli.py so the two extract paths never drift).
+    inject_state_tasks(result.states, ir_data.get("state_tasks", {}))
 
     lint_warnings = lint_adjacent_acquire_release(result.states)
 

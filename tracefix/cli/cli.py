@@ -352,6 +352,11 @@ def cmd_extract_states(args: argparse.Namespace) -> int:
     # Annotate multi-action states with tool_hint for prompt generation
     _annotate_tool_hints(result.states)
 
+    # Inject optional per-state BUSINESS-task annotations from the IR (observability
+    # only; ignored by TLC) -> each state's `task` field.
+    from tracefix.pipeline.pipeline.pluscal_parser import inject_state_tasks
+    inject_state_tasks(result.states, ir_data.get("state_tasks", {}))
+
     # Lint: check for adjacent acquire→release without intermediate work
     from tracefix.pipeline.pipeline.pluscal_parser import lint_adjacent_acquire_release
     lint_warnings = lint_adjacent_acquire_release(result.states)
