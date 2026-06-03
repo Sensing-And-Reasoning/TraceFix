@@ -23,6 +23,8 @@ from tracefix.runtime.opencode_adapter.orchestrator import OpencodeOrchestrator
 def _print_result(result, verbose: bool) -> None:
     print("\n=== OpenCode Adapter Result ===")
     print(f"{'SUCCESS' if result.success else 'INCOMPLETE'} in {result.duration:.1f}s")
+    if getattr(result, "run_dir", ""):
+        print(f"run snapshot: {result.run_dir}  (data-plane artifacts in output/)")
     for r in result.agent_results:
         line = (f"  {r['agent_id']}: {len(r.get('tool_calls', []))} tool calls, "
                 f"{r.get('status')}")

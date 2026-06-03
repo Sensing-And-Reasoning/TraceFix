@@ -31,7 +31,7 @@ from tracefix.runtime.monitoring.coord import CoordinationContext
 from tracefix.runtime.monitoring.monitor import ProtocolMonitor
 from tracefix.runtime.monitoring.state_tracker import StateTracker
 from tracefix.runtime.coordination.service import CoordinationService
-from tracefix.runtime.workspace_layout import spec_path, output_dir
+from tracefix.runtime.workspace_layout import spec_path, snapshot_run_workspace, new_run_stamp
 from tracefix.runtime.opencode_adapter.config_gen import agent_key, build_agent_config
 from tracefix.runtime.opencode_adapter.driver import run_opencode_agent
 
@@ -69,6 +69,7 @@ class OpencodeRunResult:
     current_states: dict = field(default_factory=dict)
     premature_dones: list = field(default_factory=list)
     corrections_exceeded: list = field(default_factory=list)
+    run_dir: str = ""
 
 
 def _load_json(path: Path) -> dict:
@@ -110,6 +111,8 @@ class OpencodeOrchestrator:
         self.live_port = live_port
         self.live_warmup = live_warmup
         self.live_hold = live_hold
+        self.snapshot_dir: Path | None = None  # set per run() → <workspace>-<stamp>/
+        self.run_dir: Path | None = None        # = snapshot_dir/output (agents' cwd)
 
     # -- workspace / prompt helpers -----------------------------------------
 
@@ -122,7 +125,7 @@ class OpencodeOrchestrator:
         return path.read_text() + _COORD_FOOTER + self._output_footer()
 
     def _output_footer(self) -> str:
-        out = output_dir(self.workspace).resolve()
+        out = self.run_dir.resolve()
         return (
             f"\n\n## Where to write files (shared data plane)\n"
             f"Your working directory is the shared output directory:\n`{out}`\n"
@@ -136,6 +139,13 @@ class OpencodeOrchestrator:
 
     async def run(self) -> OpencodeRunResult:
         ir = _load_json(spec_path(self.workspace, "ir.json"))
+        # Snapshot this run to a timestamped sibling workspace
+        # `<workspace>-<stamp>/` (inputs + verified spec/ + prompts/ copied from
+        # the base, fresh output/), so every run is a self-contained, traceable
+        # record of which verified spec produced which artifacts.
+        # `<workspace>-latest` → newest run. Agents' cwd is its output/ subdir.
+        self.snapshot_dir = snapshot_run_workspace(self.workspace, new_run_stamp())
+        self.run_dir = self.snapshot_dir / "output"
 
         # Optional real-time D3/SSE visualization. The CoordinationContext emits
         # state.transition / state.violation as the service processes each RPC, so
@@ -172,7 +182,8 @@ class OpencodeOrchestrator:
         await service.start()
         coord_url = f"http://{self.host}:{self.port}"
         coord_cmd = [sys.executable, "-m", "tracefix.runtime.coord_mcp"]
-        out = str(output_dir(self.workspace).resolve())
+        out = str(self.run_dir.resolve())
+        print(f"[opencode] run snapshot → {self.snapshot_dir}", file=sys.stderr)
         if self.verbose:
             print(f"[opencode] CoordinationService on {coord_url} | "
                   f"agents={len(ir['agents'])} | output={out}", file=sys.stderr)
@@ -263,7 +274,8 @@ class OpencodeOrchestrator:
                 success=success, agent_results=agent_results, duration=duration,
                 state_violations=state_violations, current_states=current_states,
                 premature_dones=premature_dones,
-                corrections_exceeded=corrections_exceeded)
+                corrections_exceeded=corrections_exceeded,
+                run_dir=str(self.snapshot_dir))
 
             if event_bus is not None:
                 await event_bus.emit("run.done", {
