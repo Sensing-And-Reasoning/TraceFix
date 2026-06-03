@@ -35,12 +35,23 @@ import re
 #: ``tracefix_*`` allow (placed AFTER ``*: deny``) re-enables all coordination tools while
 #: ``*: deny`` keeps everything else off. Keep this ``tracefix`` prefix in sync with the
 #: mcp server key below.
+#:
+#: ``doom_loop: allow`` disables opencode's built-in repeat-call detector
+#: (session/processor.ts: DOOM_LOOP_THRESHOLD=3 — three identical tool+input calls in
+#: a row trigger a ``doom_loop`` permission whose default ``ask`` ABORTS the turn in
+#: headless ``run`` mode). Tracefix FAN-IN channels are exactly this pattern: an agent
+#: drains N messages from one channel with N identical ``receive(channel)`` calls (e.g.
+#: a plotter receiving "ready" from 3 researchers on one channel). Tracefix owns loop
+#: control itself (CORRECTION_CAP + the 30s op timeout + the per-agent wall-clock), so
+#: opencode's detector is redundant and actively breaks legitimate fan-in. Without this,
+#: any agent that receives ≥3 times on one channel is killed mid-protocol.
 DEFAULT_PERMISSION = {
     "*": "deny",
     "read": "allow",
     "edit": "allow",        # opencode collapses write→edit, so this enables file writes
     "bash": "allow",
     "tracefix_*": "allow",  # the coordination MCP tools (tracefix_acquire_lock, ...)
+    "doom_loop": "allow",   # don't let opencode's repeat-detector kill fan-in receives
     "task": "deny",
     "webfetch": "deny",
     "websearch": "deny",

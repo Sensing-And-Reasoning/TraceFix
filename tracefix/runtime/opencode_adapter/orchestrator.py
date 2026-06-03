@@ -32,7 +32,7 @@ from tracefix.runtime.monitoring.monitor import ProtocolMonitor
 from tracefix.runtime.monitoring.state_tracker import StateTracker
 from tracefix.runtime.coordination.service import CoordinationService
 from tracefix.runtime.workspace_layout import spec_path, output_dir
-from tracefix.runtime.opencode_adapter.config_gen import build_agent_config
+from tracefix.runtime.opencode_adapter.config_gen import agent_key, build_agent_config
 from tracefix.runtime.opencode_adapter.driver import run_opencode_agent
 
 # OpenCode namespaces MCP tools ``<mcpServer>_<tool>``; our mcp server key is "tracefix".
@@ -89,6 +89,7 @@ class OpencodeOrchestrator:
         port: int = 8780,
         op_timeout_ms: int = 120_000,
         timeout: float = 600.0,
+        start_stagger: float = 10.0,
         verbose: bool = False,
         live: bool = False,
         live_port: int = 8765,
@@ -103,6 +104,7 @@ class OpencodeOrchestrator:
         self.port = port
         self.op_timeout_ms = op_timeout_ms
         self.timeout = timeout
+        self.start_stagger = start_stagger
         self.verbose = verbose
         self.live = live
         self.live_port = live_port
@@ -122,10 +124,13 @@ class OpencodeOrchestrator:
     def _output_footer(self) -> str:
         out = output_dir(self.workspace).resolve()
         return (
-            f"\n\n## Where to write files\n"
-            f"Your working directory is `{out}`. Write EVERY file you produce there "
-            f"(a plain relative filename like `report.md` lands in it). Do NOT write "
-            f"files anywhere else.\n")
+            f"\n\n## Where to write files (shared data plane)\n"
+            f"Your working directory is the shared output directory:\n`{out}`\n"
+            f"When your instructions mention a file by name (e.g. `research.md`, "
+            f"`data_check.md`, `ACCEPTANCE.md`), read and write it there — a plain "
+            f"relative filename works (it resolves to this directory). All agents "
+            f"share this directory; the locks in your protocol protect shared files. "
+            f"Do NOT write files anywhere else.\n")
 
     # -- run -----------------------------------------------------------------
 
@@ -187,15 +192,43 @@ class OpencodeOrchestrator:
         start = time.time()
         try:
             tasks = []
-            for agent in ir["agents"]:
+            inst_root = Path(out) / ".agents"
+            for idx, agent in enumerate(ir["agents"]):
                 agent_id = agent["id"]
+                # Stagger spawns so OpenCode's per-instance cold-start + one-time DB
+                # migration don't storm simultaneously. Peers may start at different
+                # times — the FIFO channels queue messages, so a late receiver still
+                # gets them and the protocol's locks still serialize correctly.
+                if idx > 0 and self.start_stagger > 0:
+                    await asyncio.sleep(self.start_stagger)
+                # OpenCode roots all durable state in machine-global XDG dirs: a
+                # GLOBAL state flock (xdgState/opencode/locks) + a per-XDG-data SQLite
+                # DB. Processes sharing the default XDG dirs serialize on that flock
+                # and contend on the WAL DB. Give each agent its OWN XDG_DATA_HOME
+                # (per-agent DB → no cross-process WAL contention) and XDG_STATE_HOME
+                # (per-agent Flock root → no cross-process lock contention).
+                #
+                # Deliberately DO NOT isolate XDG_CACHE: opencode caches the ripgrep
+                # binary under XDG_CACHE/opencode/bin, so a fresh per-agent cache makes
+                # every agent re-download ripgrep from GitHub (verified: 20+ min hang).
+                # Sharing the default *warm* cache → ~4.5s cold start. XDG_CONFIG is
+                # unused — the per-agent config arrives via OPENCODE_CONFIG_CONTENT.
+                # Agents still SHARE the working dir (`out`) for data-plane files.
+                inst = inst_root / agent_key(agent_id)
+                for sub in ("data", "state"):
+                    (inst / sub).mkdir(parents=True, exist_ok=True)
+                xdg_env = {
+                    "XDG_DATA_HOME": str(inst / "data"),
+                    "XDG_STATE_HOME": str(inst / "state"),
+                }
                 cfg = build_agent_config(
                     agent_id, coord_url, prompt=self._read_prompt(agent_id),
                     model=self.model, op_timeout_ms=self.op_timeout_ms,
                     coord_cmd=coord_cmd)
                 tasks.append(asyncio.create_task(run_opencode_agent(
                     agent_id, cfg, opencode_cmd=self.opencode_cmd,
-                    output_dir=out, timeout=self.timeout, on_event=on_event)))
+                    output_dir=out, timeout=self.timeout, on_event=on_event,
+                    env_overrides=xdg_env)))
 
             raw = await asyncio.gather(*tasks, return_exceptions=True)
             duration = time.time() - start

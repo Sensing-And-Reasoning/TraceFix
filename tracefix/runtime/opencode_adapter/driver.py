@@ -130,6 +130,7 @@ async def run_opencode_agent(
     kickoff: str = KICKOFF,
     timeout: float = 600.0,
     on_event: Callable[[str, dict], None] | None = None,
+    env_overrides: dict | None = None,
 ) -> dict:
     """Run one agent via OpenCode; return its disposition.
 
@@ -143,7 +144,7 @@ async def run_opencode_agent(
         on_event: optional ``(agent_id, event_dict)`` callback for live visualization.
     """
     key = agent_key(agent_id)
-    env = {**os.environ, **to_env(config)}
+    env = {**os.environ, **to_env(config), **(env_overrides or {})}
     cmd = [*opencode_cmd, "run", kickoff, "--agent", key,
            "--format", "json", "--dir", str(output_dir)]
 

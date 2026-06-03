@@ -58,7 +58,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         args.task, args.workspace,
         model=args.model, opencode_cmd=opencode_cmd,
         host=args.host, port=args.port, op_timeout_ms=args.op_timeout,
-        timeout=args.timeout, verbose=args.verbose,
+        timeout=args.timeout, start_stagger=args.start_stagger, verbose=args.verbose,
         live=args.live, live_port=args.live_port,
         live_warmup=args.live_warmup, live_hold=args.live_hold)
     result = asyncio.run(orch.run())
@@ -87,6 +87,9 @@ def main() -> None:
                      help="MCP timeout in ms (per-server + experimental; default 120000)")
     run.add_argument("--timeout", type=float, default=600.0,
                      help="Per-agent wall-clock cap in seconds (default 600)")
+    run.add_argument("--start-stagger", type=float, default=10.0,
+                     help="Seconds between launching each agent's OpenCode process, to "
+                          "spread the per-instance cold-start/DB-migration (default 10)")
     run.add_argument("--verbose", action="store_true")
     run.add_argument("--live", action="store_true",
                      help="Real-time D3/SSE visualization in the browser")
