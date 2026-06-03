@@ -188,6 +188,10 @@ async def run_opencode_agent(
     except asyncio.TimeoutError:
         timed_out = True
         await _terminate(proc)
+    except asyncio.CancelledError:
+        # orchestrator is shutting down — don't leave an orphan opencode process
+        await _terminate(proc)
+        raise
 
     return {
         "agent_id": agent_id,
