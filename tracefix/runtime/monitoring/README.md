@@ -36,7 +36,6 @@ Architecture B runtime for TLA+-verified multi-agent coordination. Agents autono
 | `coord.py` | CoordinationContext: shared state + 4 async coordination operations |
 | `agent_runner.py` | Per-agent LLM function-calling loop with trace recording |
 | `orchestrator.py` | Loads workspace config, creates agents, runs concurrently |
-| `prompt_gen.py` | PlusCal extraction + prompt generation (legacy, replaced by pre-generated prompts) |
 | `cli.py` | CLI entry point |
 | `event_bus.py` | Async event bus for real-time visualization (SSE broadcast) |
 | `live_server.py` | Lightweight asyncio HTTP/SSE server (zero dependencies) |
@@ -249,4 +248,3 @@ python -m pytest tracefix.runtime.monitoring/tests/ -v   # 45 tests
 
 - `test_monitor.py` — whitelist validation (valid + invalid operations)
 - `test_coord.py` — lock contention, counter semaphore, channel FIFO, timeout
-- `test_prompt_gen.py` — PlusCal extraction, prompt content

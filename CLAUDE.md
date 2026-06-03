@@ -133,7 +133,7 @@ The pipeline writes failed attempts to `history/attempt_N/` for debugging. `stat
 
 ## Claude Code Skills
 
-Three skills under `.claude/skills/` orchestrate human-in-the-loop workflows that mirror the Python pipeline (`/tla-verify-pluscal`, `/tla-prompt-gen`, `/ir-prompt-gen`). When the user invokes one, follow the workflow in the skill's `SKILL.md` — it uses native Read/Write/Edit/Bash tools rather than a custom agent loop.
+Two skills under `.claude/skills/` orchestrate human-in-the-loop workflows that mirror the Python pipeline (`/tla-verify-pluscal`, `/tla-prompt-gen`). When the user invokes one, follow the workflow in the skill's `SKILL.md` — it uses native Read/Write/Edit/Bash tools rather than a custom agent loop.
 
 ## Properties Verified by TLC
 
