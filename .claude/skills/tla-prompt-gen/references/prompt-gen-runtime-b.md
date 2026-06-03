@@ -131,8 +131,8 @@ PlusCal labels do NOT map 1:1 to prompt steps. Apply these rules:
 
 | Pattern | Consolidation |
 |---|---|
-| **acquire + work + release** | One step: "Acquire X, do work, release X" |
-| **acquire + `skip` work state + release** | One step: "Acquire X, do work, release X" (the `skip` label is a work-state placeholder — absorb it into the acquire/release step) |
+| **acquire + work + release** | One step: "Acquire X, do work, release X". If the work state has a `task` field, render it as the step's **Work:** line (see "Business task vs coordination" below) |
+| **acquire + `skip` work state + release** | One step: "Acquire X, do work, release X" (the `skip` label is a work-state placeholder — absorb it into the acquire/release step). If that work state carries a `task`, use it verbatim as the **Work:** line |
 | **receive + if/else dispatch** | One step with Decision Point |
 | **sequential sends** | One step if no receive between them |
 | **release + immediate send** | Merge into preceding step |
@@ -142,6 +142,20 @@ PlusCal labels do NOT map 1:1 to prompt steps. Apply these rules:
 | **`either/or` with mixed `recv` + always-enabled** | One step: "Check for messages via `poll_channels`, if none → {default action}" |
 
 **Guideline**: Consolidation merges adjacent labels into one semantic step (e.g., acquire + work + release → one step), but the order of steps MUST match the PlusCal control flow. Do NOT reorder steps by semantic grouping — the execution sequence is determined by the PlusCal process body.
+
+### Business task vs coordination (the `task` field)
+
+`states.json` may carry a `task` field on a state — a short description of the BUSINESS work to do there (from the IR's optional `state_tasks`). This is the **data-plane** work, distinct from the **control-plane** coordination calls. Make that separation explicit in the prompt so the agent understands the two are different concerns: coordination calls are its obligations to OTHER agents; the `task` is its own domain work to perform *at that state*.
+
+When a state has a `task`, render the step with two labeled lines:
+
+> ### Step 3: Write your section
+> **Work (business):** {state's `task` verbatim — e.g. "read research.md, append your section, preserve all existing content"}
+> **Coordinate (control):** `acquire_lock("DOC")` before you start, `release_lock("DOC")` when done.
+
+Notes:
+- `task` is advisory / observability only — it NEVER changes the coordination contract, the step order, or the verified model. If a state has no `task`, describe the work from the task description as before.
+- Optionally remind the agent it may call `report_progress(label)` to announce finer sub-steps within a long business task (pure telemetry; never required).
 
 ### Domain Tool Integration
 
