@@ -10,6 +10,7 @@ Main entry point: ``parse_pluscal(tla_content, ir_data) -> ParseResult``
 from __future__ import annotations
 
 import re
+import warnings
 from dataclasses import dataclass, field
 
 import tree_sitter as ts
@@ -39,7 +40,13 @@ def _get_parser() -> ts.Parser:
     """Return a cached tree-sitter parser for TLA+/PlusCal."""
     global _PARSER
     if _PARSER is None:
-        lang = ts.Language(tree_sitter_tlaplus.language())
+        # tree-sitter-tlaplus 1.5.0's language() returns an int pointer (old ABI);
+        # tree-sitter >=0.25 deprecates passing an int to Language(). The call is
+        # correct — narrowly silence that one benign DeprecationWarning until the
+        # grammar ships a PyCapsule binding.
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            lang = ts.Language(tree_sitter_tlaplus.language())
         _PARSER = ts.Parser(lang)
     return _PARSER
 
