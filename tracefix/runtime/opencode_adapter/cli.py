@@ -18,6 +18,11 @@ import shlex
 import sys
 
 from tracefix.runtime.opencode_adapter.orchestrator import OpencodeOrchestrator
+from tracefix.runtime.env_setup import load_repo_env
+
+# Load the repo-root .env up front so the spawned opencode child processes inherit
+# OPENAI_API_KEY / OPENROUTER_API_KEY — else every agent fails auth with 0 tool calls.
+load_repo_env()
 
 
 def _print_result(result, verbose: bool) -> None:

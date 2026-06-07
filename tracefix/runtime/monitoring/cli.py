@@ -10,6 +10,11 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+from tracefix.runtime.env_setup import load_repo_env
+
+# Load repo-root .env so the in-process OpenAI-loop agents inherit OPENAI_API_KEY.
+load_repo_env()
+
 
 def _print_cost_summary(result, model: str) -> None:
     """Print per-agent and total token usage with estimated cost."""
