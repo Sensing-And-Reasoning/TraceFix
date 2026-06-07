@@ -233,6 +233,20 @@ class CoordinationContext:
         """Release a resource (Lock or Counter). Wakes waiting acquirers."""
         self.monitor.validate_release(agent_id, resource_id)
         self._guard(agent_id, "release", {"resource": resource_id})
+        # Owner check (H2): a Lock may only be released by its current holder.
+        # validate_release only checks agent/resource existence, and the Lock branch
+        # below calls store.release() with no agent_id, so without this a non-holder's
+        # topologically/FSM-legal release would SILENTLY free another agent's lock —
+        # breaking mutual exclusion (a safety property TLC proved). Raise BEFORE
+        # _track_and_emit so a rejected release never advances the state machine;
+        # ProtocolViolation is caught by both runtimes' dispatchers. Counters have no
+        # holder concept and are exempt.
+        if (resource_id in self._lock_ids
+                and self.locks._locks.get(resource_id) != agent_id):
+            holder = self.locks._locks.get(resource_id)
+            raise ProtocolViolation(
+                f"{agent_id} cannot release lock '{resource_id}' "
+                f"(held by {holder or 'nobody'})")
         await self._track_and_emit(agent_id, "release", resource_id=resource_id)
 
         if resource_id in self._lock_ids:

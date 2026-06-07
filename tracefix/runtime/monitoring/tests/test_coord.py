@@ -38,6 +38,24 @@ class TestLockOps:
         assert result["status"] == "released"
 
     @pytest.mark.asyncio
+    async def test_release_by_non_holder_rejected(self, coord):
+        """H2: a Lock may only be released by its current holder.
+
+        validate_release only checks existence and release historically freed the
+        lock unconditionally, so a non-holder's release silently freed another
+        agent's lock (breaking mutual exclusion). It must raise instead and leave
+        the real holder's ownership intact.
+        """
+        await coord.acquire_lock("doc_lock", "researcherA")
+        with pytest.raises(ProtocolViolation):
+            await coord.release_lock("doc_lock", "researcherB")  # B does not hold it
+        # The lock was NOT freed — A still holds it.
+        assert coord.locks._locks["doc_lock"] == "researcherA"
+        # And it is genuinely still locked: B cannot acquire within the timeout.
+        result = await coord.acquire_lock("doc_lock", "researcherB", timeout=0.1)
+        assert result["status"] == "timeout"
+
+    @pytest.mark.asyncio
     async def test_lock_contention_returns_timeout(self, coord):
         """Second agent gets 'timeout' when lock is held by another."""
         await coord.acquire_lock("doc_lock", "researcherA")
