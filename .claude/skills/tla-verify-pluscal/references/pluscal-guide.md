@@ -95,7 +95,7 @@ d_done:
 
 ## Work State Labels
 
-Every `acquire_lock`→`release_lock` pair must have at least one intermediate PlusCal label between them. Without it, TLC treats the acquire and release as adjacent atomic steps with no work in between — and in Runtime A, the domain work (Phase 2) executes *before* the lock is acquired (Phase 3), meaning the critical section is empty.
+Every `acquire_lock`→`release_lock` pair must have at least one intermediate PlusCal label between them. Without it, TLC treats the acquire and release as adjacent atomic steps with no work in between — the agent's domain work executes *before* the lock is held, meaning the critical section is empty.
 
 **When NOT needed:** If a `receive`, `send`, `if`, or `either` statement already appears between acquire and release (each requiring its own label), no extra `skip` is needed — those labels already serve as intermediate work states.
 

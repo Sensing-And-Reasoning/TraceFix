@@ -233,13 +233,12 @@ def _run_prompt_gen(
     )
 
     user_msg = (
-        f"Generate Runtime A and Runtime B per-agent prompts from this verified workspace.\n\n"
+        f"Generate Runtime B per-agent prompts from this verified workspace.\n\n"
         f"Workspace root: {ws_path}\n\n"
         f"Follow the Workflow in the system prompt:\n"
         f"  Step 1: gather inputs (ir.json, states.json, Protocol.tla, summary.json, tools.json, task.md)\n"
-        f"  Step 2: generate ALL Runtime B prompts first (2a inventory → 2b mapping → 2c prose → 2d verify)\n"
-        f"  Step 3: generate Runtime A prompts by simplification, then run the Runtime A checklist\n"
-        f"  Step 4: report the generated files."
+        f"  Step 2: generate ALL Runtime B prompts (2a inventory → 2b mapping → 2c prose → 2d verify)\n"
+        f"  Step 3: report the generated files."
     )
 
     final_text = loop.run(user_msg)
@@ -356,7 +355,7 @@ def main():
         help=(
             "Path to an already-verified workspace (must contain ir.json, states.json, "
             "Protocol.tla, summary.json, tools.json). Runs Phase 5 only: generate "
-            "prompts/runtime_a/ and prompts/runtime_b/ per-agent prompts."
+            "prompts/runtime_b/ per-agent prompts."
         ),
     )
 

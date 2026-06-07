@@ -313,4 +313,4 @@ Step 3: Done
   Call signal_done()
 ```
 
-**Summary**: 3 agents, 2 locks, 4 channels, 26 states, 0 repairs. All artifacts generated: `ir.json`, `Protocol.tla`, `Protocol.cfg`, `states.json`, `prompts/runtime_a/`, `prompts/runtime_b/`.
+**Summary**: 3 agents, 2 locks, 4 channels, 26 states, 0 repairs. All artifacts generated: `ir.json`, `Protocol.tla`, `Protocol.cfg`, `states.json`, `prompts/runtime_b/`.

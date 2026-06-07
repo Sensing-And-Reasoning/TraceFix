@@ -4,7 +4,7 @@
       description.md, tools.json   ← task inputs
       spec/      ir.json, Protocol*.tla, *.cfg, states.json, summary.json,
                  tlc_output.log, tlc_error.md, history/
-      prompts/   runtime_a/, runtime_b/
+      prompts/   runtime_b/
       output/    agent runtime artifacts (what the agents actually produce)
 
 Resolution is **backward-compatible**: if a workspace has no ``spec/`` subdir,

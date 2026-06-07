@@ -5,8 +5,7 @@ description: >-
   TLA+ model checking via PlusCal. Provides hazard analysis, IR design,
   PlusCal code generation, TLC model checking with automated repair loop
   (up to 5 attempts), and state extraction. Invoke via /tla-verify-pluscal
-  only. Use /tla-prompt-gen after this to generate per-agent Runtime A and
-  B prompts.
+  only. Use /tla-prompt-gen after this to generate per-agent Runtime B prompts.
 metadata:
   author: Shuren Xia
   version: "1.0"
@@ -37,7 +36,7 @@ Use `-o dir` with scaffold to write output to a specific directory. By default, 
 
 - For PlusCal syntax, patterns, and error fixes, see [references/pluscal-guide.md](references/pluscal-guide.md)
 - For IR schema and the 2PC example, see [references/schema-and-examples.md](references/schema-and-examples.md)
-- For per-agent prompt generation (Runtime A + B), use the `/tla-prompt-gen` skill after Phase 4
+- For per-agent prompt generation (Runtime B), use the `/tla-prompt-gen` skill after Phase 4
 
 ## Workspace layout
 
@@ -232,7 +231,7 @@ This parses the PlusCal source in `Protocol_translated.tla` using tree-sitter an
 
 Phase 4 is mandatory — do not skip it unless the user explicitly says so.
 
-After Phase 4 completes, use `/tla-prompt-gen` to generate per-agent Runtime A and Runtime B prompts from the verified workspace.
+After Phase 4 completes, use `/tla-prompt-gen` to generate per-agent Runtime B prompts from the verified workspace.
 
 ## Rules
 
@@ -266,7 +265,7 @@ After Phase 4 completes, use `/tla-prompt-gen` to generate per-agent Runtime A a
 
 10. **Independent processing instead of collect-then-compare**: If the task says an agent "resolves conflicts between X and Y" or "compares alternatives from multiple sources", that agent must first collect ALL inputs before making decisions. Do NOT process each input independently — this eliminates the comparison/conflict-resolution semantics the task requires. Use `either/or` for collection order so TLC explores all arrival orderings (consistent with anti-pattern #2). See [references/pluscal-guide.md](references/pluscal-guide.md) "Collect-then-compare" for code examples.
 
-11. **Missing work state between acquire and release** — Every acquire→release pair must have at least one intermediate PlusCal label (receive, send, skip, or branch). Adjacent acquire→release without work means Runtime A's Phase 2 domain work executes before the lock is held. Exception: if `receive`/`send`/`if`/`either` labels already exist between acquire and release, no extra `skip` needed. See [references/pluscal-guide.md](references/pluscal-guide.md) "Work State Labels" for patterns.
+11. **Missing work state between acquire and release** — Every acquire→release pair must have at least one intermediate PlusCal label (receive, send, skip, or branch). Adjacent acquire→release without work means the agent's domain work executes before the lock is held. Exception: if `receive`/`send`/`if`/`either` labels already exist between acquire and release, no extra `skip` needed. See [references/pluscal-guide.md](references/pluscal-guide.md) "Work State Labels" for patterns.
 
 12. **Single work label for multiple domain actions** — If the task description says an agent performs multiple distinct domain operations within one lock-protected section (e.g., "pull **and** scan"), do NOT collapse them into a single `skip` label. Give each operation its own labeled `skip` state with an exact tool call in the comment.
 

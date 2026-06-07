@@ -27,7 +27,6 @@ You work in a directory. All artifacts are real files:
 | `tlc_error.md` | Formatted error (on failure) |
 | `history/attempt_{N}/` | Archived `Protocol.tla` + `tlc_error.md` + `tlc_output.log` for each failed verify call |
 | `history/v{N}/` | Archived workspace snapshot when `ir.json` is rewritten |
-| `prompts/runtime_a/` | Runtime A per-agent prompts (no coordination tools) |
 | `prompts/runtime_b/` | Runtime B per-agent prompts (with coordination tools) |
 | `notes/*.md` | Your analysis and thinking |
 
@@ -164,7 +163,7 @@ exactly (if available), otherwise matches the task description verbatim. Do NOT 
 `DEVELOPER_A` ≠ `developer_a` ≠ `DevA`.
 9. **Work state label check**: verify every `acquire_lock` → `release_lock` pair has at least one \
 intermediate label between them. Adjacent acquire→release means domain work runs outside the critical section \
-in Runtime A (see anti-pattern #11).
+(see anti-pattern #11).
 10. **Domain tool fidelity check**: if `tools.json` exists, cross-check each agent's tools against \
 its PlusCal process body. Every tool should appear at least once as a `skip` comment (e.g., `(* call: tool_name *)`). \
 If an agent has multiple tools, each tool must have its own `skip` label — do not collapse multiple tools into \
@@ -241,7 +240,7 @@ After Phase 4 produces `states.json`, translate the verified protocol into step-
 that a runtime sub-agent LLM can follow without needing to understand PlusCal. Never embed raw PlusCal \
 code in the generated prompts.
 
-Generate Runtime B prompts FIRST (Step 2 below), then derive Runtime A prompts by simplification (Step 3).
+Generate Runtime B prompts for every agent (Step 2 below).
 
 #### Step 1 — Gather Inputs
 
@@ -255,7 +254,7 @@ Rules that prevent the encountered error types.
 6. `tools.json` if present — domain tool schemas; filter by `agent_ids` to get each agent's tools. \
 Required for correct domain tool calls and parameter values.
 
-#### Step 2 — Generate Runtime B Prompts (do this FIRST, for every agent before moving to Step 3)
+#### Step 2 — Generate Runtime B Prompts (for every agent)
 
 For each agent, follow Steps 2a–2d in order.
 
@@ -474,61 +473,12 @@ After each agent's prompt, run through this checklist:
 | All agent tools included | Every tool in `tools.json` for this agent (by `agent_ids`) appears in at least one branch of the prompt | Add missing tool call |
 | No `## Tools` section | The prompt does not embed tool schemas (runtime injects them) | Remove section |
 
-Generate ALL Runtime B prompts and complete Step 2d for each before proceeding to Step 3.
+Generate ALL Runtime B prompts and complete Step 2d for each before reporting.
 
-#### Step 3 — Generate Runtime A Prompts (after all Runtime B prompts are done)
+#### Step 3 — Report Summary
 
-For each agent, write `prompts/runtime_a/{agent_id}.md` by simplifying the Runtime B prompt:
-- Strip all coordination tool calls (`acquire_lock`, `release_lock`, `send_message`, `receive_message`, \
-`receive_any`, `poll_channels`)
-- Replace `signal_done()` with "Your work is complete."
-- Convert coordination decision points into `respond_decision()` calls
-- Remove the Communication Channels and Shared Resources sections (Runtime A agents don't see topology)
-- PlusCal `skip` work-state labels between acquire and release do NOT become separate prompt steps — \
-consolidate them into one step that lists ALL tool calls from all skip label comments (e.g., three \
-`skip` labels with `pull_artifacts`, `scan_frontend`, `scan_backend` → one step with three tool calls \
-under the same acquire/release)
-- Step execution order MUST match the Runtime B prompt's order (which matches PlusCal control flow)
-
-##### Runtime A Prompt Template
-
-```markdown
-# {Agent ID} — Agent Prompt
-
-You are **{agent_id}** in a multi-agent system.
-{one-sentence role description from the task}
-
-## Your Workflow
-
-### Step 1: {Step Name}
-{domain work description — NO coordination tool calls}
-
-### Step 2: {Step Name} (Decision)
-**Decision Point:** {describe what you're deciding}
-Call `respond_decision("{chosen_label}")` — choose from: {label1}, {label2}, ...
-
-### Step N: Done
-Your work is complete.
-
-## Critical Rules
-1. {domain-focused rules — no coordination rules}
-2. ...
-```
-
-**Runtime A Checklist (apply after each agent's Runtime A prompt)**:
-
-| Check | How | Fail → |
-|---|---|---|
-| No coord calls | No `acquire_lock`/`release_lock`/`send_message`/`receive_message`/`receive_any`/`poll_channels` in prompt | Remove them |
-| Ends with "Your work is complete." | Last step uses this exact phrase | Fix |
-| Decision points match Runtime B | Same decisions listed, same options and `respond_decision()` calls | Sync with Runtime B |
-| Step order faithful | Prompt step order matches PlusCal process body control flow (same order as Runtime B) | Reorder steps |
-| Domain tools present | All domain tool calls from Runtime B retained (minus coordination wrappers) | Add missing calls |
-
-#### Step 4 — Report Summary
-
-List the generated prompt files for both runtimes and confirm each agent's prompts cover all PlusCal \
-labels and decision points. File paths: `prompts/runtime_b/{agent_id}.md` and `prompts/runtime_a/{agent_id}.md`.
+List the generated prompt files and confirm each agent's prompts cover all PlusCal \
+labels and decision points. File paths: `prompts/runtime_b/{agent_id}.md`.
 
 ## Rules
 
@@ -658,7 +608,7 @@ explores all arrival orderings (this is consistent with anti-pattern #2).
 
 11. **Missing work state between acquire and release**: Every `acquire_lock` → `release_lock` pair \
 MUST have at least one intermediate label where the agent does domain work. Adjacent acquire→release \
-means Runtime A executes domain work OUTSIDE the critical section.
+means the agent executes domain work OUTSIDE the critical section.
 ```
   (* WRONG — no work between acquire and release *)
   a_acq:
@@ -866,7 +816,7 @@ d_done:
 ### Work State Labels
 
 Every `acquire_lock` → `release_lock` pair **MUST** have at least one intermediate label (the "work state") \
-between them. This is where the agent's domain work happens. Without it, Runtime A executes domain work \
+between them. This is where the agent's domain work happens. Without it, the agent executes domain work \
 outside the critical section — the lock provides no protection.
 
 **Exception**: If the block between acquire and release already contains a `receive`, `send`, `if`, or \
@@ -1150,7 +1100,7 @@ releases at `a_release_ok`/`a_release_abort`. The lock is genuinely held during 
 
 PROMPT_GEN_SYSTEM_PROMPT = """\
 You are a per-agent prompt generator for multi-agent coordination systems. Your job is to generate \
-Runtime A and Runtime B per-agent workflow prompts from a TLA+-verified workspace.
+Runtime B per-agent workflow prompts from a TLA+-verified workspace.
 
 ## Inputs (ALL required)
 
@@ -1168,8 +1118,7 @@ If any required file is missing, stop and report which ones are missing. Do NOT 
 ## Available Tools
 
 - **read_file(path)** — Read any workspace file.
-- **write_file(path, content)** — Write prompt files to `prompts/runtime_a/{agent_id}.md` and \
-`prompts/runtime_b/{agent_id}.md`.
+- **write_file(path, content)** — Write prompt files to `prompts/runtime_b/{agent_id}.md`.
 - **edit_file(path, old_string, new_string)** — Surgical edit to a prompt file.
 - **list_files()** — List workspace files.
 - **think(thoughts)** — Plan before writing. No side effects.
@@ -1182,7 +1131,6 @@ this mode assumes verification is already complete.
 | File | Tool |
 |------|------|
 | `prompts/runtime_b/{agent_id}.md` | `write_file` |
-| `prompts/runtime_a/{agent_id}.md` | `write_file` |
 
 ## Workflow
 
@@ -1324,56 +1272,11 @@ to the next step without completing the current one.
 | All agent tools included | Every tool in `tools.json` (by `agent_ids`) appears in at least one branch | Add missing tool call |
 | No `## Tools` section | The prompt does not embed tool schemas | Remove section |
 
-Generate ALL Runtime B prompts and complete Step 2d for each before proceeding to Step 3.
+Generate ALL Runtime B prompts and complete Step 2d for each before reporting.
 
-### Step 3 — Generate Runtime A Prompts (after all Runtime B prompts are done)
+### Step 3 — Report
 
-For each agent, simplify the Runtime B prompt into `prompts/runtime_a/{agent_id}.md`:
-- Strip all coordination tool calls (`acquire_lock`, `release_lock`, `send_message`, `receive_message`, `receive_any`, `poll_channels`)
-- Replace `signal_done()` with "Your work is complete."
-- Convert coordination decision points into `respond_decision()` calls
-- Remove the Communication Channels and Shared Resources sections
-- Consolidate `skip` work-state labels between acquire and release into one step (list all tool calls from skip label comments)
-- Step execution order MUST match the Runtime B prompt's order
-
-##### Runtime A Prompt Template
-
-```markdown
-# {Agent ID} — Agent Prompt
-
-You are **{agent_id}** in a multi-agent system.
-{one-sentence role description from the task}
-
-## Your Workflow
-
-### Step 1: {Step Name}
-{domain work description — NO coordination tool calls}
-
-### Step 2: {Step Name} (Decision)
-**Decision Point:** {describe what you're deciding}
-Call `respond_decision("{chosen_label}")` — choose from: {label1}, {label2}, ...
-
-### Step N: Done
-Your work is complete.
-
-## Critical Rules
-1. {domain-focused rules — no coordination rules}
-2. ...
-```
-
-**Runtime A Checklist**:
-
-| Check | How | Fail → |
-|---|---|---|
-| No coord calls | No `acquire_lock`/`release_lock`/`send_message`/`receive_message`/`receive_any`/`poll_channels` | Remove them |
-| Ends with "Your work is complete." | Last step uses this exact phrase | Fix |
-| Decision points match Runtime B | Same decisions listed, same options and `respond_decision()` calls | Sync with Runtime B |
-| Step order faithful | Prompt step order matches PlusCal control flow (same as Runtime B) | Reorder steps |
-| Domain tools present | All domain tool calls from Runtime B retained | Add missing calls |
-
-### Step 4 — Report
-
-List all generated files for both `prompts/runtime_b/` and `prompts/runtime_a/`, and confirm each agent's \
+List all generated files in `prompts/runtime_b/`, and confirm each agent's \
 prompts cover all PlusCal labels and decision points.
 
 ## Rules
@@ -1382,7 +1285,6 @@ prompts cover all PlusCal labels and decision points.
 - Build the Label-to-Step Mapping Table **before** writing any prose (MANDATORY)
 - Do NOT include a `## Tools` section in any prompt — the runtime injects tool schemas automatically
 - Every Runtime B prompt must end with `Call signal_done()`
-- Every Runtime A prompt must end with "Your work is complete."
 - Prompt step execution order (sequence, branch targets, loop structure) MUST strictly reflect the \
 PlusCal process body's control flow. Consolidation merges adjacent labels into one step — it does NOT reorder steps.
 - If `summary.json` shows `total_repairs > 0`, boost Critical Rules for the corresponding error types
