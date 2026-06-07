@@ -106,15 +106,23 @@ class CoordToolDispatcher:
         """Inner dispatch without trace/event bookkeeping."""
         agent_id = self.agent_id
 
-        # --- signal_done: coordination-only termination (the monitor observes) ---
-        # We judge "premature" by whether the agent still HOLDS A LOCK — a pure
-        # control-plane check — NOT by the state machine. The verified safety core
-        # is no-orphan-locks; meanwhile the state machine mixes in domain/local-
-        # work states the tracker can't advance (a protocol tail of test -> pass
-        # -> done), so consulting it would misjudge an agent that finished all
-        # *coordination* but still has domain work to do. Locks are the right
-        # signal: released everything → done; still holding → flagged.
+        # --- signal_done: coordination termination, gated two ways ---
+        # (H3) When a state-machine tracker is reachable (in-process), a done is
+        # ALLOWED only from a state that can still reach a terminal state — the same
+        # gate the monitoring runtime uses (agent_runner via can_terminate, which
+        # follows skip chains, so a domain/business tail does NOT falsely block it).
+        # This stops a content message ("we're done, signal done now") from
+        # terminating an agent that still owes a coordination op (e.g. a final send)
+        # and stranding peers blocked on a label that never arrives (liveness).
+        # Distributed mode has no local tracker; fall back to the held-locks check
+        # (no-orphan-locks) — the best signal available over the wire.
         if name == "signal_done":
+            tracker = getattr(self.coord, "tracker", None)
+            if tracker is not None and not tracker.can_terminate(agent_id):
+                return {"status": "error",
+                        "message": ("Cannot signal_done yet: the coordination protocol "
+                                    "has remaining obligations. Continue your protocol "
+                                    "steps.")}
             held = await self.coord.get_held_locks(agent_id)
             self.done = True
             result = {"status": "done", "agent": agent_id}

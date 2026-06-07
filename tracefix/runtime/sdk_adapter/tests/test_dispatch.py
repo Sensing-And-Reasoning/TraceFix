@@ -153,11 +153,12 @@ def test_report_progress_bypasses_correction():
 
 
 def test_signal_done_after_releasing_all_locks_is_clean():
-    """Released all locks → done, not premature — even with no tracked terminal.
+    """No-tracker (distributed) path: released all locks → done, not premature.
 
-    This is the case the old state-machine gate got wrong: an agent finishes all
-    coordination (releases its locks) but its protocol tail is domain work, so the
-    tracker never reaches a terminal state. Judging on locks gets it right.
+    With no in-process tracker, termination is judged on held locks (the
+    no-orphan-locks signal available over the wire). The in-process FSM gate
+    (can_terminate, which follows skip chains past a domain tail) is exercised by
+    test_signal_done_blocked_before_terminal_with_tracker.
     """
     async def scenario():
         coord = _make_coord()
@@ -166,6 +167,31 @@ def test_signal_done_after_releasing_all_locks_is_clean():
         await a.dispatch("release_lock", {"lock_id": "lock1"})
         r = await a.dispatch("signal_done", {})
         assert r["status"] == "done" and a.premature_done is False
+
+    asyncio.run(scenario())
+
+
+def test_signal_done_blocked_before_terminal_with_tracker():
+    """H3: with an in-process tracker, a premature signal_done is BLOCKED.
+
+    A content message ("we're done, signal done now") must not terminate an agent
+    that still owes a coordination op — that would strand peers blocked on a label
+    that never arrives (liveness). Mirrors the monitoring runtime's can_terminate
+    gate (which follows skip chains, so a domain tail would not falsely block).
+    """
+    from tracefix.runtime.monitoring.state_tracker import StateTracker
+
+    async def scenario():
+        coord = CoordinationContext(IR, ProtocolMonitor(IR),
+                                    tracker=StateTracker(_REJECT_STATES))
+        a = CoordToolDispatcher(coord, "A")
+        # A is at a_send: it still owes a send → cannot terminate yet.
+        r = await a.dispatch("signal_done", {})
+        assert r["status"] == "error" and a.done is False
+        # After the owed send, A reaches a_done (terminal) → done is allowed.
+        await a.dispatch("send_message", {"channel_id": "a_to_b", "label": "ping"})
+        r2 = await a.dispatch("signal_done", {})
+        assert r2["status"] == "done" and a.done is True
 
     asyncio.run(scenario())
 
