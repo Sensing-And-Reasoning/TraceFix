@@ -22,6 +22,7 @@ class StoredMessage:
     sender: str
     timestamp: float
     body: str = ""
+    ref: str = ""
 
 
 class MessageStore:
@@ -36,7 +37,7 @@ class MessageStore:
         self._channels[channel_id] = []
 
     def send(self, channel: str, label: str, sender: str,
-             body: str = "") -> StoredMessage:
+             body: str = "", ref: str = "") -> StoredMessage:
         """Append a labeled message. Non-blocking, always succeeds (unbounded)."""
         if channel not in self._channels:
             raise KeyError(
@@ -49,6 +50,7 @@ class MessageStore:
             sender=sender,
             timestamp=time.monotonic() - self._t0,
             body=body,
+            ref=ref,
         )
         self._channels[channel].append(msg)
         self._next_id += 1
@@ -143,3 +145,53 @@ class CounterStore:
 
     def __contains__(self, counter_id: str) -> bool:
         return counter_id in self._counters
+
+
+# ---------------------------------------------------------------------------
+# Conversation Store (data-plane business content)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ContentEntry:
+    ref: str
+    sender: str
+    content_type: str
+    content: str
+    timestamp: float
+
+
+class ConversationStore:
+    """In-memory data-plane store for business content — the claim-check target.
+
+    Business content NEVER rides a verified channel. An agent ``put``s content here
+    and gets back an opaque ``ref``; only that small ref crosses a coordination
+    channel, and only on a content-carrying label (the control plane gates this).
+    The receiver resolves the ref with ``get``. Entries are append-only and
+    immutable; refs are opaque tokens carrying no addressing or identity in their
+    surface form. In-memory by default — the same put/get interface can be backed
+    by Redis or an object store for a distributed/large-payload data plane, without
+    touching the control plane.
+    """
+
+    def __init__(self):
+        self._entries: dict[str, ContentEntry] = {}
+        self._next_id = 0
+        self._t0 = time.monotonic()
+
+    def put(self, sender: str, content: str, content_type: str = "text") -> ContentEntry:
+        """Store one content entry; return it (its ``ref`` is the opaque handle)."""
+        ref = f"cs_{self._next_id}"
+        self._next_id += 1
+        entry = ContentEntry(
+            ref=ref, sender=sender, content_type=content_type,
+            content=content, timestamp=time.monotonic() - self._t0,
+        )
+        self._entries[ref] = entry
+        return entry
+
+    def get(self, ref: str) -> ContentEntry | None:
+        """Resolve a ref to its entry, or None if unknown."""
+        return self._entries.get(ref)
+
+    def __contains__(self, ref: str) -> bool:
+        return ref in self._entries

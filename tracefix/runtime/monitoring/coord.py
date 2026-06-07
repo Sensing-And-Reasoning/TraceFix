@@ -17,7 +17,7 @@ import asyncio
 import time
 from dataclasses import dataclass
 
-from tracefix.runtime.store import MessageStore, LockStore, CounterStore
+from tracefix.runtime.store import MessageStore, LockStore, CounterStore, ConversationStore
 from tracefix.runtime.monitoring.monitor import (
     ProtocolMonitor, ProtocolViolation, StateGuidanceError)
 
@@ -33,6 +33,10 @@ class CoordinationContext:
         self.messages = MessageStore()
         self.locks = LockStore()
         self.counters = CounterStore()
+        # Data plane: business content lives here (the claim-check target), never on
+        # a channel. An agent post_content()s here, gets an opaque ref, and may send
+        # that ref only on a content-carrying label (gated in send()).
+        self.conversations = ConversationStore()
         self.monitor = monitor
         self.tracker = tracker
         self.event_bus = event_bus
@@ -62,8 +66,13 @@ class CoordinationContext:
                            or r.get("config", {}).get("initial", 0))
                 self.counters.init_counter(r["id"], initial)
                 self._counter_ids.add(r["id"])
+        # Per-channel set of labels that carry business content. The control plane
+        # "opens" the content channel ONLY on these (e.g. 'revise'); every other
+        # label is a pure signal and a content ref is rejected (default-closed).
+        self._content_labels: dict[str, set[str]] = {}
         for ch in ir.get("channels", []):
             self.messages.init_channel(ch["id"])
+            self._content_labels[ch["id"]] = set(ch.get("content_labels", []))
 
         # Per-agent locks to serialize _track_and_emit for the same agent,
         # preventing state_tracker race conditions under concurrent tool calls
@@ -266,13 +275,34 @@ class CoordinationContext:
 
         raise ProtocolViolation(f"Unknown resource '{resource_id}'")
 
-    async def send(self, channel_id: str, label: str,
-                   agent_id: str, body: str = "") -> dict:
-        """Send a labeled message. Non-blocking (unbounded FIFO)."""
+    async def send(self, channel_id: str, label: str, agent_id: str,
+                   body: str = "", ref: str | None = None) -> dict:
+        """Send a labeled message. Non-blocking (unbounded FIFO).
+
+        Channels are flag-only. The only data a send may carry is an opaque content
+        ``ref`` (a claim-check handle from post_content), and ONLY on a label the IR
+        declared content-carrying — the control plane gates this: a ref on a pure
+        signal label is rejected, and a content-carrying label requires one. (``body``
+        is a latent param for the distributed path; the in-process path never sets it.)
+        """
         self.monitor.validate_send(agent_id, channel_id, label)
         self._guard(agent_id, "send", {"channel": channel_id, "label": label})
+        # Content-channel gate (default-closed): a ref may ride ONLY a content label.
+        carries_content = label in self._content_labels.get(channel_id, set())
+        if ref:
+            if not carries_content:
+                raise ProtocolViolation(
+                    f"label '{label}' on '{channel_id}' is a pure signal — content "
+                    f"channel is closed; no ref allowed (declare it in the channel's "
+                    f"content_labels to carry content)")
+            if ref not in self.conversations:
+                raise ProtocolViolation(f"unknown content ref '{ref}'")
+        elif carries_content:
+            raise ProtocolViolation(
+                f"label '{label}' on '{channel_id}' carries content — attach a `ref` "
+                f"from post_content() (the payload travels on the data plane)")
         await self._track_and_emit(agent_id, "send", channel_id=channel_id, label=label)
-        self.messages.send(channel_id, label, agent_id, body=body)
+        self.messages.send(channel_id, label, agent_id, body=body, ref=ref or "")
         cond = self._channel_conds[channel_id]
         async with cond:
             cond.notify_all()
@@ -282,6 +312,8 @@ class CoordinationContext:
         result = {"status": "sent", "channel": channel_id, "label": label}
         if body:
             result["body"] = body
+        if ref:
+            result["ref"] = ref
         return result
 
     async def receive(self, channel_id: str, agent_id: str,
@@ -307,6 +339,8 @@ class CoordinationContext:
                               "label": msg.label}
                     if msg.body:
                         result["body"] = msg.body
+                    if msg.ref:
+                        result["ref"] = msg.ref
                     return result
                 remaining = deadline - loop.time()
                 if remaining <= 0:
@@ -338,6 +372,8 @@ class CoordinationContext:
                           "label": msg.label}
                 if msg.body:
                     result["body"] = msg.body
+                if msg.ref:
+                    result["ref"] = msg.ref
                 return result
 
         return {"status": "none", "channels": channel_ids}
@@ -371,6 +407,8 @@ class CoordinationContext:
                                   "label": msg.label}
                         if msg.body:
                             result["body"] = msg.body
+                        if msg.ref:
+                            result["ref"] = msg.ref
                         return result
 
                 remaining = deadline - loop.time()
@@ -408,6 +446,25 @@ class CoordinationContext:
                 "agent_id": agent_id, "label": label,
             })
         return {"status": "ok", "label": label}
+
+    async def post_content(self, content: str, agent_id: str,
+                           content_type: str = "text") -> dict:
+        """Data-plane: store business content; return its opaque claim-check ref.
+
+        Bypasses the control plane entirely (no monitor / guard / tracker) — content
+        is data, never a coordination op. The ref becomes visible to a peer only if
+        the agent later sends it on a content-carrying label (gated in send()).
+        """
+        entry = self.conversations.put(agent_id, content, content_type=content_type)
+        return {"status": "ok", "ref": entry.ref, "content_type": entry.content_type}
+
+    async def get_content(self, ref: str, agent_id: str) -> dict:
+        """Data-plane: resolve a content ref to its payload (no control-plane check)."""
+        entry = self.conversations.get(ref)
+        if entry is None:
+            return {"status": "not_found", "ref": ref}
+        return {"status": "ok", "ref": ref, "sender": entry.sender,
+                "content_type": entry.content_type, "content": entry.content}
 
 
 # ---------------------------------------------------------------------------
@@ -447,12 +504,13 @@ COORD_TOOL_SCHEMAS = [
         "type": "function",
         "function": {
             "name": "send_message",
-            "description": "Send a labeled message on a channel. Non-blocking. Channels carry a finite LABEL only — never free-form data. To share data with another agent, write it to a file (the data plane) and send the label as the \"it's ready\" signal.",
+            "description": "Send a labeled message on a channel. Non-blocking. Channels carry a finite LABEL only. On a content-carrying label (e.g. 'revise') attach `ref` (an opaque handle from post_content) to deliver business content on the data plane; on a pure-signal label (e.g. 'accept'/'ready') send no ref.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "channel_id": {"type": "string", "description": "ID of the channel"},
                     "label": {"type": "string", "description": "Message label (e.g. 'submit', 'pass', 'flag')"},
+                    "ref": {"type": "string", "description": "Opaque content handle from post_content; attach ONLY on a content-carrying label. Rejected on pure-signal labels; required on content labels."},
                 },
                 "required": ["channel_id", "label"],
             },
@@ -531,6 +589,35 @@ COORD_TOOL_SCHEMAS = [
                     "label": {"type": "string", "description": "Short business sub-phase label"},
                 },
                 "required": ["label"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "post_content",
+            "description": "Data-plane (NOT coordination): store business content (e.g. your revision suggestions, a result) and get back an opaque `ref`. The content does NOT move yet — attach the ref to a send_message on a content-carrying label so the receiver can read it with get_content. Never affects coordination or verification.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "content": {"type": "string", "description": "The business content to store"},
+                    "content_type": {"type": "string", "description": "Optional type tag (e.g. 'review', 'result', 'text')"},
+                },
+                "required": ["content"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_content",
+            "description": "Data-plane (NOT coordination): resolve a content `ref` (received on a content-carrying message) to its payload. Never affects coordination or verification.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "ref": {"type": "string", "description": "The opaque content handle received on a message"},
+                },
+                "required": ["ref"],
             },
         },
     },

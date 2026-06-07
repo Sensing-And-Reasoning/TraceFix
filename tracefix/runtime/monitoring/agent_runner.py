@@ -334,7 +334,15 @@ class AgentRunner:
         args = json.loads(tool_call.function.arguments)
         agent_id = self.config.agent_id
 
-        if name == "signal_done":
+        if name == "report_progress":
+            r = await self.coord.report_progress(args.get("label", ""), agent_id)
+        elif name == "post_content":
+            r = await self.coord.post_content(
+                args.get("content", ""), agent_id,
+                content_type=args.get("content_type", "text"))
+        elif name == "get_content":
+            r = await self.coord.get_content(args.get("ref", ""), agent_id)
+        elif name == "signal_done":
             tracker = self.coord.tracker if self.coord else None
             if tracker and not tracker.can_terminate(agent_id):
                 r = {"status": "error",
@@ -351,10 +359,10 @@ class AgentRunner:
                 elif name == "release_lock":
                     r = await self.coord.release_lock(args["lock_id"], agent_id)
                 elif name == "send_message":
-                    # Control plane carries flags only — never payload (H1). Do not
-                    # forward any body the agent may attach; data travels on the data
-                    # plane (a shared file) and is announced by the label.
-                    r = await self.coord.send(args["channel_id"], args["label"], agent_id)
+                    # Channels are flag-only: forward the opaque content `ref` (gated
+                    # by the label in coord.send), never a free-form body.
+                    r = await self.coord.send(args["channel_id"], args["label"],
+                                              agent_id, ref=args.get("ref"))
                 elif name == "receive_message":
                     r = await self.coord.receive(args["channel_id"], agent_id)
                 elif name == "poll_channels":

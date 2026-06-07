@@ -139,6 +139,16 @@ class CoordToolDispatcher:
         if name == "report_progress":
             return await self.coord.report_progress(args.get("label", ""), agent_id)
 
+        # --- post_content / get_content: data-plane content store, NOT coordination.
+        # Routed BEFORE the COORD_TOOL_NAMES gate (like report_progress) so they never
+        # enter the validate/correction path — content is data, never a coordination op.
+        if name == "post_content":
+            return await self.coord.post_content(
+                args.get("content", ""), agent_id,
+                content_type=args.get("content_type", "text"))
+        if name == "get_content":
+            return await self.coord.get_content(args.get("ref", ""), agent_id)
+
         # --- coordination tools: forward to CoordinationContext (all async) ---
         if name in COORD_TOOL_NAMES:
             try:
@@ -209,13 +219,14 @@ class CoordToolDispatcher:
         if name == "release_lock":
             return await coord.release_lock(args["lock_id"], agent_id)
         if name == "send_message":
-            # Control plane carries flags only — never payload. Do NOT forward any
-            # body the agent may still attach; data must travel on the data plane.
-            result = await coord.send(args["channel_id"], args["label"], agent_id)
+            # Channels are flag-only: forward the opaque content `ref` (gated by the
+            # label in coord.send), never a free-form body.
+            result = await coord.send(args["channel_id"], args["label"], agent_id,
+                                      ref=args.get("ref"))
             if args.get("body"):
                 result = {**result, "note": (
-                    "body ignored — channels are flag-only; put data on the data "
-                    "plane (write a file) and signal it with the label")}
+                    "body ignored — channels are flag-only; post_content() to get a "
+                    "ref and attach it on a content-carrying label")}
             return result
         if name == "receive_message":
             return await coord.receive(args["channel_id"], agent_id)

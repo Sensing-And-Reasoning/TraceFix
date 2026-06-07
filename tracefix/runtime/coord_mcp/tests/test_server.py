@@ -18,6 +18,7 @@ EXPECTED_TOOLS = {
     "acquire_lock", "release_lock", "send_message", "receive_message",
     "poll_channels", "receive_any", "signal_done",
     "report_progress",  # observability beacon — auto-propagates to the MCP layer
+    "post_content", "get_content",  # data-plane content store — auto-propagates too
 }
 
 

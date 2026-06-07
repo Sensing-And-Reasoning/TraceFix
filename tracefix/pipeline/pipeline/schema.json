@@ -93,6 +93,11 @@
             "type": "array",
             "items": {"type": "string", "minLength": 1},
             "minItems": 1
+          },
+          "content_labels": {
+            "description": "Optional subset of `labels` that carry BUSINESS CONTENT (data-plane; IGNORED by TLA+/TLC — not part of the verified model). On these labels the runtime opens a scoped content handle (a claim-check ref into the ConversationStore); every other label is a pure coordination signal and the content channel stays CLOSED. E.g. ['revise'] when 'accept' needs no payload but 'revise' carries reviewer suggestions.",
+            "type": "array",
+            "items": {"type": "string", "minLength": 1}
           }
         }
       }

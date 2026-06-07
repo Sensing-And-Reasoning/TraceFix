@@ -108,6 +108,13 @@ def validate_ir(ir_data: dict) -> ValidationResult:
         for a in ch_to:
             if a not in agent_ids:
                 errors.append(f"Channel '{cid}' to references unknown agent: {a}")
+        # content_labels (optional, data-plane) must be a subset of labels
+        bad_cl = [lbl for lbl in ch.get("content_labels", [])
+                  if lbl not in ch.get("labels", [])]
+        if bad_cl:
+            errors.append(
+                f"Channel '{cid}': content_labels {bad_cl} not in labels "
+                f"{ch.get('labels', [])}")
         # Check duplicate (from, to) pairs
         for sender in ch_from:
             for receiver in ch_to:
