@@ -1144,7 +1144,7 @@ evtSource.addEventListener("agent.tool_call", (e) => {
   }
 });
 
-// chat.send: agent broadcasts to group chat (tracefix.runtime.baselines.shared_chat)
+// chat.send: agent broadcasts to group chat
 evtSource.addEventListener("chat.send", (e) => {
   const { agent_id, channel_id } = JSON.parse(e.data);
   if (channelMsgCounts[channel_id] !== undefined) {
@@ -1155,7 +1155,7 @@ evtSource.addEventListener("chat.send", (e) => {
   playBeam(agent_id, "group_chat", "var(--green)");
 });
 
-// chat.receive: agent reads message(s) from group chat (tracefix.runtime.baselines.shared_chat)
+// chat.receive: agent reads message(s) from group chat
 evtSource.addEventListener("chat.receive", (e) => {
   const { agent_id, from_agent, channel_id } = JSON.parse(e.data);
   // Beam from "group_chat" hub to receiving agent

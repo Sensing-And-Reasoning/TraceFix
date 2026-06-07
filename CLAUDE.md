@@ -47,10 +47,11 @@ python -m tracefix.runtime.monitoring run --task 3E --workspace workspace/3E --v
 # run sub-agents on OpenAI via a LiteLLM proxy (ANTHROPIC_BASE_URL → proxy)
 python -m tracefix.runtime.sdk_adapter run --task 3E --workspace workspace/3E \
     --model gpt-5-mini --builtins Read,Write,Edit
-
-# Distributed coordination service (opt-in; sdk_adapter --coord-url http://host:port talks to it)
-python -m tracefix.runtime.coordination --workspace workspace/3E --port 8780
 ```
+The `coordination/` service (CoordClient/CoordinationService/CoordBackend) is the
+inter-process backbone the opencode runtime starts in-process every run; agents reach it
+over loopback. A standalone multi-machine launcher is not shipped (restore one from git
+history if real distributed deployment is needed).
 Add `--live` (sdk_adapter: `--live-port`/`--live-warmup`/`--live-hold`) for real-time D3 + SSE visualization in the browser. Sim-enabled scenarios (12–16) accept `--difficulty 0-3`, `--scenario N`, `--tool-time FLOAT`, `--seed INT`.
 
 **Workspaces (repo cleanliness):** `tla-verify-pluscal init <name>` creates `workspace/<name>/` (**gitignored**), organized into subfolders: **`spec/`** (verification artifacts — `ir.json`, `Protocol*.tla`, `Protocol.cfg`, `states.json`, `summary.json`, tlc logs, `history/`), **`prompts/`** (per-agent prompts), **`output/`** (runtime artifacts the agents produce). Inputs `description.md` / `tools.json` sit at the workspace root. The runtimes resolve spec files via `tracefix/runtime/workspace_layout.py` (backward-compatible: a flat workspace with everything at the root still works). The sdk_adapter pins agents' file writes to `output/` by giving them the absolute output dir in the prompt (the claude CLI resolves relative writes against the git root, not cwd). Curated, committed examples live separately under `tracefix/runtime/sdk_adapter/examples/`.
