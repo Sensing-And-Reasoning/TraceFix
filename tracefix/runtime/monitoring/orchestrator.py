@@ -46,12 +46,12 @@ Waits internally for up to 30 seconds until the lock is available. Returns:
 ### release_lock(lock_id)
 Always succeeds immediately.
 
-### send_message(channel_id, label, body?)
-Always succeeds immediately. Use the optional `body` parameter to pass data content (e.g. results, instructions, artifacts) along with the signal label.
+### send_message(channel_id, label)
+Always succeeds immediately. Channels carry a finite **label only** — never free-form data. To share data with another agent, write it to a file (the data plane) and send the label as the "it's ready" signal.
 
 ### receive_message(channel_id)
 Waits up to 30 seconds for a message. Returns:
-- `{"status": "received", "label": "...", "body": "..."}` — message arrived (body included if sender provided one)
+- `{"status": "received", "label": "..."}` — message arrived; the label is the signal (read any shared file it refers to)
 - `{"status": "timeout"}` — no message within 30s, retry
 
 ### signal_done()

@@ -351,8 +351,10 @@ class AgentRunner:
                 elif name == "release_lock":
                     r = await self.coord.release_lock(args["lock_id"], agent_id)
                 elif name == "send_message":
-                    r = await self.coord.send(args["channel_id"], args["label"], agent_id,
-                                              body=args.get("body", ""))
+                    # Control plane carries flags only — never payload (H1). Do not
+                    # forward any body the agent may attach; data travels on the data
+                    # plane (a shared file) and is announced by the label.
+                    r = await self.coord.send(args["channel_id"], args["label"], agent_id)
                 elif name == "receive_message":
                     r = await self.coord.receive(args["channel_id"], agent_id)
                 elif name == "poll_channels":

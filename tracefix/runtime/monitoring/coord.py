@@ -447,13 +447,12 @@ COORD_TOOL_SCHEMAS = [
         "type": "function",
         "function": {
             "name": "send_message",
-            "description": "Send a labeled message on a channel. Non-blocking. Optionally include a body with additional content (e.g. data, results, instructions).",
+            "description": "Send a labeled message on a channel. Non-blocking. Channels carry a finite LABEL only — never free-form data. To share data with another agent, write it to a file (the data plane) and send the label as the \"it's ready\" signal.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "channel_id": {"type": "string", "description": "ID of the channel"},
                     "label": {"type": "string", "description": "Message label (e.g. 'submit', 'pass', 'flag')"},
-                    "body": {"type": "string", "description": "Optional message body with additional content"},
                 },
                 "required": ["channel_id", "label"],
             },

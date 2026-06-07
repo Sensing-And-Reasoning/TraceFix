@@ -250,18 +250,31 @@ def test_missing_required_arg_errors():
 # -- schema conversion (also SDK-free) --------------------------------------
 
 def test_send_message_schema_is_flag_only():
-    """flag_only_send_schemas removes `body` (control plane = label only)."""
+    """Channels are flag-only at the SOURCE (H1/B2): the base send_message schema
+    carries no `body`, so every runtime is flag-only by default (fail-safe) — not
+    only if it remembers to strip."""
+    base = next(s["function"] for s in COORD_TOOL_SCHEMAS
+                if s["function"]["name"] == "send_message")
+    assert "body" not in base["parameters"]["properties"]
+    assert "channel_id" in base["parameters"]["properties"]
+    assert "label" in base["parameters"]["properties"]
+
+
+def test_flag_only_send_schemas_strips_body_defense_in_depth():
+    """flag_only_send_schemas stays an idempotent safety net: if a `body` is ever
+    (re)introduced into a send_message schema, the transform strips it without
+    mutating its input."""
+    from copy import deepcopy
     from tracefix.runtime.sdk_adapter.mcp_server import flag_only_send_schemas
-    schemas = flag_only_send_schemas(COORD_TOOL_SCHEMAS)
-    send = next(s["function"] for s in schemas
-                if s["function"]["name"] == "send_message")
-    assert "body" not in send["parameters"]["properties"]
-    assert "channel_id" in send["parameters"]["properties"]
-    assert "label" in send["parameters"]["properties"]
-    # Original schemas must be untouched (deepcopy, not mutate).
-    orig = next(s["function"] for s in COORD_TOOL_SCHEMAS
-                if s["function"]["name"] == "send_message")
-    assert "body" in orig["parameters"]["properties"]
+    spiked = deepcopy(COORD_TOOL_SCHEMAS)
+    send_fn = next(s["function"] for s in spiked
+                   if s["function"]["name"] == "send_message")
+    send_fn["parameters"]["properties"]["body"] = {"type": "string"}
+    out = flag_only_send_schemas(spiked)
+    out_send = next(s["function"] for s in out
+                    if s["function"]["name"] == "send_message")
+    assert "body" not in out_send["parameters"]["properties"]
+    assert "body" in send_fn["parameters"]["properties"]  # input not mutated
 
 
 def test_send_drops_body_so_no_payload_crosses_channel():
