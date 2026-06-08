@@ -530,11 +530,19 @@ class TestPollChannels:
         assert r2["status"] == "none"
 
     @pytest.mark.asyncio
-    async def test_poll_with_body(self, coord_multi):
-        """poll_channels returns body when present."""
-        await coord_multi.send("chA", "msg", "senderA", body="data payload")
-        result = await coord_multi.poll_channels(["chA"], "receiver")
-        assert result["body"] == "data payload"
+    async def test_poll_surfaces_content_ref(self):
+        """poll_channels surfaces the opaque content ref (claim-check), not a body —
+        channels are flag-only; the payload lives in the data plane."""
+        ir = {"agents": [{"id": "s"}, {"id": "r"}], "resources": [],
+              "channels": [{"id": "ch", "from": "s", "to": "r",
+                            "labels": ["rev"], "content_labels": ["rev"]}]}
+        coord = CoordinationContext(ir, ProtocolMonitor(ir))
+        posted = await coord.post_content("data payload", "s")
+        await coord.send("ch", "rev", "s", ref=posted["ref"])
+        result = await coord.poll_channels(["ch"], "r")
+        assert result["status"] == "received" and result["ref"] == posted["ref"]
+        assert "body" not in result
+        assert (await coord.get_content(result["ref"], "r"))["content"] == "data payload"
 
     @pytest.mark.asyncio
     async def test_poll_invalid_channel(self, coord_multi):
@@ -587,11 +595,17 @@ class TestReceiveAny:
         assert elapsed >= 0.15  # waited close to timeout
 
     @pytest.mark.asyncio
-    async def test_receive_any_with_body(self, coord_multi):
-        """receive_any returns body when present."""
-        await coord_multi.send("chA", "msg", "senderA", body="hello")
-        result = await coord_multi.receive_any(["chA", "chB"], "receiver")
-        assert result["body"] == "hello"
+    async def test_receive_any_surfaces_content_ref(self):
+        """receive_any surfaces the opaque content ref (claim-check), not a body."""
+        ir = {"agents": [{"id": "s"}, {"id": "r"}], "resources": [],
+              "channels": [{"id": "ch", "from": "s", "to": "r",
+                            "labels": ["rev"], "content_labels": ["rev"]}]}
+        coord = CoordinationContext(ir, ProtocolMonitor(ir))
+        posted = await coord.post_content("hello", "s")
+        await coord.send("ch", "rev", "s", ref=posted["ref"])
+        result = await coord.receive_any(["ch"], "r")
+        assert result["status"] == "received" and result["ref"] == posted["ref"]
+        assert "body" not in result
 
     @pytest.mark.asyncio
     async def test_receive_any_consumes_message(self, coord_multi):

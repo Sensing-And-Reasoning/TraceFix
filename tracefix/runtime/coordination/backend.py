@@ -36,7 +36,7 @@ class CoordBackend(Protocol):
     async def release_lock(self, resource_id: str, agent_id: str) -> dict: ...
 
     async def send(self, channel_id: str, label: str, agent_id: str,
-                   body: str = "") -> dict: ...
+                   ref: str | None = None) -> dict: ...
 
     async def receive(self, channel_id: str, agent_id: str,
                       timeout: float = DEFAULT_TIMEOUT) -> dict: ...
@@ -51,6 +51,14 @@ class CoordBackend(Protocol):
     # H3 termination gate: allowed only from a state that can still reach a
     # terminal state (the tracker, wherever it lives, is authoritative).
     async def signal_done(self, agent_id: str) -> dict: ...
+
+    # Data plane (claim-check): store business content, return an opaque ref; and
+    # resolve a ref to its payload. Bypasses the monitor — content is never a
+    # coordination op. Networked so a ref posted by one node resolves on another.
+    async def post_content(self, content: str, agent_id: str,
+                           content_type: str = "text") -> dict: ...
+
+    async def get_content(self, ref: str, agent_id: str) -> dict: ...
 
     # Observability-plane telemetry (non-enforced): record a business-progress
     # beacon. Never validated, never a violation; both backends implement it.

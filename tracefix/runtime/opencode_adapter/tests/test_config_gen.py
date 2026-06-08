@@ -73,3 +73,16 @@ def test_default_permission_constant_not_mutated():
     cfg = build_agent_config("A", "http://x")
     cfg["agent"]["a"]["permission"]["read"] = "deny"
     assert DEFAULT_PERMISSION["read"] == "allow"
+
+
+def test_token_injected_into_mcp_env_when_given():
+    cfg = build_agent_config("A", "http://x", token="secret123")
+    env = cfg["mcp"]["tracefix"]["environment"]
+    assert env["TRACEFIX_COORD_TOKEN"] == "secret123"
+    # token rides the MCP server env, never the (ps-visible) command line.
+    assert "secret123" not in cfg["mcp"]["tracefix"]["command"]
+
+
+def test_no_token_omits_the_env_key():
+    cfg = build_agent_config("A", "http://x")
+    assert "TRACEFIX_COORD_TOKEN" not in cfg["mcp"]["tracefix"]["environment"]

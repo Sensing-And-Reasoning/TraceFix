@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import secrets
 import sys
 import time
 from dataclasses import dataclass, field
@@ -199,6 +200,7 @@ class OpencodeOrchestrator:
         # Coordination: connect to an EXTERNAL service (mixed/distributed) or start
         # our OWN in-process one (standalone). The monitor+tracker+correction are
         # authoritative wherever the service runs.
+        tokens: dict[str, str] | None = None
         if self.coord_url:
             coord_url = self.coord_url
             service = None
@@ -209,8 +211,13 @@ class OpencodeOrchestrator:
             tracker = StateTracker(_load_json(states_path)) if states_path.exists() else None
             coord = CoordinationContext(ir, monitor, tracker=tracker, correction=True,
                                         event_bus=event_bus)
+            # Per-agent capability tokens: opencode agents have Bash and the coord URL,
+            # so without this one agent could curl the loopback port and forge ops as a
+            # peer. Each agent gets its own token (via its MCP server env); the service
+            # binds agent_id→token and rejects mismatches.
+            tokens = {a["id"]: secrets.token_hex(16) for a in ir["agents"]}
             service = CoordinationService(coord, host=self.host, port=self.port,
-                                          verbose=self.verbose)
+                                          verbose=self.verbose, tokens=tokens)
             await service.start()
             coord_url = f"http://{self.host}:{self.port}"
         coord_cmd = [sys.executable, "-m", "tracefix.runtime.coord_mcp"]
@@ -270,7 +277,8 @@ class OpencodeOrchestrator:
                 cfg = build_agent_config(
                     agent_id, coord_url, prompt=self._read_prompt(agent_id),
                     model=self.model, op_timeout_ms=self.op_timeout_ms,
-                    coord_cmd=coord_cmd)
+                    coord_cmd=coord_cmd,
+                    token=tokens.get(agent_id) if tokens else None)
                 tasks.append(asyncio.create_task(run_opencode_agent(
                     agent_id, cfg, opencode_cmd=self.opencode_cmd,
                     output_dir=out, timeout=self.timeout, on_event=on_event,

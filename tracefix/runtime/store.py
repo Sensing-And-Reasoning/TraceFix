@@ -21,8 +21,7 @@ class StoredMessage:
     label: str
     sender: str
     timestamp: float
-    body: str = ""
-    ref: str = ""
+    ref: str = ""  # opaque claim-check handle into ConversationStore (data plane)
 
 
 class MessageStore:
@@ -37,8 +36,13 @@ class MessageStore:
         self._channels[channel_id] = []
 
     def send(self, channel: str, label: str, sender: str,
-             body: str = "", ref: str = "") -> StoredMessage:
-        """Append a labeled message. Non-blocking, always succeeds (unbounded)."""
+             ref: str = "") -> StoredMessage:
+        """Append a labeled message. Non-blocking, always succeeds (unbounded).
+
+        Channels are flag-only: a message carries a ``label`` (a signal) and an
+        optional opaque content ``ref`` (claim-check). Business payload never rides
+        the channel — it lives in the ConversationStore (data plane).
+        """
         if channel not in self._channels:
             raise KeyError(
                 f"Channel '{channel}' not initialized — call init_channel() first"
@@ -49,7 +53,6 @@ class MessageStore:
             label=label,
             sender=sender,
             timestamp=time.monotonic() - self._t0,
-            body=body,
             ref=ref,
         )
         self._channels[channel].append(msg)

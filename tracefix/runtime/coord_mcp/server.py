@@ -91,9 +91,10 @@ def build_server(dispatcher, schemas: list[dict]):
     return server
 
 
-def build_dispatcher(agent_id: str, coord_url: str, *, socket_timeout: float | None = None):
+def build_dispatcher(agent_id: str, coord_url: str, *, socket_timeout: float | None = None,
+                     token: str | None = None):
     """Build the per-agent dispatcher over a CoordClient to the central service."""
-    client = CoordClient(coord_url, agent_id, socket_timeout=socket_timeout)
+    client = CoordClient(coord_url, agent_id, socket_timeout=socket_timeout, token=token)
     return CoordToolDispatcher(client, agent_id)
 
 
@@ -108,6 +109,8 @@ def _parse_args(argv: list[str] | None):
                    help="URL of the central CoordinationService (env: TRACEFIX_COORD_URL)")
     p.add_argument("--socket-timeout", type=float, default=None,
                    help="Override CoordClient socket read timeout (else op_timeout + 15s)")
+    p.add_argument("--token", default=os.environ.get("TRACEFIX_COORD_TOKEN"),
+                   help="Per-agent capability token (env: TRACEFIX_COORD_TOKEN)")
     args = p.parse_args(argv)
     if not args.agent_id:
         p.error("--agent-id (or TRACEFIX_AGENT_ID) is required")
@@ -120,7 +123,7 @@ def main(argv: list[str] | None = None) -> None:
     # Fail fast with a clear message if mcp is absent, before opening stdio.
     _require_mcp()
     dispatcher = build_dispatcher(args.agent_id, args.coord_url,
-                                  socket_timeout=args.socket_timeout)
+                                  socket_timeout=args.socket_timeout, token=args.token)
     schemas = flag_only_send_schemas(list(COORD_TOOL_SCHEMAS))
 
     import anyio

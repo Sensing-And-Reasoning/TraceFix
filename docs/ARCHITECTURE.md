@@ -540,10 +540,15 @@ flowchart LR
 - This is the **IPC backbone the opencode harness uses on every run** (its subprocesses
   reach the in-process service over loopback). `sdk_adapter --coord-url` switches to it
   too.
-- **Phase-1 scope (loopback only).** Known follow-ups, by design: the data plane
-  (`post_content`/`get_content` / `ConversationStore`) isn't yet carried over the wire, a
-  latent `body` field is serialized-but-ignored, and `agent_id` is client-supplied (no
-  per-socket auth on loopback). See `DEV_BRANCH_NOTES.md` → H4.
+- **Full parity over the wire.** The control plane, the data plane
+  (`post_content`/`get_content`, served from the one authoritative `ConversationStore` so a
+  `ref` posted on one node resolves on another), and the `signal_done` FSM gate all route
+  through the service — the distributed path enforces exactly what in-process does. Each
+  agent also carries a per-agent capability **token** (`X-Tracefix-Token`), so a process
+  that can reach the loopback port (e.g. an opencode agent with Bash) cannot forge
+  coordination ops as a *different* agent.
+- **Phase-1 scope (loopback only).** The service binds `127.0.0.1`, so all agents run on one
+  machine; cross-machine deployment (shared artifact store, TLS, reconnect) is future work.
 
 ### 5.6 The mixed-harness proof
 

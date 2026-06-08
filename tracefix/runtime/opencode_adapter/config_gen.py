@@ -80,6 +80,7 @@ def build_agent_config(
     op_timeout_ms: int = DEFAULT_OP_TIMEOUT_MS,
     coord_cmd: list[str] | None = None,
     permission: dict | None = None,
+    token: str | None = None,
 ) -> dict:
     """Build the OpenCode config dict for one tracefix agent.
 
@@ -97,6 +98,10 @@ def build_agent_config(
     base = list(coord_cmd) if coord_cmd else ["tracefix-coord"]
     command = base + ["--agent-id", agent_id, "--coord-url", coord_url]
     key = agent_key(agent_id)
+    # Per-agent capability token (env, not argv, so it isn't in the process table).
+    mcp_env = {"TRACEFIX_AGENT_ID": agent_id, "TRACEFIX_COORD_URL": coord_url}
+    if token:
+        mcp_env["TRACEFIX_COORD_TOKEN"] = token
 
     agent_def: dict = {
         "mode": "primary",
@@ -112,10 +117,7 @@ def build_agent_config(
             "tracefix": {
                 "type": "local",
                 "command": command,
-                "environment": {
-                    "TRACEFIX_AGENT_ID": agent_id,
-                    "TRACEFIX_COORD_URL": coord_url,
-                },
+                "environment": mcp_env,
                 "enabled": True,
                 "timeout": op_timeout_ms,
             }

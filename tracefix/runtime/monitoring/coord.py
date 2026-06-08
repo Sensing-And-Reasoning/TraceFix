@@ -276,14 +276,14 @@ class CoordinationContext:
         raise ProtocolViolation(f"Unknown resource '{resource_id}'")
 
     async def send(self, channel_id: str, label: str, agent_id: str,
-                   body: str = "", ref: str | None = None) -> dict:
+                   ref: str | None = None) -> dict:
         """Send a labeled message. Non-blocking (unbounded FIFO).
 
         Channels are flag-only. The only data a send may carry is an opaque content
         ``ref`` (a claim-check handle from post_content), and ONLY on a label the IR
         declared content-carrying — the control plane gates this: a ref on a pure
-        signal label is rejected, and a content-carrying label requires one. (``body``
-        is a latent param for the distributed path; the in-process path never sets it.)
+        signal label is rejected, and a content-carrying label requires one. Business
+        payload never rides the channel; it lives in the ConversationStore (data plane).
         """
         self.monitor.validate_send(agent_id, channel_id, label)
         self._guard(agent_id, "send", {"channel": channel_id, "label": label})
@@ -302,7 +302,7 @@ class CoordinationContext:
                 f"label '{label}' on '{channel_id}' carries content — attach a `ref` "
                 f"from post_content() (the payload travels on the data plane)")
         await self._track_and_emit(agent_id, "send", channel_id=channel_id, label=label)
-        self.messages.send(channel_id, label, agent_id, body=body, ref=ref or "")
+        self.messages.send(channel_id, label, agent_id, ref=ref or "")
         cond = self._channel_conds[channel_id]
         async with cond:
             cond.notify_all()
@@ -310,8 +310,6 @@ class CoordinationContext:
         async with self._any_send_cond:
             self._any_send_cond.notify_all()
         result = {"status": "sent", "channel": channel_id, "label": label}
-        if body:
-            result["body"] = body
         if ref:
             result["ref"] = ref
         return result
@@ -337,8 +335,6 @@ class CoordinationContext:
                     await self._track_and_emit(agent_id, "receive", channel_id=channel_id, label=msg.label)
                     result = {"status": "received", "channel": channel_id,
                               "label": msg.label}
-                    if msg.body:
-                        result["body"] = msg.body
                     if msg.ref:
                         result["ref"] = msg.ref
                     return result
@@ -370,8 +366,6 @@ class CoordinationContext:
                                            channel_id=ch_id, label=msg.label)
                 result = {"status": "received", "channel": ch_id,
                           "label": msg.label}
-                if msg.body:
-                    result["body"] = msg.body
                 if msg.ref:
                     result["ref"] = msg.ref
                 return result
@@ -405,8 +399,6 @@ class CoordinationContext:
                             channel_id=ch_id, label=msg.label)
                         result = {"status": "received", "channel": ch_id,
                                   "label": msg.label}
-                        if msg.body:
-                            result["body"] = msg.body
                         if msg.ref:
                             result["ref"] = msg.ref
                         return result

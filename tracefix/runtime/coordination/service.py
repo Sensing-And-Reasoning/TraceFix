@@ -24,6 +24,7 @@ _RPC_METHODS = frozenset({
     "acquire_lock", "release_lock", "send", "receive",
     "poll_channels", "receive_any", "get_held_locks",
     "signal_done",      # H3 termination gate — server-side tracker is authoritative
+    "post_content", "get_content",  # data plane (claim-check) over the wire
     "report_progress",  # observability-plane beacon (non-enforced)
 })
 
@@ -42,45 +43,59 @@ def _http_response(status: int, content_type: str, body: bytes) -> bytes:
 
 
 async def _read_request(reader: asyncio.StreamReader):
-    """Parse request line + headers + (optional) body. Returns (method, path, body)."""
+    """Parse request line + headers + (optional) body.
+
+    Returns (method, path, body, token) where token is the ``X-Tracefix-Token``
+    header value (or None).
+    """
     request_line = await reader.readline()
     if not request_line:
-        return None, None, b""
+        return None, None, b"", None
     parts = request_line.decode("utf-8", "replace").strip().split(" ")
     method = parts[0] if parts else "GET"
     path = parts[1] if len(parts) > 1 else "/"
 
     content_length = 0
+    token = None
     while True:
         header = await reader.readline()
         if header in (b"\r\n", b"\n", b""):
             break
         h = header.decode("utf-8", "replace")
-        if h.lower().startswith("content-length:"):
+        hl = h.lower()
+        if hl.startswith("content-length:"):
             try:
                 content_length = int(h.split(":", 1)[1].strip())
             except ValueError:
                 content_length = 0
+        elif hl.startswith("x-tracefix-token:"):
+            token = h.split(":", 1)[1].strip()
 
     body = await reader.readexactly(content_length) if content_length > 0 else b""
-    return method, path, body
+    return method, path, body, token
 
 
 class CoordinationService:
     """Serves an in-process CoordinationContext to remote agent nodes over HTTP."""
 
     def __init__(self, coord, host: str = "127.0.0.1", port: int = 8780,
-                 verbose: bool = False):
+                 verbose: bool = False, tokens: dict[str, str] | None = None):
         self.coord = coord          # an unchanged CoordinationContext
         self.host = host
         self.port = port
         self.verbose = verbose
+        # Optional per-agent capability tokens {agent_id: token}. When set, every
+        # /rpc must carry the matching token for the agent_id it acts as — so a
+        # process that can reach the loopback port (e.g. an opencode agent with
+        # Bash) cannot forge coordination ops AS A DIFFERENT agent. None = open
+        # (in-process / trusted-loopback callers, e.g. mixed_run).
+        self.tokens = tokens
         self._server: asyncio.Server | None = None
 
     async def _handle(self, reader: asyncio.StreamReader,
                       writer: asyncio.StreamWriter):
         try:
-            method, path, body = await _read_request(reader)
+            method, path, body, token = await _read_request(reader)
             if method is None:
                 return
             if method == "GET" and path == "/health":
@@ -92,7 +107,7 @@ class CoordinationService:
                 await writer.drain()
             elif method == "POST" and path == "/rpc":
                 writer.write(_http_response(200, "application/json",
-                                            await self._dispatch(body)))
+                                            await self._dispatch(body, token)))
                 await writer.drain()
             else:
                 writer.write(_http_response(404, "text/plain", b"Not Found"))
@@ -114,7 +129,7 @@ class CoordinationService:
             except Exception:
                 pass
 
-    async def _dispatch(self, body: bytes) -> bytes:
+    async def _dispatch(self, body: bytes, token: str | None = None) -> bytes:
         try:
             req = json.loads(body.decode("utf-8"))
             name = req["method"]
@@ -125,6 +140,15 @@ class CoordinationService:
         if name not in _RPC_METHODS:
             return json.dumps({"status": "error",
                                "message": f"unknown method: {name}"}).encode()
+        # Capability check (H4): when tokens are configured, the caller must present
+        # the token bound to the agent_id it is acting as. Stops one agent process
+        # from forging coordination ops as another over the loopback port.
+        if self.tokens is not None:
+            claimed = args.get("agent_id")
+            if claimed is None or token != self.tokens.get(claimed):
+                return json.dumps({"status": "error", "error": "unauthorized",
+                                   "message": f"token does not authorize agent "
+                                              f"'{claimed}'"}).encode()
         fn = getattr(self.coord, name)
         try:
             result = await fn(**args)

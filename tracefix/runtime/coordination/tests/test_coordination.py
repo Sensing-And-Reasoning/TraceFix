@@ -192,6 +192,80 @@ def test_remote_signal_done_gated_by_server_side_fsm():
     asyncio.run(scenario())
 
 
+# --- Data plane over the network (claim-check across nodes) ---
+
+def test_rpc_methods_includes_data_plane():
+    from tracefix.runtime.coordination.service import _RPC_METHODS
+    assert {"post_content", "get_content"} <= _RPC_METHODS
+
+
+def test_remote_data_plane_post_get_across_agents():
+    """H4: content posted by one node resolves via get_content on ANOTHER — the
+    claim-check store is server-side, so a ref works over the wire (the content
+    exchange the default opencode harness needs)."""
+    async def scenario():
+        port = _free_port()
+        svc = await _start_service(port)
+        try:
+            url = f"http://127.0.0.1:{port}"
+            a, b = CoordClient(url, "A"), CoordClient(url, "B")
+            posted = await a.post_content("revision notes", "A")
+            assert posted["status"] == "ok" and posted["ref"]
+            got = await b.get_content(posted["ref"], "B")
+            assert got["status"] == "ok" and got["content"] == "revision notes"
+        finally:
+            await svc.stop()
+
+    asyncio.run(scenario())
+
+
+# --- Capability tokens: an agent can't forge RPCs as a peer (H4) ---
+
+async def _start_service_with_tokens(port: int, tokens: dict) -> CoordinationService:
+    coord = CoordinationContext(IR, ProtocolMonitor(IR))
+    svc = CoordinationService(coord, host="127.0.0.1", port=port, tokens=tokens)
+    await svc.start()
+    return svc
+
+
+def test_token_binding_rejects_forgery_and_anon():
+    """With tokens configured, an RPC must carry the token bound to the agent_id it
+    acts as. The correct token works; A's token claiming to be B is rejected; and a
+    tokenless call is rejected."""
+    async def scenario():
+        port = _free_port()
+        svc = await _start_service_with_tokens(port, {"A": "tokA", "B": "tokB"})
+        try:
+            url = f"http://127.0.0.1:{port}"
+            ok = await CoordClient(url, "A", token="tokA").acquire_lock("lock1", "A")
+            assert ok["status"] == "acquired"
+            # A's token but claiming to be B → forgery, rejected.
+            forge = await CoordClient(url, "B", token="tokA").acquire_lock("lock1", "B")
+            assert forge.get("error") == "unauthorized"
+            # No token at all → rejected.
+            anon = await CoordClient(url, "A").release_lock("lock1", "A")
+            assert anon.get("error") == "unauthorized"
+        finally:
+            await svc.stop()
+
+    asyncio.run(scenario())
+
+
+def test_no_tokens_configured_is_open():
+    """Backward-compatible: a service started without tokens accepts any caller
+    (in-process / trusted-loopback callers like mixed_run)."""
+    async def scenario():
+        port = _free_port()
+        svc = await _start_service(port)  # tokens=None
+        try:
+            r = await CoordClient(f"http://127.0.0.1:{port}", "A").acquire_lock("lock1", "A")
+            assert r["status"] == "acquired"
+        finally:
+            await svc.stop()
+
+    asyncio.run(scenario())
+
+
 def test_remote_report_progress_roundtrip():
     async def scenario():
         port = _free_port()
