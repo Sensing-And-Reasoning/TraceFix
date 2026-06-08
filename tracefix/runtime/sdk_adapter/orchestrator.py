@@ -32,7 +32,8 @@ from tracefix.runtime.sdk_adapter.mcp_server import (
 from tracefix.runtime.sdk_adapter.sdk_runner import run_sdk_agent
 from tracefix.runtime.sdk_adapter.types import AgentResult
 from tracefix.runtime.coordination.client import CoordClient
-from tracefix.runtime.workspace_layout import spec_path, snapshot_run_workspace, new_run_stamp
+from tracefix.runtime.workspace_layout import (
+    spec_path, snapshot_run_workspace, new_run_stamp, shared_workdir, agent_workdir)
 
 _DEFAULT_BUILTINS = ["Read", "Write", "Edit"]
 
@@ -143,23 +144,27 @@ class SdkOrchestrator:
 
     def _read_prompt(self, agent_id: str) -> str:
         path = self._prompts_dir() / f"{agent_id}.md"
-        return path.read_text() + _COORD_FOOTER + self._output_footer()
+        return path.read_text() + _COORD_FOOTER + self._output_footer(agent_id)
 
-    def _output_footer(self) -> str:
-        """Pin the agents' file output to the workspace's output/ directory.
+    def _output_footer(self, agent_id: str) -> str:
+        """Tell the agent where shared vs. private files go.
 
         The claude CLI resolves relative Write paths against the project (git)
-        root, not its cwd — so a bare filename would leak into the repo root.
-        Giving the absolute output directory makes file writes land in this
-        run's snapshot output/ regardless.
+        root, not its cwd — so give absolute paths. SHARED artifacts (what other
+        agents read, or what the protocol's locks protect) go in the shared area;
+        files only this agent uses go in its private directory.
         """
-        out = self.run_dir.resolve()
+        shared = shared_workdir(self.run_dir).resolve()
+        private = agent_workdir(self.run_dir, agent_id).resolve()
         return (
             f"\n\n## Where to write files\n"
-            f"Write EVERY file you produce into this exact directory, using the full "
-            f"path: `{out}`\n"
-            f"For example, to create `report.md`, write to `{out}/report.md`. "
-            f"Do NOT write files anywhere else.\n")
+            f"- SHARED (what other agents read, or your protocol's locks protect): "
+            f"write under `{shared}` — e.g. a handoff `report.md` → `{shared}/report.md`. "
+            f"When your steps name a file another agent will read, put it here.\n"
+            f"- PRIVATE (files only YOU use — scratch, your own test files, intermediate "
+            f"work): write under `{private}`. Keep these out of the shared area so peers "
+            f"aren't affected.\n"
+            f"Always use one of these two absolute paths; do NOT write files anywhere else.\n")
 
     def _load_domain_tools(self):
         """Domain tools, in priority order:
@@ -299,7 +304,7 @@ class SdkOrchestrator:
                 model=self.model,
                 max_rounds=self.max_rounds,
                 verbose=self.verbose,
-                cwd=str(self.run_dir.resolve()),
+                cwd=str(shared_workdir(self.run_dir).resolve()),
             )))
 
         start = time.time()

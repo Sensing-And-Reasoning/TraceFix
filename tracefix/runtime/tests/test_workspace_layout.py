@@ -6,7 +6,9 @@ import re
 from pathlib import Path
 
 from tracefix.runtime.workspace_layout import (
+    agent_workdir,
     new_run_stamp,
+    shared_workdir,
     snapshot_run_workspace,
 )
 
@@ -70,3 +72,30 @@ def test_latest_symlink_points_at_newest(tmp_path: Path):
     assert latest.resolve() == a.resolve()
     b = snapshot_run_workspace(base, "20260101-000001")
     assert latest.resolve() == b.resolve()  # repointed to the newest run
+
+
+# --- per-agent private dir + shared area convention ---
+
+def test_shared_workdir_creates_shared(tmp_path: Path):
+    out = tmp_path / "output"; out.mkdir()
+    d = shared_workdir(out)
+    assert d == out / "shared" and d.is_dir()
+
+
+def test_agent_workdir_is_private_and_sanitized(tmp_path: Path):
+    out = tmp_path / "output"; out.mkdir()
+    a = agent_workdir(out, "RESEARCHER_FM")
+    assert a == out / "RESEARCHER_FM" and a.is_dir()
+    b = agent_workdir(out, "agent/../x y")  # weird chars sanitized to a safe name
+    assert b.is_dir() and b.parent == out and "/" not in b.name and " " not in b.name
+
+
+def test_agent_named_shared_never_collides(tmp_path: Path):
+    out = tmp_path / "output"; out.mkdir()
+    assert agent_workdir(out, "shared") != shared_workdir(out)
+
+
+def test_private_and_shared_are_siblings(tmp_path: Path):
+    out = tmp_path / "output"; out.mkdir()
+    shared, priv = shared_workdir(out), agent_workdir(out, "A")
+    assert shared.parent == priv.parent == out and shared != priv

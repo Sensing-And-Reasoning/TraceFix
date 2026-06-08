@@ -660,7 +660,8 @@ flowchart LR
 | `states.json` | `pluscal_parser` | prompt-gen, `StateTracker` | **per-agent FSM — the runtime ground truth** |
 | `summary.json` | verify loop | prompt-gen | repair tracking (boosts Critical Rules) |
 | `prompts/runtime_b/{agent}.md` | Phase 5 | all harnesses | per-agent workflow prompt |
-| `output/` | agents at runtime | other agents | the shared data plane (files) |
+| `output/shared/` | agents at runtime | other agents | the data plane: handoff/coordinated files (every agent's cwd) |
+| `output/<agent>/` | one agent at runtime | itself | that agent's private scratch (its own tests, temp, intermediate work) |
 | `run_result.json` / `run_trace.html` | `result_saver` / `visualize` | analysis, dashboards | run snapshot + visualization |
 
 ---

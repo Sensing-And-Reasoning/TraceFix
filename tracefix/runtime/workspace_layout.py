@@ -14,6 +14,7 @@ workspaces and the committed examples keep working without migration.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 
@@ -35,6 +36,36 @@ def output_dir(workspace: Path) -> Path:
     polluting the workspace root (or the launch directory).
     """
     d = workspace / "output"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _safe_name(name: str) -> str:
+    """A filesystem-safe directory name derived from an agent id."""
+    safe = re.sub(r"[^A-Za-z0-9_.-]", "_", name).strip("_") or "agent"
+    return f"{safe}_" if safe == "shared" else safe  # never collide with shared/
+
+
+def shared_workdir(run_output: Path) -> Path:
+    """The SHARED area under a run's ``output/`` — every agent's working directory.
+
+    Files that another agent must read, or that the verified protocol coordinates
+    (its lock-protected resources), live here. A bare filename an agent writes lands
+    here, so the existing message → file → message handoffs keep working.
+    """
+    d = run_output / "shared"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def agent_workdir(run_output: Path, agent_id: str) -> Path:
+    """A PRIVATE per-agent directory under a run's ``output/``.
+
+    For files only that agent uses — scratch, its own test files, intermediate
+    work — so they neither collide with peers nor clutter the shared area. NOT
+    governed by the verified protocol (which only covers IR-declared resources).
+    """
+    d = run_output / _safe_name(agent_id)
     d.mkdir(parents=True, exist_ok=True)
     return d
 

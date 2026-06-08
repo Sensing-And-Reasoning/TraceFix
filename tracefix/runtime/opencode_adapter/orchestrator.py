@@ -33,7 +33,8 @@ from tracefix.runtime.monitoring.monitor import ProtocolMonitor
 from tracefix.runtime.monitoring.state_tracker import StateTracker
 from tracefix.runtime.coordination.service import CoordinationService
 from tracefix.runtime.coordination.client import CoordClient
-from tracefix.runtime.workspace_layout import spec_path, snapshot_run_workspace, new_run_stamp
+from tracefix.runtime.workspace_layout import (
+    spec_path, snapshot_run_workspace, new_run_stamp, shared_workdir, agent_workdir)
 from tracefix.runtime.opencode_adapter.config_gen import agent_key, build_agent_config
 from tracefix.runtime.opencode_adapter.driver import run_opencode_agent
 
@@ -142,18 +143,20 @@ class OpencodeOrchestrator:
 
     def _read_prompt(self, agent_id: str) -> str:
         path = self._prompts_dir() / f"{agent_id}.md"
-        return path.read_text() + _COORD_FOOTER + self._output_footer()
+        return path.read_text() + _COORD_FOOTER + self._output_footer(agent_id)
 
-    def _output_footer(self) -> str:
-        out = self.run_dir.resolve()
+    def _output_footer(self, agent_id: str) -> str:
+        shared = shared_workdir(self.run_dir).resolve()
+        private = agent_workdir(self.run_dir, agent_id).resolve()
         return (
-            f"\n\n## Where to write files (shared data plane)\n"
-            f"Your working directory is the shared output directory:\n`{out}`\n"
-            f"When your instructions mention a file by name (e.g. `research.md`, "
-            f"`data_check.md`, `ACCEPTANCE.md`), read and write it there — a plain "
-            f"relative filename works (it resolves to this directory). All agents "
-            f"share this directory; the locks in your protocol protect shared files. "
-            f"Do NOT write files anywhere else.\n")
+            f"\n\n## Where to write files\n"
+            f"Your working directory is the SHARED area:\n`{shared}`\n"
+            f"When your steps name a file another agent reads (a handoff), read/write "
+            f"it here — a plain relative filename works (it resolves to this dir). All "
+            f"agents share it; the locks in your protocol protect shared files.\n"
+            f"For files only YOU use (scratch, your own test files, intermediate work), "
+            f"write under your PRIVATE directory:\n`{private}`\n"
+            f"Keep private files out of the shared area so peers aren't affected.\n")
 
     # -- run -----------------------------------------------------------------
 
@@ -221,7 +224,8 @@ class OpencodeOrchestrator:
             await service.start()
             coord_url = f"http://{self.host}:{self.port}"
         coord_cmd = [sys.executable, "-m", "tracefix.runtime.coord_mcp"]
-        out = str(self.run_dir.resolve())
+        out = str(self.run_dir.resolve())          # run-output root (holds .agents/ XDG)
+        shared_out = str(shared_workdir(self.run_dir).resolve())  # agents' cwd (--dir)
         run_agents = [a for a in ir["agents"]
                       if self.agents is None or a["id"] in self.agents]
         print(f"[opencode] run snapshot → {self.snapshot_dir}", file=sys.stderr)
@@ -279,9 +283,11 @@ class OpencodeOrchestrator:
                     model=self.model, op_timeout_ms=self.op_timeout_ms,
                     coord_cmd=coord_cmd,
                     token=tokens.get(agent_id) if tokens else None)
+                # Pre-create this agent's private dir; cwd (--dir) is the shared area.
+                agent_workdir(self.run_dir, agent_id)
                 tasks.append(asyncio.create_task(run_opencode_agent(
                     agent_id, cfg, opencode_cmd=self.opencode_cmd,
-                    output_dir=out, timeout=self.timeout, on_event=on_event,
+                    output_dir=shared_out, timeout=self.timeout, on_event=on_event,
                     env_overrides=xdg_env)))
 
             raw = await asyncio.gather(*tasks, return_exceptions=True)
