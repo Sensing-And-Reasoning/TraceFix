@@ -157,6 +157,8 @@ python -m tracefix.runtime.monitoring run --task 3E --workspace workspace/3E --v
 
 See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for the full design+verify → execute flow (with diagrams).
 
+**Continuous verification:** [`.github/workflows/verify.yml`](.github/workflows/verify.yml) gates every push on `tla-verify-pluscal verify` + the test suite (no API keys needed). Copy it as a template to gate your own specs — `verify --json` gives a machine-readable verdict and a non-zero exit fails the job.
+
 **Requirements:**
 - Python 3.11+ (3.13 tested)
 - Java 17 (for TLC) — auto-detected on `PATH` / `$JAVA_HOME` / Homebrew `openjdk@17`; override with `TLA_VERIFY_JAVA` or `--java-path`

@@ -203,27 +203,32 @@ def cmd_verify(args: argparse.Namespace) -> int:
     from tracefix.pipeline.pipeline.trace_parser import parse_trace
     from tracefix.pipeline.pipeline.error_formatter import format_tlc_error
 
+    as_json = getattr(args, "json", False)
     search_dir = Path(args.dir)
     tla_path = search_dir / "Protocol.tla"
     cfg_path = search_dir / "Protocol.cfg"
     ir_path = search_dir / "ir.json"
 
+    def _setup_error(msg: str, extra: dict | None = None) -> int:
+        if as_json:
+            print(json.dumps({"verdict": "error", "error": msg, **(extra or {})}))
+        else:
+            print(f"ERROR: {msg}")
+            for e in (extra or {}).get("ir_errors", []):
+                print(f"  - {e}")
+        return 1
+
     if not tla_path.exists():
-        print(f"ERROR: {tla_path} not found")
-        return 1
+        return _setup_error(f"{tla_path} not found")
     if not cfg_path.exists():
-        print(f"ERROR: {cfg_path} not found")
-        return 1
+        return _setup_error(f"{cfg_path} not found")
 
     # Step 1: Validate IR if present
     if ir_path.exists():
         ir_data = _load_ir(str(ir_path))
         vr = validate_ir(ir_data)
         if not vr.valid:
-            print("INVALID IR")
-            for err in vr.errors:
-                print(f"  - {err}")
-            return 1
+            return _setup_error("invalid IR", {"ir_errors": vr.errors})
 
     tla_content = tla_path.read_text()
     cfg_content = cfg_path.read_text()
@@ -237,15 +242,23 @@ def cmd_verify(args: argparse.Namespace) -> int:
     )
 
     if not pcal_result.success:
-        print(f"FAIL — PlusCal syntax error:")
-        print(pcal_result.error_message)
         error_path = search_dir / "tlc_error.md"
         error_path.write_text(f"# PlusCal Translation Error\n\n{pcal_result.error_message}")
-        print(f"\nSaved: {error_path}")
-        if not getattr(args, "no_history", False):
-            attempt_dir = _save_attempt_history(search_dir)
-            if attempt_dir:
-                print(f"Archived: {attempt_dir}")
+        archived = (None if getattr(args, "no_history", False)
+                    else _save_attempt_history(search_dir))
+        if as_json:
+            print(json.dumps({
+                "verdict": "fail", "violation_type": "pcal_error",
+                "error": pcal_result.error_message,
+                "files": {"error": str(error_path)},
+                "archived": str(archived) if archived else None,
+            }))
+        else:
+            print("FAIL — PlusCal syntax error:")
+            print(pcal_result.error_message)
+            print(f"\nSaved: {error_path}")
+            if archived:
+                print(f"Archived: {archived}")
         return 1
 
     # Save translated TLA+ (PlusCal source + generated TLA+ translation block)
@@ -266,9 +279,17 @@ def cmd_verify(args: argparse.Namespace) -> int:
     log_path.write_text(tlc_result.raw_output)
 
     if tlc_result.success:
-        print("PASS")
-        stats = tlc_result.stats
-        if stats:
+        stats = tlc_result.stats or {}
+        if as_json:
+            print(json.dumps({
+                "verdict": "pass", "violation_type": None,
+                "states_generated": stats.get("states_generated"),
+                "distinct_states": stats.get("distinct_states"),
+                "elapsed_seconds": stats.get("elapsed_seconds"),
+                "files": {"translated": str(translated_path), "log": str(log_path)},
+            }))
+        else:
+            print("PASS")
             parts = []
             if "states_generated" in stats:
                 parts.append(f"states={stats['states_generated']}")
@@ -278,21 +299,30 @@ def cmd_verify(args: argparse.Namespace) -> int:
                 parts.append(f"time={stats['elapsed_seconds']:.1f}s")
             if parts:
                 print(f"  {', '.join(parts)}")
-        print(f"\nSaved: {translated_path}, {log_path}")
+            print(f"\nSaved: {translated_path}, {log_path}")
         return 0
     else:
-        print(f"FAIL — {tlc_result.violation_type or 'unknown error'}")
         trace = parse_trace(tlc_result.raw_output)
         error_md = format_tlc_error(tlc_result, trace)
-        print(error_md)
-
         error_path = search_dir / "tlc_error.md"
         error_path.write_text(error_md)
-        print(f"\nSaved: {translated_path}, {log_path}, {error_path}")
-        if not getattr(args, "no_history", False):
-            attempt_dir = _save_attempt_history(search_dir)
-            if attempt_dir:
-                print(f"Archived: {attempt_dir}")
+        archived = (None if getattr(args, "no_history", False)
+                    else _save_attempt_history(search_dir))
+        if as_json:
+            print(json.dumps({
+                "verdict": "fail",
+                "violation_type": tlc_result.violation_type,
+                "error_trace": tlc_result.error_trace,
+                "files": {"translated": str(translated_path), "log": str(log_path),
+                          "error": str(error_path)},
+                "archived": str(archived) if archived else None,
+            }))
+        else:
+            print(f"FAIL — {tlc_result.violation_type or 'unknown error'}")
+            print(error_md)
+            print(f"\nSaved: {translated_path}, {log_path}, {error_path}")
+            if archived:
+                print(f"Archived: {archived}")
         return 1
 
 
@@ -382,7 +412,18 @@ def cmd_extract_states(args: argparse.Namespace) -> int:
     n_terminal = sum(1 for s in result.states if not s.get("actions"))
     print(f"  {len(result.states)} states, {n_actions} actions, {n_terminal} terminal")
 
-    return 1 if result.errors else 0
+    # Exit-code semantics for CI: parse errors are FATAL (states.json may be
+    # incomplete → the runtime would consume a broken state machine). Cosmetic
+    # warnings (orphan state_tasks keys, lint) are non-fatal unless --strict.
+    n_warnings = len(task_orphans) + len(lint_warnings)
+    if result.errors:
+        print(f"FATAL: {len(result.errors)} parse error(s) — states.json may be "
+              f"incomplete; do not run this protocol until they are fixed.")
+        return 1
+    if getattr(args, "strict", False) and n_warnings:
+        print(f"STRICT: failing on {n_warnings} warning(s) (orphan state_tasks / lint).")
+        return 1
+    return 0
 
 
 # ---------------------------------------------------------------------------
@@ -519,12 +560,14 @@ def main():
     p_ver.add_argument("--java-path", help="Path to Java 17 binary")
     p_ver.add_argument("--jar-path", help="Path to tla2tools.jar")
     p_ver.add_argument("--no-history", action="store_true", help="Skip archiving failed attempts to history/attempt_N/")
+    p_ver.add_argument("--json", action="store_true", help="Emit a machine-readable JSON verdict on stdout (for CI/tooling)")
 
     # extract-states
     p_ext = sub.add_parser("extract-states", help="Extract IR v3 states from translated TLA+")
     p_ext.add_argument("dir", nargs="?", default=".", help="Directory with Protocol_translated.tla + ir.json (default: .)")
     p_ext.add_argument("--merge", action="store_true", help="Merge states into ir.json instead of writing states.json")
     p_ext.add_argument("--legacy", action="store_true", help="Use legacy regex-based TLA+ parser instead of tree-sitter PlusCal parser")
+    p_ext.add_argument("--strict", action="store_true", help="Exit non-zero on warnings (orphan state_tasks / lint), not just parse errors")
 
     args = parser.parse_args()
 

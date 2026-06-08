@@ -30,8 +30,8 @@ After `pip install -e .`, the `tla-verify-pluscal` entry point is on PATH (`trac
 tla-verify-pluscal doctor                            # check Java 17 + jar + tree-sitter (+ smoke-test examples/2pc_minimal)
 tla-verify-pluscal validate ir.json                  # IR schema + semantic checks
 tla-verify-pluscal scaffold ir.json -o workspace/    # → Protocol.tla + Protocol.cfg
-tla-verify-pluscal verify workspace/                 # PlusCal translate + TLC (failed attempts archived to workspace/history/attempt_N/)
-tla-verify-pluscal extract-states workspace/         # Translated TLA+ → states.json
+tla-verify-pluscal verify workspace/                 # PlusCal translate + TLC (--json for a machine-readable verdict; failed attempts archived to workspace/history/attempt_N/)
+tla-verify-pluscal extract-states workspace/         # Translated TLA+ → states.json (--strict to fail on warnings, not just parse errors)
 ```
 
 ### Agentic Pipeline (end-to-end)

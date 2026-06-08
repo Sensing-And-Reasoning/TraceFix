@@ -1,0 +1,44 @@
+name: verify
+
+# Verification + test CI. Doubles as a copy-paste template for gating your own
+# protocol specs: set up Java 17, fetch the jar, and run `tla-verify-pluscal verify`
+# — a non-zero exit fails the job. No API keys are needed for the design+verify path.
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"   # resolver finds it via $JAVA_HOME (cross-platform)
+
+      - name: Install (core + test extras)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[test]"
+
+      - name: Fetch tla2tools.jar (pinned + checksum)
+        run: bash scripts/download_tla2tools.sh
+
+      - name: Toolchain check
+        run: tla-verify-pluscal doctor
+
+      - name: Verify the bundled example (no LLM, gated on exit code)
+        run: |
+          tla-verify-pluscal validate examples/2pc_minimal/ir.json
+          tla-verify-pluscal verify --json examples/2pc_minimal
+          tla-verify-pluscal extract-states --strict examples/2pc_minimal
+
+      - name: Test suite
+        run: pytest tracefix/ benchmark/ -q
