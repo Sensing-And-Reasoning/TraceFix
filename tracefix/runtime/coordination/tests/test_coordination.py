@@ -151,6 +151,47 @@ def test_rpc_methods_includes_report_progress():
     assert "report_progress" in _RPC_METHODS
 
 
+# --- H3 termination gate over the network (distributed parity) ---
+
+async def _start_service_tracked(port: int) -> CoordinationService:
+    """A service whose CoordinationContext has a StateTracker, so signal_done can
+    be FSM-gated server-side (the parity the opencode harness needs)."""
+    from tracefix.runtime.monitoring.state_tracker import StateTracker
+    coord = CoordinationContext(IR, ProtocolMonitor(IR),
+                                tracker=StateTracker(_PHASE_STATES))
+    svc = CoordinationService(coord, host="127.0.0.1", port=port)
+    await svc.start()
+    return svc
+
+
+def test_rpc_methods_includes_signal_done():
+    from tracefix.runtime.coordination.service import _RPC_METHODS
+    assert "signal_done" in _RPC_METHODS
+
+
+def test_remote_signal_done_gated_by_server_side_fsm():
+    """H3 over the wire: a premature signal_done is rejected by the AUTHORITATIVE
+    server-side tracker (the full FSM gate), not just a held-locks fallback. This is
+    the distributed parity that opencode (always) and sdk --coord-url now get."""
+    async def scenario():
+        port = _free_port()
+        svc = await _start_service_tracked(port)
+        try:
+            a = CoordClient(f"http://127.0.0.1:{port}", "A")
+            # A is at a_acquire — it still owes acquire+release → cannot terminate.
+            r = await a.signal_done("A")
+            assert r["status"] == "error" and r.get("error") == "cannot_terminate"
+            # Complete the protocol; A reaches a_done (terminal).
+            assert (await a.acquire_lock("lock1", "A"))["status"] == "acquired"
+            assert (await a.release_lock("lock1", "A"))["status"] == "released"
+            r2 = await a.signal_done("A")
+            assert r2["status"] == "done"
+        finally:
+            await svc.stop()
+
+    asyncio.run(scenario())
+
+
 def test_remote_report_progress_roundtrip():
     async def scenario():
         port = _free_port()

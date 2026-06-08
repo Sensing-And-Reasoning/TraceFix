@@ -23,6 +23,7 @@ from tracefix.runtime.monitoring.monitor import ProtocolViolation, StateGuidance
 _RPC_METHODS = frozenset({
     "acquire_lock", "release_lock", "send", "receive",
     "poll_channels", "receive_any", "get_held_locks",
+    "signal_done",      # H3 termination gate — server-side tracker is authoritative
     "report_progress",  # observability-plane beacon (non-enforced)
 })
 

@@ -343,14 +343,11 @@ class AgentRunner:
         elif name == "get_content":
             r = await self.coord.get_content(args.get("ref", ""), agent_id)
         elif name == "signal_done":
-            tracker = self.coord.tracker if self.coord else None
-            if tracker and not tracker.can_terminate(agent_id):
-                r = {"status": "error",
-                     "message": "Cannot terminate yet: protocol loop has remaining iterations. "
-                                "Continue executing your protocol steps."}
-            else:
+            # Same authoritative H3 gate as the SDK/opencode dispatchers
+            # (one implementation in CoordinationContext.signal_done).
+            r = await self.coord.signal_done(agent_id)
+            if r.get("status") == "done":
                 self.done = True
-                r = {"status": "done", "agent": agent_id}
         elif name in ("acquire_lock", "release_lock", "send_message",
                        "receive_message", "poll_channels", "receive_any"):
             try:

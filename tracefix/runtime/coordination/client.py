@@ -110,6 +110,11 @@ class CoordClient:
         result = await self._rpc("get_held_locks", {"agent_id": agent_id})
         return result if isinstance(result, list) else []
 
+    async def signal_done(self, agent_id: str) -> dict:
+        """H3 termination gate, evaluated by the authoritative server-side tracker."""
+        result = await self._rpc("signal_done", {"agent_id": agent_id})
+        return result if isinstance(result, dict) else {"status": "done", "agent": agent_id}
+
     async def report_progress(self, label: str, agent_id: str) -> dict:
         result = await self._rpc("report_progress",
                                  {"label": label, "agent_id": agent_id})

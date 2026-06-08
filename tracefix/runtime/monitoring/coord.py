@@ -432,6 +432,34 @@ class CoordinationContext:
         return [lid for lid, holder in self.locks._locks.items()
                 if holder == agent_id]
 
+    async def signal_done(self, agent_id: str) -> dict:
+        """Authoritative termination check (H3) — uniform in-process and over the wire.
+
+        A done is ALLOWED only from a state that can still reach a terminal state
+        (``tracker.can_terminate`` follows skip chains, so a domain/business tail does
+        NOT falsely block it). This stops a content message ("we're done, signal done")
+        from terminating an agent that still owes a coordination op and stranding peers
+        blocked on a label that never arrives (liveness).
+
+        Because the StateTracker lives wherever the CoordinationContext lives, routing
+        signal_done through this method gives the distributed
+        (CoordClient → CoordinationService) path the SAME FSM gate the in-process
+        runtimes get — not just the held-locks fallback. It returns a result dict and
+        does NOT mutate dispatcher state (the caller maps ``status``/``warning`` onto
+        its own done / premature_done flags).
+        """
+        if self.tracker is not None and not self.tracker.can_terminate(agent_id):
+            return {"status": "error", "error": "cannot_terminate",
+                    "message": ("Cannot signal_done yet: the coordination protocol has "
+                                "remaining obligations. Continue your protocol steps.")}
+        held = await self.get_held_locks(agent_id)
+        result = {"status": "done", "agent": agent_id}
+        if held:
+            result["held_locks"] = held
+            result["warning"] = (f"signal_done while still holding lock(s) {held} — "
+                                 f"coordination incomplete (orphan-lock risk)")
+        return result
+
     async def report_progress(self, label: str, agent_id: str) -> dict:
         """Observability-plane telemetry: record a business-progress beacon.
 

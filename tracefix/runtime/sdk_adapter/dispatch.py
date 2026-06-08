@@ -106,31 +106,21 @@ class CoordToolDispatcher:
         """Inner dispatch without trace/event bookkeeping."""
         agent_id = self.agent_id
 
-        # --- signal_done: coordination termination, gated two ways ---
-        # (H3) When a state-machine tracker is reachable (in-process), a done is
-        # ALLOWED only from a state that can still reach a terminal state — the same
-        # gate the monitoring runtime uses (agent_runner via can_terminate, which
-        # follows skip chains, so a domain/business tail does NOT falsely block it).
-        # This stops a content message ("we're done, signal done now") from
-        # terminating an agent that still owes a coordination op (e.g. a final send)
-        # and stranding peers blocked on a label that never arrives (liveness).
-        # Distributed mode has no local tracker; fall back to the held-locks check
-        # (no-orphan-locks) — the best signal available over the wire.
+        # --- signal_done: coordination termination, gated by the AUTHORITATIVE tracker.
+        # (H3) A done is ALLOWED only from a state that can still reach a terminal state
+        # (can_terminate follows skip chains, so a domain/business tail does NOT falsely
+        # block it). This stops a content message ("we're done, signal done now") from
+        # terminating an agent that still owes a coordination op (e.g. a final send) and
+        # stranding peers blocked on a label that never arrives (liveness).
+        # The decision lives in CoordinationContext.signal_done, so it is identical
+        # in-process AND over the wire: in distributed mode CoordClient.signal_done is an
+        # RPC to the server-side tracker — full FSM gate, not just a held-locks fallback.
         if name == "signal_done":
-            tracker = getattr(self.coord, "tracker", None)
-            if tracker is not None and not tracker.can_terminate(agent_id):
-                return {"status": "error",
-                        "message": ("Cannot signal_done yet: the coordination protocol "
-                                    "has remaining obligations. Continue your protocol "
-                                    "steps.")}
-            held = await self.coord.get_held_locks(agent_id)
-            self.done = True
-            result = {"status": "done", "agent": agent_id}
-            if held:
-                self.premature_done = True
-                result["warning"] = (
-                    f"signal_done while still holding lock(s) {held} — "
-                    f"coordination incomplete (orphan-lock risk)")
+            result = await self.coord.signal_done(agent_id)
+            if result.get("status") == "done":
+                self.done = True
+                if result.get("held_locks") or result.get("warning"):
+                    self.premature_done = True
             return result
 
         # --- report_progress: observability-plane beacon, NOT a coordination op.

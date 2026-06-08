@@ -48,6 +48,10 @@ class CoordBackend(Protocol):
 
     async def get_held_locks(self, agent_id: str) -> list[str]: ...
 
+    # H3 termination gate: allowed only from a state that can still reach a
+    # terminal state (the tracker, wherever it lives, is authoritative).
+    async def signal_done(self, agent_id: str) -> dict: ...
+
     # Observability-plane telemetry (non-enforced): record a business-progress
     # beacon. Never validated, never a violation; both backends implement it.
     async def report_progress(self, label: str, agent_id: str) -> dict: ...
