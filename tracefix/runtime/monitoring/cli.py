@@ -213,7 +213,7 @@ def _save_visualization(rt, result, output_dir: Path, *, open_browser: bool = Fa
         webbrowser.open(output_path.as_uri())
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(
         prog="tracefix.runtime.monitoring",
         description="Architecture B: Monitoring runtime — agents follow pre-generated prompts",
@@ -252,7 +252,7 @@ def main():
     run_cmd.add_argument("--output", type=str, default=None,
                          help="Output root directory for results (default: {workspace}/results/)")
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if args.command == "run":
         _cmd_run(args)

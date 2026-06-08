@@ -4,8 +4,10 @@ description: >-
   Designs and verifies coordination protocols for multi-agent systems using
   TLA+ model checking via PlusCal. Provides hazard analysis, IR design,
   PlusCal code generation, TLC model checking with automated repair loop
-  (up to 5 attempts), and state extraction. Invoke via /tla-verify-pluscal
-  only. Use /tla-prompt-gen after this to generate per-agent Runtime B prompts.
+  (up to 5 attempts), state extraction, and — automatically as a final step —
+  per-agent Runtime B prompt generation (it chains into /tla-prompt-gen), so one
+  invocation takes a natural-language requirement all the way to a runnable
+  workspace. Invoke via /tla-verify-pluscal.
 metadata:
   author: Shuren Xia
   version: "1.0"
@@ -231,7 +233,17 @@ This parses the PlusCal source in `Protocol_translated.tla` using tree-sitter an
 
 Phase 4 is mandatory — do not skip it unless the user explicitly says so.
 
-After Phase 4 completes, use `/tla-prompt-gen` to generate per-agent Runtime B prompts from the verified workspace.
+### Phase 5: Generate Prompts (automatic — do NOT stop and ask)
+
+As soon as `states.json` exists, **immediately invoke the `/tla-prompt-gen` skill on this same workspace** to generate the per-agent Runtime B prompts — without pausing to ask the user. Design → verify → prompts is one continuous flow: a single `/tla-verify-pluscal` invocation must end with a fully runnable workspace (`spec/` + `prompts/runtime_b/`). The user asked for a working MAS, not a half-built one.
+
+When prompt generation finishes, tell the user the workspace is ready and give them the single command to run it:
+
+```bash
+tracefix run --workspace <workspace>
+```
+
+(That starts the whole MAS on the verified coordination layer — opencode harness by default; `--harness sdk` to use the Claude Agent SDK.)
 
 ## Rules
 
@@ -421,8 +433,8 @@ Phase 3  → tla-verify-pluscal verify .
 
 Phase 4  → tla-verify-pluscal extract-states .
            → states.json (9 states, 14 actions, 3 terminal)
-
-→ Run /tla-prompt-gen to generate per-agent prompts
+Phase 5  → (auto) chain into /tla-prompt-gen → prompts/runtime_b/<agent>.md
+→ ready to run:  tracefix run --workspace <workspace>
 ```
 
 ### Typical run — custom task (no benchmark)
@@ -438,4 +450,6 @@ Phase 2  → fill process bodies
 Phase 3  → tla-verify-pluscal verify . → PASS on first attempt
 
 Phase 4  → extract-states → states.json
+Phase 5  → (auto) /tla-prompt-gen → prompts/runtime_b/
+→ ready to run:  tracefix run --workspace workspace/my_task
 ```

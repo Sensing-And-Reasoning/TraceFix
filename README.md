@@ -165,6 +165,35 @@ See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for the full design+verify 
 - `lib/tla2tools.jar` v1.8.0 — fetched by `scripts/download_tla2tools.sh` (or set `TLA_VERIFY_JAR`)
 - API keys (only for the agentic pipeline / runtimes): copy `.env.example` → `.env`
 
+## The full flow: requirement → running MAS
+
+Two steps, and you never hand-write a protocol.
+
+**1. Build + verify + generate prompts** — in Claude Code, invoke the skill with your requirement:
+
+```
+/tla-verify-pluscal  Design a 3-agent CI/CD pipeline: a builder, a tester, and a
+deployer that share a staging lock and hand off via review messages.
+```
+
+The skill does everything — hazard analysis, IR design, PlusCal, TLC verification with an
+auto-repair loop, state extraction, and (automatically, as a final step) per-agent prompt
+generation — and leaves a runnable workspace under `workspace/<name>/` (`spec/` +
+`prompts/runtime_b/`). You never write IR or PlusCal by hand.
+
+**2. Run the whole system** — one command:
+
+```bash
+tracefix run --workspace workspace/<name>
+```
+
+This launches every agent on the verified coordination layer (the **opencode** harness by
+default; `--harness sdk` for the Claude Agent SDK). The monitor blocks any agent action
+that would violate the verified protocol. Add `--live` for the real-time browser view.
+
+> Want to drive the verify half by hand with no API key? See the [Quick Start](#quick-start)
+> CLI path and the bundled, already-verified [`examples/2pc_minimal`](examples/2pc_minimal).
+
 ## Verified Properties
 
 TLC exhaustively checks these properties on every generated specification:

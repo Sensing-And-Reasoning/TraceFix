@@ -36,6 +36,7 @@ opencode = [
 ]
 
 [project.scripts]
+tracefix = "tracefix.runtime.cli:main"
 tla-verify-pluscal = "tracefix.cli.cli:main"
 tracefix-coord = "tracefix.runtime.coord_mcp.server:main"
 

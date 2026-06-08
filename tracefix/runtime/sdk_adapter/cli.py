@@ -83,7 +83,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     return 0 if result.success else 1
 
 
-def main() -> None:
+def main(argv=None) -> None:
     parser = argparse.ArgumentParser(
         prog="python -m tracefix.runtime.sdk_adapter",
         description="Drive tracefix-verified protocols with the Claude Agent SDK.",
@@ -124,7 +124,7 @@ def main() -> None:
     p_run.add_argument("--tool-time", type=float, default=None)
     p_run.add_argument("--seed", type=int, default=None)
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     handlers = {"run": cmd_run}
     sys.exit(handlers[args.command](args))
 

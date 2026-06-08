@@ -44,6 +44,15 @@ python -m tracefix.pipeline --task "Design a 2PC protocol with coordinator and 2
 Provider/model: `--provider openai|anthropic|openrouter` `--model gpt-5` `--reasoning-effort high` `--thinking-budget N` `--max-turns 40`.
 
 ### Runtimes
+The unified front door is `tracefix run` (console script). It runs a verified workspace
+through a harness — default **opencode** — with a friendly preflight; `--task` is derived
+from the workspace folder name, and unknown flags pass through to the chosen harness:
+```bash
+tracefix run --workspace workspace/3E                      # opencode (default)
+tracefix run --workspace workspace/3E --harness sdk --model gpt-5-mini
+tracefix run --workspace workspace/3E --harness monitoring --verbose   # benchmark sim
+```
+The per-harness module CLIs remain available for full control:
 ```bash
 # Monitoring (Architecture B, OpenAI loop) — agents call coordination tools, Monitor validates
 python -m tracefix.runtime.monitoring run --task 3E --workspace workspace/3E --verbose

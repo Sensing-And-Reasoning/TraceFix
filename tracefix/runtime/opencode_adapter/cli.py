@@ -73,7 +73,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     return 0 if result.success else 1
 
 
-def main() -> None:
+def main(argv=None) -> None:
     p = argparse.ArgumentParser(
         prog="python -m tracefix.runtime.opencode_adapter",
         description="Run a tracefix workspace with OpenCode as the per-agent harness.")
@@ -104,7 +104,7 @@ def main() -> None:
     run.add_argument("--live-warmup", type=float, default=4.0)
     run.add_argument("--live-hold", type=float, default=0.0)
 
-    args = p.parse_args()
+    args = p.parse_args(argv)
     if args.command == "run":
         sys.exit(cmd_run(args))
 
