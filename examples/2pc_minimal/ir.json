@@ -1,0 +1,17 @@
+{
+  "agents": [
+    {"id": "coordinator"},
+    {"id": "workerA"},
+    {"id": "workerB"}
+  ],
+  "resources": [
+    {"id": "res_A", "type": "Lock"},
+    {"id": "res_B", "type": "Lock"}
+  ],
+  "channels": [
+    {"id": "to_A", "from": "coordinator", "to": "workerA", "labels": ["prepare", "commit", "abort"]},
+    {"id": "to_B", "from": "coordinator", "to": "workerB", "labels": ["prepare", "commit", "abort"]},
+    {"id": "from_A", "from": "workerA", "to": "coordinator", "labels": ["yes", "no"]},
+    {"id": "from_B", "from": "workerB", "to": "coordinator", "labels": ["yes", "no"]}
+  ]
+}

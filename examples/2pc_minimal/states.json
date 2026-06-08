@@ -1,0 +1,321 @@
+{
+  "states": [
+    {
+      "id": "c_send",
+      "agent": "coordinator",
+      "actions": [
+        {
+          "next_state": "c_wait_votes",
+          "send": [
+            {
+              "channel": "to_A",
+              "label": "prepare"
+            },
+            {
+              "channel": "to_B",
+              "label": "prepare"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "c_wait_votes",
+      "agent": "coordinator",
+      "actions": [
+        {
+          "next_state": "c_rcv_A"
+        },
+        {
+          "next_state": "c_rcv_B"
+        }
+      ]
+    },
+    {
+      "id": "c_rcv_A",
+      "agent": "coordinator",
+      "actions": [
+        {
+          "next_state": "c_rcv_B1",
+          "receive": {
+            "channel": "from_A"
+          }
+        }
+      ]
+    },
+    {
+      "id": "c_rcv_B1",
+      "agent": "coordinator",
+      "actions": [
+        {
+          "next_state": "c_decide",
+          "receive": {
+            "channel": "from_B"
+          }
+        }
+      ]
+    },
+    {
+      "id": "c_rcv_B",
+      "agent": "coordinator",
+      "actions": [
+        {
+          "next_state": "c_rcv_A1",
+          "receive": {
+            "channel": "from_B"
+          }
+        }
+      ]
+    },
+    {
+      "id": "c_rcv_A1",
+      "agent": "coordinator",
+      "actions": [
+        {
+          "next_state": "c_decide",
+          "receive": {
+            "channel": "from_A"
+          }
+        }
+      ]
+    },
+    {
+      "id": "c_decide",
+      "agent": "coordinator",
+      "actions": [
+        {
+          "next_state": "c_commit"
+        },
+        {
+          "next_state": "c_abort"
+        }
+      ]
+    },
+    {
+      "id": "c_commit",
+      "agent": "coordinator",
+      "actions": [
+        {
+          "next_state": "c_done",
+          "send": [
+            {
+              "channel": "to_A",
+              "label": "commit"
+            },
+            {
+              "channel": "to_B",
+              "label": "commit"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "c_abort",
+      "agent": "coordinator",
+      "actions": [
+        {
+          "next_state": "c_done",
+          "send": [
+            {
+              "channel": "to_A",
+              "label": "abort"
+            },
+            {
+              "channel": "to_B",
+              "label": "abort"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "c_done",
+      "agent": "coordinator",
+      "actions": []
+    },
+    {
+      "id": "a_idle",
+      "agent": "workerA",
+      "actions": [
+        {
+          "next_state": "a_vote",
+          "receive": {
+            "channel": "to_A"
+          }
+        }
+      ],
+      "task": "receive the prepare request"
+    },
+    {
+      "id": "a_vote",
+      "agent": "workerA",
+      "actions": [
+        {
+          "next_state": "a_locked",
+          "acquire": "res_A",
+          "send": {
+            "channel": "from_A",
+            "label": "yes"
+          }
+        },
+        {
+          "next_state": "a_voted_no",
+          "send": {
+            "channel": "from_A",
+            "label": "no"
+          }
+        }
+      ],
+      "task": "tentatively reserve the resource and vote yes"
+    },
+    {
+      "id": "a_locked",
+      "agent": "workerA",
+      "actions": [
+        {
+          "next_state": "a_release_ok",
+          "receive": {
+            "channel": "to_A",
+            "label": "commit"
+          }
+        },
+        {
+          "next_state": "a_release_abort",
+          "receive": {
+            "channel": "to_A"
+          }
+        }
+      ],
+      "tool_hint": "receive_any"
+    },
+    {
+      "id": "a_release_ok",
+      "agent": "workerA",
+      "actions": [
+        {
+          "release": "res_A",
+          "next_state": "__done__"
+        }
+      ],
+      "task": "commit and free the resource"
+    },
+    {
+      "id": "a_release_abort",
+      "agent": "workerA",
+      "actions": [
+        {
+          "release": "res_A",
+          "next_state": "__done__"
+        }
+      ],
+      "task": "abort and free the resource"
+    },
+    {
+      "id": "a_voted_no",
+      "agent": "workerA",
+      "actions": [
+        {
+          "receive": {
+            "channel": "to_A"
+          },
+          "next_state": "__done__"
+        }
+      ]
+    },
+    {
+      "id": "b_idle",
+      "agent": "workerB",
+      "actions": [
+        {
+          "next_state": "b_vote",
+          "receive": {
+            "channel": "to_B"
+          }
+        }
+      ],
+      "task": "receive the prepare request"
+    },
+    {
+      "id": "b_vote",
+      "agent": "workerB",
+      "actions": [
+        {
+          "next_state": "b_locked",
+          "acquire": "res_B",
+          "send": {
+            "channel": "from_B",
+            "label": "yes"
+          }
+        },
+        {
+          "next_state": "b_voted_no",
+          "send": {
+            "channel": "from_B",
+            "label": "no"
+          }
+        }
+      ],
+      "task": "tentatively reserve the resource and vote yes"
+    },
+    {
+      "id": "b_locked",
+      "agent": "workerB",
+      "actions": [
+        {
+          "next_state": "b_release_ok",
+          "receive": {
+            "channel": "to_B",
+            "label": "commit"
+          }
+        },
+        {
+          "next_state": "b_release_abort",
+          "receive": {
+            "channel": "to_B"
+          }
+        }
+      ],
+      "tool_hint": "receive_any"
+    },
+    {
+      "id": "b_release_ok",
+      "agent": "workerB",
+      "actions": [
+        {
+          "release": "res_B",
+          "next_state": "__done__"
+        }
+      ],
+      "task": "commit and free the resource"
+    },
+    {
+      "id": "b_release_abort",
+      "agent": "workerB",
+      "actions": [
+        {
+          "release": "res_B",
+          "next_state": "__done__"
+        }
+      ],
+      "task": "abort and free the resource"
+    },
+    {
+      "id": "b_voted_no",
+      "agent": "workerB",
+      "actions": [
+        {
+          "receive": {
+            "channel": "to_B"
+          },
+          "next_state": "__done__"
+        }
+      ]
+    }
+  ],
+  "initial_states": {
+    "coordinator": "c_send",
+    "workerA": "a_idle",
+    "workerB": "b_idle"
+  }
+}

@@ -11,18 +11,23 @@ TraceFix verifies LLM multi-agent coordination protocols using TLA+ formal metho
 ### Setup
 ```bash
 python -m venv .venv && source .venv/bin/activate
-pip install -e .
-pip install openai anthropic python-dotenv pytest
+pip install -e .                 # core: design+verify works offline (no API key)
+pip install -e ".[agentic]"      # + openai/anthropic, only for the LLM pipeline/runtimes
+pip install -e ".[test]"         # + pytest/pytest-asyncio, to run the test suite
+bash scripts/download_tla2tools.sh   # fetch + checksum the pinned tla2tools.jar v1.8.0
+tla-verify-pluscal doctor        # confirm Java 17 + jar + tree-sitter (runs a smoke test)
 ```
 
-External requirements (not installed by `pip`):
-- **Java 17** at `/opt/homebrew/opt/openjdk@17/bin/java` (override with `TLA_VERIFY_JAVA` env var or `--java-path`)
-- **`lib/tla2tools.jar`** v1.8.0 — download from [TLA+ releases](https://github.com/tlaplus/tlaplus/releases) (override with `TLA_VERIFY_JAR` env var or `--jar-path`)
-- **API keys** in `.env` at repo root: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` (also `OPENROUTER_API_KEY` for OpenRouter)
+`pip install -e .` now installs everything the no-LLM verify path needs (jsonschema,
+tree-sitter, tree-sitter-tlaplus, python-dotenv). External requirements not handled by pip:
+- **Java 17** — auto-detected via `TLA_VERIFY_JAVA` → Homebrew `openjdk@17` → `$JAVA_HOME` → `java` on `PATH`; override with `--java-path`. `doctor` reports the resolved path.
+- **`lib/tla2tools.jar`** v1.8.0 — fetched by `scripts/download_tla2tools.sh` (override with `TLA_VERIFY_JAR` env var or `--jar-path`).
+- **API keys** in `.env` at repo root (copy `.env.example`): only the agentic pipeline/runtimes need them — `validate`/`scaffold`/`verify`/`extract-states` do not. Keys: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` (also `OPENROUTER_API_KEY` for OpenRouter).
 
 ### Verification CLI
 After `pip install -e .`, the `tla-verify-pluscal` entry point is on PATH (`tracefix.cli.cli:main`):
 ```bash
+tla-verify-pluscal doctor                            # check Java 17 + jar + tree-sitter (+ smoke-test examples/2pc_minimal)
 tla-verify-pluscal validate ir.json                  # IR schema + semantic checks
 tla-verify-pluscal scaffold ir.json -o workspace/    # → Protocol.tla + Protocol.cfg
 tla-verify-pluscal verify workspace/                 # PlusCal translate + TLC (failed attempts archived to workspace/history/attempt_N/)

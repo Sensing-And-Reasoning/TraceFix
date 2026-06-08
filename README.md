@@ -128,40 +128,40 @@ workspace/my_task/
 ├── states.json          # Extracted state machine for runtime
 ├── summary.json         # Repair tracking
 └── prompts/
-    ├── runtime_a/       # Per-agent prompts for enforcement runtime
-    └── runtime_b/       # Per-agent prompts for monitoring runtime
+    └── runtime_b/       # Per-agent runtime prompts (control + business steps)
 ```
 
 ## Quick Start
 
 ```bash
-# Setup
+# Setup (core design+verify — no API key needed)
 python -m venv .venv && source .venv/bin/activate
 pip install -e .
-pip install openai anthropic pytest
+bash scripts/download_tla2tools.sh    # fetch + checksum tla2tools.jar v1.8.0
+tla-verify-pluscal doctor             # confirm Java 17 + jar + tree-sitter
 
-# Run tests
-pytest tracefix/pipeline/tests/ -v             # Pipeline tests
-pytest tracefix/runtime/enforcement/tests/ -v                 # Runtime A tests
-pytest tracefix/runtime/monitoring/tests/ -v                 # Runtime B tests
-pytest benchmark/tests/ -v                 # Benchmark tests
+# Verify the bundled example end-to-end — no LLM, no API key
+tla-verify-pluscal validate examples/2pc_minimal/ir.json
+tla-verify-pluscal verify   examples/2pc_minimal          # → PASS
+tla-verify-pluscal extract-states examples/2pc_minimal    # → states.json
 
-# Run the agentic verification pipeline (produces a verified workspace/ )
+# Run the test suite
+pip install -e ".[test]"
+pytest tracefix/ benchmark/ -q
+
+# Agentic pipeline + runtime (needs an API key: cp .env.example .env)
+pip install -e ".[agentic]"
 python -m tracefix.pipeline --benchmark 3E --verbose
-
-# Runtime B: run agents with monitoring against the generated workspace
 python -m tracefix.runtime.monitoring run --task 3E --workspace workspace/3E --verbose
-
-# Baseline runtimes (no protocol monitoring)
-python -m tracefix.runtime.baselines.shared_chat run --task 3E --verbose
-python -m tracefix.runtime.baselines.null_monitor run --task 3E --verbose
 ```
+
+See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for the full design+verify → execute flow (with diagrams).
 
 **Requirements:**
 - Python 3.11+ (3.13 tested)
-- Java 17 (for TLC): `/opt/homebrew/opt/openjdk@17/bin/java`
-- `lib/tla2tools.jar` v1.8.0 (not in git, download from [TLA+ releases](https://github.com/tlaplus/tlaplus/releases))
-- API keys in `.env`: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`
+- Java 17 (for TLC) — auto-detected on `PATH` / `$JAVA_HOME` / Homebrew `openjdk@17`; override with `TLA_VERIFY_JAVA` or `--java-path`
+- `lib/tla2tools.jar` v1.8.0 — fetched by `scripts/download_tla2tools.sh` (or set `TLA_VERIFY_JAR`)
+- API keys (only for the agentic pipeline / runtimes): copy `.env.example` → `.env`
 
 ## Verified Properties
 
@@ -171,10 +171,16 @@ TLC exhaustively checks these properties on every generated specification:
 |----------|-----------------|
 | Deadlock freedom | No reachable state where all agents are stuck |
 | Mutual exclusion | No lock held by two agents simultaneously |
-| Termination | All agents eventually reach their terminal state |
+| Termination | No reachable deadlock before all agents reach their terminal state (deadlock-freedom, a safety property) |
 | No orphan locks | All locks freed when protocol completes |
 | Channel drainage | All messages consumed when protocol completes |
 | Type invariant | All variables maintain valid types throughout execution |
+
+> **Scope:** TraceFix checks **safety only** (the properties above) — not liveness or
+> fairness. "Termination" means *no reachable deadlock*, not a proof that every execution
+> eventually terminates under all schedulers. TLC also proves the protocol is *coordination*-safe,
+> not that the spec faithfully models your intended task (see the semantic-fidelity checklist in the
+> `/tla-verify-pluscal` skill).
 
 ## IR Schema
 

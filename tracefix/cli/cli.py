@@ -17,23 +17,15 @@ from pathlib import Path
 
 
 def _resolve_java(args: argparse.Namespace) -> str:
-    return (
-        getattr(args, "java_path", None)
-        or os.environ.get("TLA_VERIFY_JAVA")
-        or "/opt/homebrew/opt/openjdk@17/bin/java"
-    )
+    from tracefix.pipeline.pipeline.toolchain import resolve_java
+
+    return resolve_java(getattr(args, "java_path", None))
 
 
 def _resolve_jar(args: argparse.Namespace) -> str:
-    return (
-        getattr(args, "jar_path", None)
-        or os.environ.get("TLA_VERIFY_JAR")
-        or str(
-            next(p for p in Path(__file__).resolve().parents if (p / "pyproject.toml").exists())
-            / "lib"
-            / "tla2tools.jar"
-        )
-    )
+    from tracefix.pipeline.pipeline.toolchain import resolve_jar
+
+    return resolve_jar(getattr(args, "jar_path", None))
 
 
 def _load_ir(path: str) -> dict:
@@ -394,6 +386,95 @@ def cmd_extract_states(args: argparse.Namespace) -> int:
 
 
 # ---------------------------------------------------------------------------
+# doctor — verify the toolchain (Java 17 + tla2tools.jar + tree-sitter)
+# ---------------------------------------------------------------------------
+
+def _examples_dir() -> Path:
+    root = next(p for p in Path(__file__).resolve().parents if (p / "pyproject.toml").exists())
+    return root / "examples" / "2pc_minimal"
+
+
+def cmd_doctor(args: argparse.Namespace) -> int:
+    """Check the verification toolchain and (optionally) smoke-test a bundled spec.
+
+    No LLM and no API keys required. Exit 0 if every component is usable.
+    """
+    from tracefix.pipeline.pipeline.toolchain import (
+        JAR_MISSING_HINT,
+        JAVA_MISSING_HINT,
+        java_major_version,
+        resolve_jar,
+        resolve_java,
+    )
+
+    print("TraceFix toolchain check\n")
+    ok = True
+
+    # 1. Java
+    java = _resolve_java(args)
+    ver = java_major_version(java)
+    if ver is None:
+        print(f"  [FAIL] Java        not runnable at {java}")
+        print(f"         {JAVA_MISSING_HINT}")
+        ok = False
+    elif ver != "17":
+        print(f"  [WARN] Java        found v{ver} at {java} (TraceFix is tested on Java 17)")
+    else:
+        print(f"  [ OK ] Java 17     {java}")
+
+    # 2. tla2tools.jar
+    jar = _resolve_jar(args)
+    if not Path(jar).exists():
+        print(f"  [FAIL] tla2tools   not found at {jar}")
+        print(f"         {JAR_MISSING_HINT}")
+        ok = False
+    else:
+        print(f"  [ OK ] tla2tools   {jar}")
+
+    # 3. tree-sitter (needed by extract-states)
+    try:
+        import tree_sitter  # noqa: F401
+        import tree_sitter_tlaplus  # noqa: F401
+        print("  [ OK ] tree-sitter tree-sitter + tree-sitter-tlaplus importable")
+    except Exception as e:  # pragma: no cover - import-environment dependent
+        print(f"  [FAIL] tree-sitter not importable: {e}")
+        print("         Run: pip install -e .")
+        ok = False
+
+    # 4. Optional end-to-end smoke test on the bundled, verified 2PC example
+    example = _examples_dir()
+    if getattr(args, "no_smoke", False):
+        pass
+    elif not ok:
+        print("\n  [skip] smoke test skipped (fix the failures above first)")
+    elif not (example / "Protocol.tla").exists():
+        print(f"\n  [skip] smoke test skipped (no bundled example at {example})")
+    else:
+        from tracefix.pipeline.pipeline.pluscal_compiler import translate_pluscal
+        from tracefix.pipeline.pipeline.tlc_runner import run_tlc
+
+        tla = (example / "Protocol.tla").read_text()
+        cfg = (example / "Protocol.cfg").read_text()
+        pcal = translate_pluscal(tla, cfg, java_path=java, tla2tools_jar=jar)
+        if not pcal.success:
+            print(f"\n  [FAIL] smoke test  PlusCal translation failed: {pcal.error_message[:200]}")
+            ok = False
+        else:
+            res = run_tlc(pcal.translated_tla, cfg, timeout=120, java_path=java, tla2tools_jar=jar)
+            if res.success:
+                distinct = res.stats.get("distinct_states", "?")
+                print(f"\n  [ OK ] smoke test  verified examples/2pc_minimal "
+                      f"({distinct} distinct states)")
+            else:
+                print(f"\n  [FAIL] smoke test  TLC verdict: {res.violation_type}")
+                ok = False
+
+    print("\n" + ("All checks passed — you're ready to verify protocols."
+                  if ok else "Some checks FAILED — see the hints above."))
+    return 0 if ok else 1
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -403,6 +484,13 @@ def main():
         description="PlusCal-based TLA+ verification of multi-agent coordination protocols",
     )
     sub = parser.add_subparsers(dest="command", required=True)
+
+    # doctor
+    p_doc = sub.add_parser("doctor", help="Check the toolchain (Java 17 + tla2tools.jar + tree-sitter)")
+    p_doc.add_argument("--java-path", help="Path to Java 17 binary")
+    p_doc.add_argument("--jar-path", help="Path to tla2tools.jar")
+    p_doc.add_argument("--no-smoke", action="store_true",
+                       help="Skip the end-to-end smoke test on the bundled example")
 
     # init
     p_ini = sub.add_parser("init", help="Scaffold a custom-task workspace (description + ir stub)")
@@ -441,6 +529,7 @@ def main():
     args = parser.parse_args()
 
     handlers = {
+        "doctor": cmd_doctor,
         "init": cmd_init,
         "validate": cmd_validate,
         "scaffold": cmd_scaffold,

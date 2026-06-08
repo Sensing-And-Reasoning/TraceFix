@@ -10,9 +10,15 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-JAVA_PATH = "/opt/homebrew/opt/openjdk@17/bin/java"
-_REPO_ROOT = next(p for p in Path(__file__).resolve().parents if (p / "pyproject.toml").exists())
-TLA2TOOLS_JAR = str(_REPO_ROOT / "lib" / "tla2tools.jar")
+from .toolchain import (
+    JAR_MISSING_HINT,
+    JAVA_MISSING_HINT,
+    resolve_java,
+    resolve_jar,
+)
+
+JAVA_PATH = resolve_java()
+TLA2TOOLS_JAR = resolve_jar()
 
 
 @dataclass
@@ -43,6 +49,14 @@ def run_tlc(
     Returns:
         TLCResult with success/failure info and parsed output
     """
+    if not Path(tla2tools_jar).exists():
+        return TLCResult(
+            success=False,
+            violation_type="error",
+            error_trace=f"tla2tools.jar not found at {tla2tools_jar}. {JAR_MISSING_HINT}",
+            raw_output="",
+        )
+
     with tempfile.TemporaryDirectory(prefix="tlc_v3_") as tmpdir:
         spec_path = os.path.join(tmpdir, "Protocol.tla")
         cfg_path = os.path.join(tmpdir, "Protocol.cfg")
@@ -85,9 +99,21 @@ def run_tlc(
             return TLCResult(
                 success=False,
                 violation_type="error",
-                error_trace="TLC timed out",
+                error_trace=(
+                    "TLC timed out. Remedies: (1) raise --timeout if the protocol is "
+                    "correct but complex; (2) lower the channel bound in Protocol.cfg to "
+                    "shrink the state space; (3) reduce agent count or message complexity; "
+                    "(4) check for an unintended unbounded loop in the PlusCal bodies."
+                ),
                 raw_output=partial_out,
                 stats={"timeout": True, "elapsed_seconds": round(elapsed, 2)},
+            )
+        except (FileNotFoundError, OSError) as e:
+            return TLCResult(
+                success=False,
+                violation_type="error",
+                error_trace=f"Could not run Java at '{java_path}' ({e}). {JAVA_MISSING_HINT}",
+                raw_output="",
             )
 
     return _parse_tlc_output(raw_output, elapsed)

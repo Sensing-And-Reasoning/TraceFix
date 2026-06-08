@@ -7,15 +7,26 @@ name = "tracefix"
 version = "0.1.0"
 description = "TraceFix: TLA+-verified coordination protocols for LLM multi-agent systems"
 requires-python = ">=3.11"
-dependencies = ["jsonschema"]
+# Core: everything the no-LLM design+verify path needs (validate / scaffold /
+# verify / extract-states). `pip install -e .` makes these all work out of the box.
+dependencies = [
+    "jsonschema",                  # IR schema validation
+    "tree-sitter>=0.23,<0.26",     # PlusCal parsing for extract-states (pinned ABI range)
+    "tree-sitter-tlaplus==1.5.0",  # TLA+/PlusCal grammar (pinned: old-ABI binding)
+    "python-dotenv",               # auto-load repo-root .env (env_setup.py)
+]
 
 [project.optional-dependencies]
+# LLM-driven design/repair loop + the agent runtimes. Needs an API key.
+# Install with: pip install -e ".[agentic]"
+agentic = [
+    "openai",
+    "anthropic",
+]
 # Install with: pip install -e ".[test]"
 test = [
     "pytest",
     "pytest-asyncio",   # monitoring/tests/test_coord.py uses @pytest.mark.asyncio
-    "tree-sitter",       # extract-states + pluscal_parser tests
-    "tree-sitter-tlaplus",
 ]
 # Install with: pip install -e ".[opencode]"
 # Only the standalone `tracefix-coord` MCP server (coord_mcp/server.py) needs mcp;

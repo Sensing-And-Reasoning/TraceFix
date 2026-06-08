@@ -14,9 +14,15 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
-JAVA_PATH = "/opt/homebrew/opt/openjdk@17/bin/java"
-_REPO_ROOT = next(p for p in Path(__file__).resolve().parents if (p / "pyproject.toml").exists())
-TLA2TOOLS_JAR = str(_REPO_ROOT / "lib" / "tla2tools.jar")
+from .toolchain import (
+    JAR_MISSING_HINT,
+    JAVA_MISSING_HINT,
+    resolve_java,
+    resolve_jar,
+)
+
+JAVA_PATH = resolve_java()
+TLA2TOOLS_JAR = resolve_jar()
 
 
 @dataclass
@@ -49,6 +55,12 @@ def translate_pluscal(
     Returns:
         PlusCaLResult with success flag and either translated content or error.
     """
+    if not Path(tla2tools_jar).exists():
+        return PlusCaLResult(
+            success=False,
+            error_message=f"tla2tools.jar not found at {tla2tools_jar}. {JAR_MISSING_HINT}",
+        )
+
     with tempfile.TemporaryDirectory(prefix="pcal_") as tmpdir:
         spec_path = os.path.join(tmpdir, "Protocol.tla")
 
@@ -80,6 +92,11 @@ def translate_pluscal(
             return PlusCaLResult(
                 success=False,
                 error_message="PlusCal translation timed out after 30 seconds.",
+            )
+        except (FileNotFoundError, OSError) as e:
+            return PlusCaLResult(
+                success=False,
+                error_message=f"Could not run Java at '{java_path}' ({e}). {JAVA_MISSING_HINT}",
             )
 
         combined_output = proc.stdout + "\n" + proc.stderr
