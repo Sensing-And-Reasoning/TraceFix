@@ -3,7 +3,8 @@ name: tla-verify-pluscal
 description: >-
   Designs and verifies coordination protocols for multi-agent systems using
   TLA+ model checking via PlusCal. Provides hazard analysis, IR design,
-  PlusCal code generation, TLC model checking with automated repair loop
+  PlusCal code generation, TLC model checking (safety-only: deadlock freedom,
+  mutual exclusion, invariants — not liveness) with automated repair loop
   (up to 5 attempts), state extraction, and — automatically as a final step —
   per-agent Runtime B prompt generation (it chains into /tla-prompt-gen), so one
   invocation takes a natural-language requirement all the way to a runnable
@@ -55,6 +56,10 @@ A task workspace is organized into subfolders — put artifacts in the right one
 everything at the root — for older workspaces.)
 
 ## Recommended Workflow
+
+### Phase 0: Toolchain Check
+
+Before any design work, run `Bash: tla-verify-pluscal doctor`. If it fails, stop and help the user fix the toolchain first (Java 17 / tla2tools.jar / tree-sitter — the output names the failing component and the fix, e.g. `bash scripts/download_tla2tools.sh`). This avoids discovering a broken toolchain mid-Phase-3, after the design work is already done.
 
 ### Phase 1: Structured Analysis
 
@@ -185,9 +190,13 @@ Fix any gaps found BEFORE running verification.
   "task": "task description or ID",
   "total_repairs": 0,
   "tlc_passed": false,
+  "safety_only": true,
+  "channel_bound": 3,
   "repairs": []
 }
 ```
+
+(`safety_only` and `channel_bound` record the conditions of the verdict — see "What a PASS means" below. If you scaffolded with a non-default `--channel-bound`, record that value.)
 
 **Step 1 — Verify**: Run `tla-verify-pluscal verify .` — translates PlusCal (pcal.trans) and runs TLC in one step. On failure, the current `Protocol.tla`, `tlc_error.md`, and `tlc_output.log` are automatically archived to `history/attempt_{N}/` (use `--no-history` to skip).
 
@@ -221,6 +230,10 @@ Do NOT proceed to Phase 4. Stop here.
 
 **Reading TLC error traces**: The trace shows `pc` values like `"c_wait"`, `"a_vote"` — these are your PlusCal labels. The action name `c_send("coordinator")` means the `c_send:` label in the coordinator process was executed. Use these label names to locate the relevant code in Protocol.tla. Ignore any TLA+ line numbers in the trace — they refer to the auto-generated translation, not your source.
 
+**What a PASS means (scope + the channel bound)**: TLC checks **safety only** — deadlock freedom, mutual exclusion, no orphan locks, channel drainage, type safety. It does NOT check liveness or fairness: "termination" here means *no reachable deadlock*, not a proof that every execution eventually finishes. The check also runs under the `ChannelBound` CONSTRAINT (default 3) — a **state-space pruning parameter, not a protocol property**; runtime queues are unbounded. Two practical consequences:
+1. **If TLC reports a deadlock, first rule out a bound artifact**: raise the bound by editing the `ChannelBound ==` definition in Protocol.tla (e.g. `<= 3` → `<= 5`) and re-verify. If the deadlock disappears, it was queue-fill at the bound, not a real bug — keep the higher bound and update `channel_bound` in `summary.json`. If it persists, it is real: diagnose the trace.
+2. **A PASS is conditional on the bound** — that's why `summary.json` records `channel_bound` and `safety_only`, and the final summary to the user must state them.
+
 ### Phase 4: Extract States
 
 After TLC verification passes, extract the state machine representation from the verified protocol:
@@ -231,11 +244,13 @@ tla-verify-pluscal extract-states .
 
 This parses the PlusCal source in `Protocol_translated.tla` using tree-sitter and produces `states.json` with the per-agent state machine (states, actions, initial_states, and `tool_hint` annotations for multi-action states). This file is consumed by the runtime for protocol monitoring **and** is required as ground truth for prompt generation via `/tla-prompt-gen`.
 
+**Check the exit code.** Parse errors are FATAL (exit ≠ 0): `states.json` may be missing states or whole agents — a broken FSM that prompt-gen would silently propagate into broken runtime prompts. On any `FATAL`/parse error (including "No states extracted for agent ..."), fix `Protocol.tla` and re-run extract-states. Do NOT proceed to Phase 5 until it exits 0. (Cosmetic warnings — orphan `state_tasks` keys, lint — are OK to proceed past.)
+
 Phase 4 is mandatory — do not skip it unless the user explicitly says so.
 
 ### Phase 5: Generate Prompts (automatic — do NOT stop and ask)
 
-As soon as `states.json` exists, **immediately invoke the `/tla-prompt-gen` skill on this same workspace** to generate the per-agent Runtime B prompts — without pausing to ask the user. Design → verify → prompts is one continuous flow: a single `/tla-verify-pluscal` invocation must end with a fully runnable workspace (`spec/` + `prompts/runtime_b/`). The user asked for a working MAS, not a half-built one.
+As soon as **extract-states succeeds (exit code 0 — not merely "states.json exists"; a failed extraction still writes the file)**, **immediately invoke the `/tla-prompt-gen` skill on this same workspace** to generate the per-agent Runtime B prompts — without pausing to ask the user. Design → verify → prompts is one continuous flow: a single `/tla-verify-pluscal` invocation must end with a fully runnable workspace (`spec/` + `prompts/runtime_b/`). The user asked for a working MAS, not a half-built one.
 
 When prompt generation finishes, tell the user the workspace is ready and give them the single command to run it:
 
@@ -251,9 +266,11 @@ tracefix run --workspace <workspace>
 - Always run scaffold before editing Protocol.tla process bodies
 - When errors occur, read the error message carefully before making changes
 - Maximum 5 verify calls total in Phase 3 — if still failing, stop and report
+- **Never edit `Protocol.cfg`, and never weaken the invariant definitions** (`TypeInvariant` / `NoOrphanLocks` / `ChannelsDrained`) below the algorithm block in `Protocol.tla` — dropping or loosening them makes a PASS meaningless. The one legitimate knob outside the process bodies is the `ChannelBound ==` definition (raising it to rule out bound artifacts, per Phase 3).
+- In the final summary, state the verification scope honestly: safety-only (no liveness/fairness) and the `channel_bound` the PASS was obtained under
 - When Phase 4 completes, summarize: protocol description, agent/resource/channel counts, TLC stats (from Phase 3), states extracted count
-- **Semantic fidelity is as important as TLC passing.** A PASS on a simplified protocol that omits task constraints is NOT a success. The protocol must faithfully model the coordination semantics described in the task.
-- After Phase 4 completes, prompt the user to run `/tla-prompt-gen` to generate per-agent prompts
+- **Semantic fidelity is as important as TLC passing.** A PASS on a simplified protocol that omits task constraints is NOT a success. The protocol must faithfully model the coordination semantics described in the task. If a repair removes or weakens anything the task asked for (an agent, a channel, a failure branch, an ordering constraint), say so explicitly to the user — never silently simplify your way to a PASS.
+- After Phase 4 succeeds, continue directly into Phase 5 (auto prompt-gen) — do not stop and ask
 
 ## Common Anti-Patterns to Avoid
 

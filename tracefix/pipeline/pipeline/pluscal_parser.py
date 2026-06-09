@@ -1272,4 +1272,15 @@ def parse_pluscal(tla_content: str, ir_data: dict) -> ParseResult:
                                 f"State '{state['id']}' references unknown channel '{ch}'"
                             )
 
+    # Validation: every IR agent must have at least one state. A dropped or
+    # unmatched process would otherwise yield 0 states for that agent — prompt
+    # generation silently skips it and the runtime hangs waiting on it.
+    covered_agents = {s.get("agent") for s in result.states}
+    for agent in ir_data.get("agents", []):
+        if agent["id"] not in covered_agents:
+            result.errors.append(
+                f"No states extracted for agent '{agent['id']}' — its PlusCal "
+                f"process is missing or failed to parse"
+            )
+
     return result

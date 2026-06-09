@@ -308,6 +308,36 @@ variables msg = "";
 
 
 # ===================================================================
+# Validation: every IR agent must yield at least one state
+# ===================================================================
+
+class TestAgentCoverage:
+    """A dropped/unparsed process must be a FATAL error, not a silent skip —
+    otherwise prompt-gen skips the agent and the runtime hangs waiting on it."""
+
+    _TLA_ONE_PROC = """---- MODULE T ----
+(* --algorithm T {
+fair process (a_proc \\in {A})
+variables msg = "";
+{
+  a_start:
+    skip;
+}
+} *)
+===="""
+
+    def test_missing_agent_process_is_an_error(self):
+        ir = {"agents": [{"id": "A"}, {"id": "B"}], "resources": [], "channels": []}
+        result = parse_pluscal(self._TLA_ONE_PROC, ir)
+        assert any("No states extracted for agent 'B'" in e for e in result.errors)
+
+    def test_full_coverage_has_no_coverage_error(self):
+        ir = {"agents": [{"id": "A"}], "resources": [], "channels": []}
+        result = parse_pluscal(self._TLA_ONE_PROC, ir)
+        assert not any("No states extracted" in e for e in result.errors)
+
+
+# ===================================================================
 # Integration tests: full parse of specific scenarios
 # ===================================================================
 
