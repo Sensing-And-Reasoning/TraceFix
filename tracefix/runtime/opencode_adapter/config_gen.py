@@ -60,6 +60,47 @@ DEFAULT_PERMISSION = {
 
 DEFAULT_OP_TIMEOUT_MS = 120_000
 
+#: Permissions for the protocol DESIGNER agent (``tracefix design``): a single
+#: agent following the /tla-verify-pluscal skill headlessly. It needs file tools
+#: (ir.json, Protocol.tla, prompts) and bash (the tla-verify-pluscal CLI); it has
+#: no coordination MCP server and must not fan out subagents or hit the web.
+#: ``doom_loop: allow`` for the same reason as the runtime: a verify→fix→verify
+#: repair loop legitimately repeats near-identical bash calls.
+DESIGN_PERMISSION = {
+    "*": "deny",
+    "read": "allow",
+    "edit": "allow",        # opencode collapses write→edit, so this enables file writes
+    "bash": "allow",
+    "grep": "allow",
+    "glob": "allow",
+    "list": "allow",
+    "doom_loop": "allow",
+    "task": "deny",
+    "webfetch": "deny",
+    "websearch": "deny",
+    "question": "deny",     # headless: never block on interactive questions
+}
+
+
+def build_design_config(prompt: str, *, model: str | None = None) -> dict:
+    """OpenCode config for the single protocol-designer agent (no MCP servers).
+
+    The design workflow's knowledge arrives as the agent ``prompt`` (the
+    /tla-verify-pluscal SKILL.md + a headless preamble); its actions are plain
+    file edits + the ``tla-verify-pluscal`` CLI over bash.
+    """
+    agent_def: dict = {
+        "mode": "primary",
+        "prompt": prompt,
+        "permission": dict(DESIGN_PERMISSION),
+    }
+    if model:
+        agent_def["model"] = model
+    return {
+        "$schema": "https://opencode.ai/config.json",
+        "agent": {"designer": agent_def},
+    }
+
 
 def agent_key(agent_id: str) -> str:
     """A valid lowercase OpenCode agent key derived from a tracefix agent id.

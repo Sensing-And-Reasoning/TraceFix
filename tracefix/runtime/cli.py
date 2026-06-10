@@ -106,13 +106,76 @@ def cmd_run(args: argparse.Namespace, extra: list[str]) -> int:
     return rc if isinstance(rc, int) else 1
 
 
+def cmd_design(args: argparse.Namespace) -> int:
+    import asyncio
+    import shlex
+
+    from tracefix.runtime.env_setup import load_repo_env
+    from tracefix.runtime.opencode_adapter.design import run_design
+
+    load_repo_env()  # the spawned opencode inherits the API keys from .env
+
+    opencode_cmd = shlex.split(args.opencode_bin) if args.opencode_bin else ["opencode"]
+    result = asyncio.run(run_design(
+        args.task, name=args.name, model=args.model,
+        opencode_cmd=opencode_cmd, timeout=args.timeout, verbose=args.verbose,
+        live=args.live, live_port=args.live_port, live_hold=args.live_hold))
+
+    print(f"\n=== tracefix design: {result.status.upper()} "
+          f"({result.duration:.0f}s, {result.events} events) ===")
+    print(f"workspace: {result.workspace}")
+    if result.agents:
+        print(f"agents:    {', '.join(result.agents)}")
+    if result.tlc_passed is not None:
+        rep = f" after {result.repairs} repair(s)" if result.repairs else ""
+        print(f"TLC:       {'PASS' if result.tlc_passed else 'FAIL'}{rep}")
+    if result.prompts:
+        print(f"prompts:   {', '.join(result.prompts)}")
+    if result.success:
+        print(f"\nReady to run:\n  tracefix run --workspace {result.workspace}")
+    else:
+        print("\nNot runnable yet — inspect the workspace (spec/tlc_error.md, "
+              "spec/history/) and re-run `tracefix design`, or finish manually "
+              "with the /tla-verify-pluscal skill.")
+        if result.stderr_tail and args.verbose:
+            print("--- opencode stderr tail ---")
+            for line in result.stderr_tail:
+                print(f"  {line}")
+    return 0 if result.success else 1
+
+
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(
         prog="tracefix",
-        description="Run a TLA+-verified multi-agent workspace on the verified "
-                    "coordination layer.",
+        description="Design and run TLA+-verified multi-agent workspaces on the "
+                    "verified coordination layer.",
     )
     sub = parser.add_subparsers(dest="command", required=True)
+
+    design = sub.add_parser(
+        "design",
+        help="Design + verify a protocol from a natural-language requirement "
+             "(headless opencode + the tla-verify-pluscal skill)",
+        description="Turn a requirement into a verified, runnable workspace: "
+                    "IR design → PlusCal → TLC (with repair) → states.json → "
+                    "per-agent prompts. No protocol is hand-written.",
+    )
+    design.add_argument("task", help="The MAS requirement, in natural language")
+    design.add_argument("--name", default=None,
+                        help="Workspace name (default: derived from the task)")
+    design.add_argument("--model", default=None,
+                        help="opencode model, provider/modelID (e.g. openai/gpt-5.4)")
+    design.add_argument("--timeout", type=float, default=1800.0,
+                        help="Wall-clock cap in seconds (default: 1800)")
+    design.add_argument("--opencode-bin", default="opencode",
+                        help="opencode binary/command (shlex-split)")
+    design.add_argument("--live", action="store_true",
+                        help="Real-time design view in the browser (phases, IR "
+                             "topology, TLC verdict, activity feed)")
+    design.add_argument("--live-port", type=int, default=8765)
+    design.add_argument("--live-hold", type=float, default=0.0,
+                        help="Keep the live view up N seconds after the run")
+    design.add_argument("--verbose", action="store_true")
 
     run = sub.add_parser(
         "run",
@@ -133,6 +196,8 @@ def main(argv=None) -> None:
     run.add_argument("--verbose", action="store_true")
 
     args, extra = parser.parse_known_args(argv)
+    if args.command == "design":
+        sys.exit(cmd_design(args))
     if args.command == "run":
         sys.exit(cmd_run(args, extra))
 

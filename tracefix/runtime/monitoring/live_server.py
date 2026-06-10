@@ -110,12 +110,19 @@ async def start_live_server(
     port: int = 8765,
     title: str = "",
     model: str = "",
+    html: str | None = None,
 ) -> asyncio.Server:
-    """Start the HTTP/SSE server and return the asyncio.Server object."""
-    from tracefix.runtime.monitoring.live_view import render_live_html
+    """Start the HTTP/SSE server and return the asyncio.Server object.
+
+    ``html`` overrides the page served at ``/`` (e.g. the design-phase view);
+    default is the runtime topology view from live_view.py.
+    """
+    if html is None:
+        from tracefix.runtime.monitoring.live_view import render_live_html
+        html = render_live_html(ir, title=title, model=model)
 
     ir_json = json.dumps(ir)
-    html_content = render_live_html(ir, title=title, model=model)
+    html_content = html
 
     async def handler(reader, writer):
         await _handle_client(reader, writer, ir_json, html_content, event_bus)
