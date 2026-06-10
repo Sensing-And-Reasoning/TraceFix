@@ -169,17 +169,26 @@ See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for the full design+verify 
 
 Two steps, and you never hand-write a protocol.
 
-**1. Build + verify + generate prompts** — in Claude Code, invoke the skill with your requirement:
+**1. Build + verify + generate prompts** — state your requirement, pick either entry point:
+
+```bash
+# One command (headless — drives an unmodified opencode through the design skill):
+tracefix design "A 3-agent CI/CD pipeline: a builder, a tester, and a deployer \
+that share a staging lock and hand off via review messages."
+# add --live to watch it design in the browser: phase rail, IR topology growing,
+# TLC verdict + repair loop, live activity feed
+```
 
 ```
-/tla-verify-pluscal  Design a 3-agent CI/CD pipeline: a builder, a tester, and a
-deployer that share a staging lock and hand off via review messages.
+# Or interactively in Claude Code (human-in-the-loop review gates):
+/tla-verify-pluscal  Design a 3-agent CI/CD pipeline: ...
 ```
 
-The skill does everything — hazard analysis, IR design, PlusCal, TLC verification with an
+Both run the same workflow — hazard analysis, IR design, PlusCal, TLC verification with an
 auto-repair loop, state extraction, and (automatically, as a final step) per-agent prompt
-generation — and leaves a runnable workspace under `workspace/<name>/` (`spec/` +
-`prompts/runtime_b/`). You never write IR or PlusCal by hand.
+generation — and leave a runnable workspace under `workspace/<name>/` (`spec/` +
+`prompts/runtime_b/`). You never write IR or PlusCal by hand. The knowledge lives in the
+skill + the deterministic CLI, so the harness underneath is interchangeable.
 
 **2. Run the whole system** — one command:
 

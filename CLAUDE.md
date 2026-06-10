@@ -43,6 +43,15 @@ python -m tracefix.pipeline --task "Design a 2PC protocol with coordinator and 2
 ```
 Provider/model: `--provider openai|anthropic|openrouter` `--model gpt-5` `--reasoning-effort high` `--thinking-budget N` `--max-turns 40`.
 
+### Design (headless, no Claude Code needed)
+`tracefix design "<requirement>"` drives an **unmodified** headless opencode through the
+`/tla-verify-pluscal` skill (injected as the agent prompt + a non-interactive preamble;
+Phase 5 reads the prompt-gen skill directly) and judges the outcome from artifacts
+(`spec/states.json` + `summary.json.tlc_passed` + one prompt per IR agent). Flags:
+`--name`, `--model provider/id`, `--timeout`, `--live` (design-phase browser view:
+phase rail, IR topology, TLC verdict, activity feed — same SSE stack as the runtime).
+See `tracefix/runtime/opencode_adapter/design.py` (+ `design_view.py`).
+
 ### Runtimes
 The unified front door is `tracefix run` (console script). It runs a verified workspace
 through a harness — default **opencode** — with a friendly preflight; `--task` is derived
