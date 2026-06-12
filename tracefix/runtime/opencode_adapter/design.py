@@ -154,10 +154,15 @@ def judge(ws: Path, *, timed_out: bool = False) -> DesignResult:
 
 
 def _init_workspace(name: str, task: str) -> Path:
-    """Create workspace/<name>/ (description.md + spec/ir.json stub) via the CLI's init."""
-    from tracefix.cli.cli import cmd_init
-    cmd_init(argparse.Namespace(dir=name, task=task, agents=None, with_tools=False))
-    return repo_root() / "workspace" / name
+    """Create a fresh workspace/<name>_<timestamp>/ via the CLI's init.
+
+    resolve_init_dir does the timestamping (every design run gets a new
+    directory, never iterating on an older same-named workspace); passing the
+    resolved path to cmd_init keeps the two in agreement on where files land."""
+    from tracefix.cli.cli import cmd_init, resolve_init_dir
+    out = resolve_init_dir(name)
+    cmd_init(argparse.Namespace(dir=str(out), task=task, agents=None, with_tools=False))
+    return out.resolve()
 
 
 class DesignWatcher:

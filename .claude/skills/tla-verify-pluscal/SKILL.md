@@ -52,8 +52,10 @@ A task workspace is organized into subfolders — put artifacts in the right one
 - **`output/`** — runtime artifacts the agents produce (written at run time).
 - `description.md`, `tools.json` — task inputs, at the workspace root.
 
-`tla-verify-pluscal init <name>` creates this layout. (The CLI also accepts a flat workspace —
-everything at the root — for older workspaces.)
+`tla-verify-pluscal init <name>` creates this layout. A bare name gets a timestamp suffix
+(`workspace/<name>_<stamp>/` — every init is a fresh workspace, never a reused one): use the
+path init prints in all later commands. (The CLI also accepts a flat workspace — everything
+at the root — for older workspaces.)
 
 ## Recommended Workflow
 
