@@ -56,6 +56,12 @@ below with these adjustments:
 - NEVER pause to ask the user anything. At the Phase 1.5 review gate, write
   `plan.md` into the workspace and proceed immediately (it is kept for
   after-the-fact review).
+- The requirement may be plain prose with no explicit agent/resource lists.
+  Derive the coordination structure yourself, and record EVERY structural
+  choice the prose does not state outright — how many agents and why, what
+  each shared resource is and why it is exclusive (Lock) vs a capacity pool
+  (Counter), and the channel topology — in `plan.md` under an
+  `## Assumptions` heading. Unrecorded assumptions count as silent guessing.
 - Where the workflow says to invoke the `/tla-prompt-gen` skill (Phase 5), read
   `{prompt_gen_skill}` and follow it directly on this same workspace instead.
 - The skill's reference files live under `.claude/skills/tla-verify-pluscal/references/`

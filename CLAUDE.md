@@ -127,7 +127,8 @@ All runtimes consume the same verified workspace and share `LockStore`, `Counter
 Real-time visualization is shared across runtimes: `event_bus.py` (async pub/sub) → `live_server.py` (asyncio HTTP/SSE, zero deps) → `live_view.py` (D3 + SSE client). Static post-run HTML lives in each runtime's `visualize.py`.
 
 ### 4. Benchmarks (`benchmark/`)
-48 coordination tasks = 16 scenarios × 3 difficulties (E/M/H), loaded by `loader.py:load_task(task_id)`.
+48 coordination tasks = 16 scenarios × 3 difficulties (E/M/H), loaded by `loader.py:load_task(task_id)`. These are the **fully-specified tier**: descriptions enumerate agents/resources/communication, so they measure extraction + compilation + verification + repair against canonical IDs (`metadata.json` is authoritative).
+- `underspecified/{id}/` — the **narrative tier** (6 scenarios rewritten as unscaffolded prose, no agent/resource enumeration): measures the *design* capability. Scored property-based by `python -m benchmark.underspec_eval --task <id>` — TLC PASS + parent-checklist coverage (LLM judge, name-agnostic: the designer picks its own IDs) + structural assumptions recorded in `plan.md` under `## Assumptions`. Guarded mechanically by `benchmark/tests/test_underspecified.py` (no scaffolding/ID leaks, parent links resolve).
 - `descriptions/{id}/` — agent-visible `description.md`, `tools.json` (OpenAI function schemas with extra `agent_ids` and `can_fail` fields), `metadata.json` (canonical agent + resource IDs — authoritative naming source).
 - `environments/{id}/` — `sim.py` (instantiates a `SimContext` subclass), `tools_impl.py` (dummy fallback), `checklist.json` (coordination requirements for semantic fidelity checks).
 - `tools/` — `ToolRegistry` (per-agent schema filtering), `SimContext` base class (resource management, failure injection, violation logging, per-agent seeded RNG).
