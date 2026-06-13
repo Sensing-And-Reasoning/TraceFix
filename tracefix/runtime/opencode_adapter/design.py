@@ -62,6 +62,10 @@ below with these adjustments:
   each shared resource is and why it is exclusive (Lock) vs a capacity pool
   (Counter), and the channel topology — in `plan.md` under an
   `## Assumptions` heading. Unrecorded assumptions count as silent guessing.
+- "Never pause" means do NOT ask the user — it does NOT mean skip the checks.
+  Still do the SKILL.md Phase 1.5 self-critique (verify every hazard, channel,
+  ordering constraint, and failure path is represented against the requirement)
+  and the MANDATORY Phase 2.5 fidelity check before verifying.
 - Where the workflow says to invoke the `/tla-prompt-gen` skill (Phase 5), read
   `{prompt_gen_skill}` and follow it directly on this same workspace instead.
 - The skill's reference files live under `.claude/skills/tla-verify-pluscal/references/`
