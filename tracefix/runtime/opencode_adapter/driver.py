@@ -26,6 +26,13 @@ from tracefix.runtime.opencode_adapter.config_gen import agent_key, to_env
 KICKOFF = ("Begin your task now. Follow your protocol steps in the exact order "
            "given in your instructions, using your coordination tools.")
 
+#: StreamReader buffer ceiling for the opencode subprocess. asyncio defaults to
+#: 64 KiB per line; a single JSONL event can blow past that (an assistant
+#: message embedding full PlusCal, or a large tool result), and the default
+#: makes readline() raise LimitOverrunError and crash the whole run. 64 MiB is a
+#: ceiling, not an allocation — only the actual line size is held in memory.
+_STREAM_LIMIT = 64 * 1024 * 1024
+
 
 def _try_json(value) -> dict | None:
     if not isinstance(value, str):
@@ -98,7 +105,22 @@ async def _read_lines(stream, on_line: Callable[[str], None]) -> None:
     if stream is None:
         return
     while True:
-        raw = await stream.readline()
+        try:
+            raw = await stream.readline()
+        except (asyncio.LimitOverrunError, ValueError):
+            # A single JSONL event exceeded even the raised StreamReader buffer
+            # (`_STREAM_LIMIT`). Don't let one oversized line kill the whole run:
+            # the separator is already buffered, so drain bytes (read() ignores
+            # the limit) until we pass the newline, then carry on. That one event
+            # is lost to the live feed, but the design's artifacts on disk — the
+            # real source of truth — are judged afterward regardless.
+            while True:
+                chunk = await stream.read(_STREAM_LIMIT)
+                if not chunk or b"\n" in chunk:
+                    break
+            if not chunk:
+                break
+            continue
         if not raw:
             break
         on_line(raw.decode("utf-8", "replace").rstrip("\r\n"))
@@ -149,7 +171,7 @@ async def run_opencode_agent(
            "--format", "json", "--dir", str(output_dir)]
 
     proc = await asyncio.create_subprocess_exec(
-        *cmd, env=env,
+        *cmd, env=env, limit=_STREAM_LIMIT,
         stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
 
     state = AgentRunState()
