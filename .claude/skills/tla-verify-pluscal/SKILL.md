@@ -96,7 +96,8 @@ This hazard table directly feeds into Steps 2–3 below.
 - Which resources have limited capacity shared across agents (API rate limits, connection pools)? → **Counter**
 - Apply the **lock acquisition order** from hazard analysis Step 5 consistently across all agents
 - **Every agent that reads or writes a shared resource MUST acquire its Lock** — including coordinators, editors, reviewers, and any agent that finalizes/combines output from that resource
-- **Naming rule**: Agent IDs and resource IDs in the IR MUST use the exact names from the task description (typically UPPER_CASE like `DEVELOPER_A`, `AUTH_MODULE`, `OVEN`). Copy them verbatim — do NOT rename to snake_case, camelCase, or abstract names like `agent1` or `lock_A`.
+- **Decomposition (when the task names no agents)**: if the requirement is a goal in prose with no explicit cast (e.g. "take each order from placement to shipment"), deriving the agent SET is your job. Split the work into the smallest set of agents that each own ONE cohesive responsibility and make the required ordering/failure paths explicit — do not invent extra supervisory layers, and do not fuse unrelated duties into one agent. Record each invented agent and *why it exists* in `plan.md` under `## Assumptions`.
+- **Naming rule**: when the task (or its `metadata.json`) names agents/resources, the IR MUST use those exact names verbatim — typically UPPER_CASE like `DEVELOPER_A`, `AUTH_MODULE`, `OVEN`; do NOT rename to snake_case, camelCase, or abstract names like `agent1`. When you invented the roles yourself, name them by responsibility in the same UPPER_CASE style (`ORDER_DESK`, `PICKER`).
 
 **Step 3 — Design Communication Topology**: Map out message channels between agents.
 - **One channel per directed pair**: if A sends to B, create exactly ONE channel A→B. List ALL message types in its `labels` array
