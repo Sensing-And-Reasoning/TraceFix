@@ -32,7 +32,20 @@ tla-verify-pluscal validate ir.json                  # IR schema + semantic chec
 tla-verify-pluscal scaffold ir.json -o workspace/    # → Protocol.tla + Protocol.cfg
 tla-verify-pluscal verify workspace/                 # PlusCal translate + TLC (--json for a machine-readable verdict; failed attempts archived to workspace/history/attempt_N/)
 tla-verify-pluscal extract-states workspace/         # Translated TLA+ → states.json (--strict to fail on warnings, not just parse errors)
+tla-verify-pluscal guide [pluscal|schema|plan|prompts]  # print the design knowledge (single source); no arg → full workflow + references inlined
 ```
+
+**Design knowledge is single-source.** The design+verify workflow, the
+Lock-vs-Counter rules, PlusCal patterns, and prompt-gen all live in ONE place —
+the skill (`.claude/skills/tla-verify-pluscal/` + `tla-prompt-gen/`). Three
+callers consume that one source rather than carrying their own copies: the
+Claude Code skill reads the files directly; `tracefix design` (headless) reads
+them by path; and the TUI `designer` agent runs `tla-verify-pluscal guide` (the
+agent prompt is a thin TUI adapter — identity + question-tool + approval gate —
+that pulls the shared workflow, so the TUI is exactly as thorough as the skill).
+`guide` resolves the skill from the installed package, so it works wherever the
+TUI runs, not just inside this repo. Edit the skill files to change the design
+behavior everywhere at once.
 
 ### Agentic Pipeline (end-to-end)
 ```bash

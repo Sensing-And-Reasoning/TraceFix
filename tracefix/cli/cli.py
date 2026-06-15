@@ -531,6 +531,85 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Design guide (single source of design knowledge)
+# ---------------------------------------------------------------------------
+#
+# The design WORKFLOW + detailed patterns live in ONE place — the skill
+# (.claude/skills/tla-verify-pluscal/SKILL.md + references, and tla-prompt-gen
+# for Phase 5). Three callers consume it: the Claude Code skill (reads the files
+# directly), `tracefix design` headless (reads them by path), and the TUI
+# `designer` agent (which runs anywhere and cannot assume the files are present).
+# `tla-verify-pluscal guide` is how the TUI — and anything else on PATH — pulls
+# the SAME source instead of carrying a thinner private copy that drifts.
+
+_SKILL_DESIGN = Path(".claude/skills/tla-verify-pluscal")
+_SKILL_PROMPTS = Path(".claude/skills/tla-prompt-gen")
+#: guide section -> file under the relevant skill dir
+_GUIDE_SECTIONS = {
+    "pluscal": (_SKILL_DESIGN, "references/pluscal-guide.md"),
+    "schema": (_SKILL_DESIGN, "references/schema-and-examples.md"),
+    "plan": (_SKILL_DESIGN, "references/coordination-plan.md"),
+    "prompts": (_SKILL_PROMPTS, "SKILL.md"),
+}
+
+
+def _strip_frontmatter(text: str) -> str:
+    """Drop a leading YAML frontmatter block (skill invocation metadata)."""
+    if text.startswith("---"):
+        end = text.find("\n---", 3)
+        if end != -1:
+            return text[end + 4:].lstrip("\n")
+    return text
+
+
+def _find_skill_root() -> Path | None:
+    """Locate the directory that holds `.claude/skills/`. Resolve from THIS
+    file first (works wherever tracefix is installed editable, regardless of
+    cwd — so the TUI designer finds it even when run in the user's own
+    project), then fall back to walking up from cwd."""
+    for base in Path(__file__).resolve().parents:
+        if (base / _SKILL_DESIGN / "SKILL.md").exists():
+            return base
+    for base in [Path.cwd(), *Path.cwd().parents]:
+        if (base / _SKILL_DESIGN / "SKILL.md").exists():
+            return base
+    return None
+
+
+def cmd_guide(args: argparse.Namespace) -> int:
+    """Print the design knowledge (single source). No args → the full
+    design+verify workflow (SKILL.md with its references inlined); a section
+    name → just that reference. Consumed by the TUI designer via bash."""
+    root = _find_skill_root()
+    if root is None:
+        print("tla-verify-pluscal guide: could not locate the skill files "
+              "(.claude/skills/tla-verify-pluscal/). Reinstall tracefix (pip install -e .) "
+              "or run from the repo.", file=sys.stderr)
+        return 1
+
+    section = getattr(args, "section", None)
+    if section:
+        skill_dir, rel = _GUIDE_SECTIONS[section]
+        f = root / skill_dir / rel
+        if not f.exists():
+            print(f"guide section file missing: {f}", file=sys.stderr)
+            return 1
+        sys.stdout.write(_strip_frontmatter(f.read_text()) if f.name == "SKILL.md"
+                         else f.read_text())
+        return 0
+
+    # Default: the design+verify workflow + its references, inlined in one shot.
+    out = [_strip_frontmatter((root / _SKILL_DESIGN / "SKILL.md").read_text())]
+    for name in ("schema", "pluscal", "plan"):
+        skill_dir, rel = _GUIDE_SECTIONS[name]
+        f = root / skill_dir / rel
+        if f.exists():
+            out.append(f"\n\n===== reference: {name} =====\n\n{f.read_text()}")
+    sys.stdout.write("\n".join(out) + "\n")
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -585,6 +664,11 @@ def main():
     p_ext.add_argument("--legacy", action="store_true", help="Use legacy regex-based TLA+ parser instead of tree-sitter PlusCal parser")
     p_ext.add_argument("--strict", action="store_true", help="Exit non-zero on warnings (orphan state_tasks / lint), not just parse errors")
 
+    # guide
+    p_gui = sub.add_parser("guide", help="Print the design knowledge (single source for the TUI designer)")
+    p_gui.add_argument("section", nargs="?", choices=sorted(_GUIDE_SECTIONS),
+                       help="Print only one reference (default: the full design+verify workflow + references)")
+
     args = parser.parse_args()
 
     handlers = {
@@ -594,5 +678,6 @@ def main():
         "scaffold": cmd_scaffold,
         "verify": cmd_verify,
         "extract-states": cmd_extract_states,
+        "guide": cmd_guide,
     }
     sys.exit(handlers[args.command](args))

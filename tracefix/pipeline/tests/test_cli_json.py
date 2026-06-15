@@ -31,3 +31,36 @@ def test_verify_human_setup_error_unchanged(tmp_path, capsys):
     out = capsys.readouterr().out
     assert rc == 1
     assert out.startswith("ERROR:")
+
+
+# --- guide: single-source design knowledge for the TUI designer -------------
+
+def test_guide_default_inlines_workflow_and_references(capsys):
+    """No-arg guide → SKILL workflow + all three references, in one shot."""
+    import sys as _sys
+    args = argparse.Namespace(section=None)
+    rc = cli.cmd_guide(args)
+    out = capsys.readouterr().out
+    assert rc == 0
+    # workflow body (frontmatter stripped — no leading YAML)
+    assert not out.lstrip().startswith("---")
+    # the three references are inlined under their markers
+    assert out.count("===== reference:") == 3
+    # patch-14 disciplines reach the TUI via the guide (not a private copy)
+    assert "Write rule (disambiguates Lock vs Counter)" in out
+    assert "only relays messages" in out
+
+
+def test_guide_sections_resolve(capsys):
+    for section in ("pluscal", "schema", "plan", "prompts"):
+        rc = cli.cmd_guide(argparse.Namespace(section=section))
+        out = capsys.readouterr().out
+        assert rc == 0 and out.strip(), f"guide {section} produced nothing"
+
+
+def test_guide_resolves_skill_root_from_package():
+    # Must resolve from the installed package, not cwd, so the TUI finds it
+    # wherever it runs.
+    root = cli._find_skill_root()
+    assert root is not None
+    assert (root / cli._SKILL_DESIGN / "SKILL.md").exists()
