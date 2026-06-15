@@ -184,6 +184,12 @@ that share a staging lock and hand off via review messages."
 /tla-verify-pluscal  Design a 3-agent CI/CD pipeline: ...
 ```
 
+A third option is the **native TraceFix TUI** — a thin opencode fork with an
+interactive `designer` agent (question prompts + a plan-approval gate in the
+terminal). It is a separately-tracked fork, not part of this source tree; see
+[`tui/`](tui/) for what it is and how to build it. The headless and Claude Code
+paths above need only this repo.
+
 Both run the same workflow — hazard analysis, IR design, PlusCal, TLC verification with an
 auto-repair loop, state extraction, and (automatically, as a final step) per-agent prompt
 generation — and leave a runnable workspace under `workspace/<name>/` (`spec/` +
