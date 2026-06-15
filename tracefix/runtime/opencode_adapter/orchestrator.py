@@ -235,19 +235,46 @@ class OpencodeOrchestrator:
                   f"agents={[a['id'] for a in run_agents]} | output={out}",
                   file=sys.stderr)
 
+        start = time.time()
+
+        # Live trace: emit the SAME event shape the live view consumes (it was built
+        # for the monitoring runtime — agent_runner.py). opencode fires a tool_use
+        # event per state (pending/running/completed); emit one trace row per call,
+        # on the terminal state, with a per-agent round counter and elapsed-since-start.
+        tool_rounds: dict[str, int] = {}
+
         def _on_event(agent_id: str, ev: dict) -> None:
             if event_bus is None or ev.get("type") != "tool_use":
                 return
-            part = ev.get("part") or {}
+            st = (ev.get("part") or {}).get("state") or {}
+            status = st.get("status")
+            if status not in ("completed", "error"):
+                return  # ignore pending/running — one row per finished call
+            tool_rounds[agent_id] = tool_rounds.get(agent_id, 0) + 1
+            payload = st.get("output") if status == "completed" else st.get("error")
+            # opencode namespaces MCP tools `<server>_<tool>`; strip the `tracefix_`
+            # prefix so coordination tools match the live view's names (acquire_lock,
+            # send_message, ...) and drive its beam / lock-holder / channel-count
+            # animations, exactly as the monitoring runtime does.
+            tool = (ev.get("part") or {}).get("tool") or ""
+            if tool.startswith("tracefix_"):
+                tool = tool[len("tracefix_"):]
             asyncio.create_task(event_bus.emit("agent.tool_call", {
                 "agent_id": agent_id,
-                "tool": part.get("tool"),
-                "status": (part.get("state") or {}).get("status"),
+                "round": tool_rounds[agent_id],
+                "tool_name": tool,
+                "arguments": st.get("input") or {},
+                "result": {"status": status, "output": payload},
+                "elapsed": time.time() - start,
             }))
 
         on_event = _on_event if event_bus is not None else None
 
-        start = time.time()
+        # Start the run clock on the client: the live view bases its elapsed timer on
+        # the run.start `_ts`. The browser has connected during the warmup above, and
+        # the server does not replay history, so emit it here (just before agents run).
+        if event_bus is not None:
+            await event_bus.emit("run.start", {"agents": [a["id"] for a in run_agents]})
         try:
             tasks = []
             inst_root = Path(out) / ".agents"
@@ -287,10 +314,30 @@ class OpencodeOrchestrator:
                     domain=domain_wiring(self.workspace, agent_id, domain_cmd=domain_cmd))
                 # Pre-create this agent's private dir; cwd (--dir) is the shared area.
                 agent_workdir(self.run_dir, agent_id)
-                tasks.append(asyncio.create_task(run_opencode_agent(
-                    agent_id, cfg, opencode_cmd=self.opencode_cmd,
-                    output_dir=shared_out, timeout=self.timeout, on_event=on_event,
-                    env_overrides=xdg_env)))
+
+                # Wrap so the live view turns each agent node green/red the moment IT
+                # finishes (agent.done), instead of leaving every node idle until the
+                # whole run ends.
+                async def _run_agent(aid=agent_id, cfg=cfg, xdg_env=xdg_env):
+                    try:
+                        res = await run_opencode_agent(
+                            aid, cfg, opencode_cmd=self.opencode_cmd,
+                            output_dir=shared_out, timeout=self.timeout,
+                            on_event=on_event, env_overrides=xdg_env)
+                    except BaseException as e:  # noqa: BLE001
+                        if event_bus is not None:
+                            await event_bus.emit("agent.done", {
+                                "agent_id": aid, "status": "error",
+                                "error": f"{type(e).__name__}: {e}"})
+                        raise
+                    if event_bus is not None:
+                        await event_bus.emit("agent.done", {
+                            "agent_id": aid, "status": res.get("status", "completed"),
+                            "duration": res.get("duration", 0),
+                            "error": res.get("error")})
+                    return res
+
+                tasks.append(asyncio.create_task(_run_agent()))
 
             raw = await asyncio.gather(*tasks, return_exceptions=True)
             duration = time.time() - start
