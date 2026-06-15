@@ -48,10 +48,14 @@ class CoordToolDispatcher:
     """
 
     def __init__(self, coord, agent_id: str, tool_registry=None,
-                 event_bus=None, verbose: bool = False):
+                 event_bus=None, verbose: bool = False, domain_impls=None):
         self.coord = coord
         self.agent_id = agent_id
         self.tools = tool_registry
+        # Local typed-tool implementations (DomainImpls from tools_impl.py); when a
+        # forwarded domain call names one, it runs here instead of the schema-only
+        # ToolRegistry (which has no sim to execute against).
+        self.domain_impls = domain_impls
         self.event_bus = event_bus
         self.verbose = verbose
 
@@ -161,7 +165,17 @@ class CoordToolDispatcher:
                 self._local_corrections = 0
             return result
 
-        # --- domain tools: forward to the benchmark ToolRegistry ---
+        # --- domain tools: local impl first, then the benchmark ToolRegistry ---
+        if self.domain_impls is not None and self.domain_impls.has(name):
+            call_args = {k: v for k, v in args.items() if k != "agent_id"}
+            try:
+                res = self.domain_impls.call(name, call_args)
+            except NotImplementedError:
+                return {"status": "error",
+                        "message": f"tool {name!r} has a stub impl — fill it in tools_impl.py"}
+            except Exception as e:  # noqa: BLE001 — surface domain errors to the LLM
+                return {"status": "error", "message": f"{type(e).__name__}: {e}"}
+            return {"status": "ok", "result": res}
         if self.tools is not None:
             # Agents sometimes pass agent_id explicitly in the args; drop it so
             # it doesn't collide with the agent_id we bind from the server side

@@ -1129,3 +1129,15 @@ class TestDomainToolTags:
         assert reg.tools_for_agent("BILLING") == ["charge_payment"]
         assert reg.tools_for_agent("PICKER") == []  # not assigned
         assert reg.openai_schemas("BILLING")[0]["function"]["name"] == "charge_payment"
+
+
+def test_annotate_state_tools_sets_tool_field():
+    from tracefix.pipeline.pipeline.pluscal_parser import annotate_state_tools
+    tla = (
+        "B_charge:\n  skip; \\* domain: charge [tool: charge_payment(amount: number); impl: external]\n"
+        "P_pick:\n  skip; \\* domain: gather items\n"
+    )
+    states = [{"id": "B_charge", "agent": "B"}, {"id": "P_pick", "agent": "P"}]
+    annotate_state_tools(states, tla)
+    assert states[0]["tool"] == "charge_payment"
+    assert "tool" not in states[1]  # plain builtin work → no tool field

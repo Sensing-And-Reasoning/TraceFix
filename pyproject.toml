@@ -39,6 +39,7 @@ opencode = [
 tracefix = "tracefix.runtime.cli:main"
 tla-verify-pluscal = "tracefix.cli.cli:main"
 tracefix-coord = "tracefix.runtime.coord_mcp.server:main"
+tracefix-domain = "tracefix.runtime.domain_mcp.server:main"
 
 [tool.setuptools.packages.find]
 include = ["tracefix*", "benchmark*"]

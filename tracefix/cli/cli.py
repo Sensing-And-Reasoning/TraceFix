@@ -468,7 +468,10 @@ def cmd_extract_states(args: argparse.Namespace) -> int:
               f"(typo, or stale after a repair?): {', '.join(sorted(task_orphans))}")
 
     # Lift any [tool: ...]-tagged domain steps into a workspace tools.json + impl
-    # scaffolds (no-op when the design used only builtins — i.e. no tags).
+    # scaffolds (no-op when the design used only builtins — i.e. no tags), and tag
+    # the owning states so prompt-gen can emit explicit `Call <tool>(...)` steps.
+    from tracefix.pipeline.pipeline.pluscal_parser import annotate_state_tools
+    annotate_state_tools(result.states, tla_content)
     _generate_domain_tools(search_dir, tla_content, result.states)
 
     # Lint: check for adjacent acquire→release without intermediate work

@@ -335,3 +335,36 @@ def test_run_result_exposes_monitoring_fields():
     assert len(r1.state_violations) == 1 and r1.premature_dones == ["B"]
     _print_result(r0)
     _print_result(r1)
+
+
+def test_local_domain_impl_runs_directly(tmp_path):
+    """A forwarded domain call whose name has a local impl runs the Python function
+    (not the schema-only ToolRegistry)."""
+    from tracefix.runtime.domain_mcp.impl_loader import load_impls
+    (tmp_path / "tools_impl.py").write_text(
+        "def charge_payment(amount):\n    return {'ok': True, 'txn': 'T-%d' % amount}\n")
+    impls = load_impls(tmp_path / "tools_impl.py")
+
+    async def scenario():
+        coord = _make_coord()
+        a = CoordToolDispatcher(coord, "A", domain_impls=impls)
+        return await a.dispatch("charge_payment", {"amount": 50})
+
+    res = asyncio.run(scenario())
+    assert res["status"] == "ok"
+    assert res["result"] == {"ok": True, "txn": "T-50"}
+
+
+def test_local_domain_stub_reports_error():
+    from tracefix.runtime.domain_mcp.impl_loader import DomainImpls
+
+    def _stub(**k):
+        raise NotImplementedError
+
+    async def scenario():
+        coord = _make_coord()
+        a = CoordToolDispatcher(coord, "A", domain_impls=DomainImpls({"foo": _stub}))
+        return await a.dispatch("foo", {})
+
+    res = asyncio.run(scenario())
+    assert res["status"] == "error" and "stub impl" in res["message"]

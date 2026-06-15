@@ -62,6 +62,10 @@ Read `states.json` and for each agent list:
 - All state IDs belonging to this agent + initial state
 - Per-state: action count, coordination ops (`acquire`/`release`/`send`/`receive` + resource/channel IDs), `next_state`
 - `tool_hint` value for multi-action states (if present)
+- `tool` value, if present: this state needs a TYPED tool — emit an explicit
+  `Call <tool>(<params>)` step (look up the signature in `tools.json`, map
+  parameter values from the task description). A state with no `tool` is plain
+  domain work → instruct the SDK builtins (read/write files, run commands).
 - Terminal states (empty `actions` array or `next_state: "__done__"`)
 
 **Step 2b — Label-to-Step Mapping Table (MANDATORY before writing any prose)**

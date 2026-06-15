@@ -1205,6 +1205,26 @@ def _extract_domain_tasks(tla_content: str) -> dict[str, str]:
     return out
 
 
+def annotate_state_tools(states: list[dict], tla_content: str) -> None:
+    """Set ``state["tool"]`` (in place) to the typed-tool name for any state whose
+    ``\\* domain:`` comment carries a non-builtin ``[tool: ...]`` tag, so prompt
+    generation can emit an explicit ``Call <tool>(...)`` step instead of prose."""
+    labels = [(m.group(1), m.start()) for m in _LABEL_RE.finditer(tla_content)]
+    label_tool: dict[str, str] = {}
+    for i, (label, start) in enumerate(labels):
+        end = labels[i + 1][1] if i + 1 < len(labels) else len(tla_content)
+        m = _DOMAIN_RE.search(tla_content, start, end)
+        if not m:
+            continue
+        _, spec = _split_tool_tag(_CALL_PREFIX_RE.sub("", m.group(1).strip()).strip())
+        if spec and spec["impl"] != "builtin":
+            label_tool[label] = spec["name"]
+    for s in states:
+        t = label_tool.get(s.get("id"))
+        if t:
+            s["tool"] = t
+
+
 def extract_domain_tools(tla_content: str, states: list[dict]) -> list[dict]:
     """Parse `[tool: ...]` tags from `\\* domain:` comments into tools.json schemas.
 

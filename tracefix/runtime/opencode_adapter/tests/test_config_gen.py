@@ -86,3 +86,69 @@ def test_token_injected_into_mcp_env_when_given():
 def test_no_token_omits_the_env_key():
     cfg = build_agent_config("A", "http://x")
     assert "TRACEFIX_COORD_TOKEN" not in cfg["mcp"]["tracefix"]["environment"]
+
+
+# --- typed domain tools: per-agent MCP wiring + permission gating ------------
+
+import json as _json
+from tracefix.runtime.opencode_adapter.config_gen import domain_wiring, _sanitize_server_key
+
+
+def test_no_domain_keeps_coordination_only():
+    cfg = build_agent_config("A", "http://x")
+    assert set(cfg["mcp"]) == {"tracefix"}
+    assert "domain_*" not in cfg["agent"]["a"]["permission"]
+
+
+def test_local_domain_server_added_and_gated():
+    domain = {"local": {"command": ["tracefix-domain", "--agent-id", "BILLING"],
+                        "environment": {"TRACEFIX_AGENT_ID": "BILLING"}},
+              "external": {}}
+    cfg = build_agent_config("BILLING", "http://x", domain=domain)
+    assert "domain" in cfg["mcp"] and cfg["mcp"]["domain"]["type"] == "local"
+    perm = cfg["agent"]["billing"]["permission"]
+    assert perm["domain_*"] == "allow"
+    # placed after *: deny (last-match-wins) — deny is still first
+    assert list(perm).index("*") < list(perm).index("domain_*")
+
+
+def test_external_server_added_and_gated():
+    domain = {"local": None,
+              "external": {"stripe_pay": {"type": "remote", "url": "https://mcp.example/sse"}}}
+    cfg = build_agent_config("BILLING", "http://x", domain=domain)
+    assert "stripepay" in cfg["mcp"]                 # sanitized key
+    assert cfg["agent"]["billing"]["permission"]["stripepay_*"] == "allow"
+
+
+def test_sanitize_server_key():
+    assert _sanitize_server_key("stripe_pay") == "stripepay"
+    assert _sanitize_server_key("Charge-Service!") == "chargeservice"
+    assert _sanitize_server_key("___") == "ext"
+
+
+def test_domain_wiring_reads_workspace(tmp_path):
+    tools = [
+        {"type": "function", "function": {"name": "charge", "x-impl": "local",
+                                          "agent_ids": ["BILLING"], "parameters": {}}},
+        {"type": "function", "function": {"name": "email", "x-impl": "external",
+                                          "agent_ids": ["NOTIFIER"], "parameters": {}}},
+    ]
+    (tmp_path / "tools.json").write_text(_json.dumps(tools))
+    (tmp_path / "tools_impl.py").write_text("def charge(**k):\n    return {}\n")
+    (tmp_path / "mcp.json").write_text(_json.dumps({"mcpServers": {
+        "email_svc": {"type": "remote", "url": "https://x", "agent_ids": ["NOTIFIER"], "tools": ["email"]}}}))
+
+    billing = domain_wiring(tmp_path, "BILLING")
+    assert billing["local"] is not None and not billing["external"]   # owns local charge only
+    assert "--agent-id" in billing["local"]["command"]
+
+    notifier = domain_wiring(tmp_path, "NOTIFIER")
+    assert notifier["local"] is None                                  # owns no local tool
+    assert "email_svc" in notifier["external"]
+    assert "agent_ids" not in notifier["external"]["email_svc"]       # metadata stripped
+
+    assert domain_wiring(tmp_path, "PICKER") is None                  # owns nothing
+
+
+def test_domain_wiring_none_without_tools_json(tmp_path):
+    assert domain_wiring(tmp_path, "A") is None

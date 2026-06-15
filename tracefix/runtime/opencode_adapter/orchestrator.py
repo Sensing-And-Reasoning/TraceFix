@@ -35,7 +35,7 @@ from tracefix.runtime.coordination.service import CoordinationService
 from tracefix.runtime.coordination.client import CoordClient
 from tracefix.runtime.workspace_layout import (
     spec_path, snapshot_run_workspace, new_run_stamp, shared_workdir, agent_workdir)
-from tracefix.runtime.opencode_adapter.config_gen import agent_key, build_agent_config
+from tracefix.runtime.opencode_adapter.config_gen import agent_key, build_agent_config, domain_wiring
 from tracefix.runtime.opencode_adapter.driver import run_opencode_agent
 
 # OpenCode namespaces MCP tools ``<mcpServer>_<tool>``; our mcp server key is "tracefix".
@@ -224,6 +224,7 @@ class OpencodeOrchestrator:
             await service.start()
             coord_url = f"http://{self.host}:{self.port}"
         coord_cmd = [sys.executable, "-m", "tracefix.runtime.coord_mcp"]
+        domain_cmd = [sys.executable, "-m", "tracefix.runtime.domain_mcp"]
         out = str(self.run_dir.resolve())          # run-output root (holds .agents/ XDG)
         shared_out = str(shared_workdir(self.run_dir).resolve())  # agents' cwd (--dir)
         run_agents = [a for a in ir["agents"]
@@ -282,7 +283,8 @@ class OpencodeOrchestrator:
                     agent_id, coord_url, prompt=self._read_prompt(agent_id),
                     model=self.model, op_timeout_ms=self.op_timeout_ms,
                     coord_cmd=coord_cmd,
-                    token=tokens.get(agent_id) if tokens else None)
+                    token=tokens.get(agent_id) if tokens else None,
+                    domain=domain_wiring(self.workspace, agent_id, domain_cmd=domain_cmd))
                 # Pre-create this agent's private dir; cwd (--dir) is the shared area.
                 agent_workdir(self.run_dir, agent_id)
                 tasks.append(asyncio.create_task(run_opencode_agent(
