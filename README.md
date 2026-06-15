@@ -169,32 +169,35 @@ See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for the full design+verify 
 
 Two steps, and you never hand-write a protocol.
 
-**1. Build + verify + generate prompts** — state your requirement, pick either entry point:
+**1. Build + verify + generate prompts** — state your requirement. Two ways to use TraceFix:
+
+**→ The TraceFix TUI is the primary experience.** A native terminal app (a thin opencode
+fork) whose `designer` agent walks you through the design interactively — it asks clarifying
+questions, pauses for your approval of the coordination plan, then derives and TLC-verifies
+the protocol. Build it once (see [`tui/`](tui/)) and launch:
 
 ```bash
-# One command (headless — drives an unmodified opencode through the design skill):
-tracefix design "A 3-agent CI/CD pipeline: a builder, a tester, and a deployer \
-that share a staging lock and hand off via review messages."
-# add --live to watch it design in the browser: phase rail, IR topology growing,
-# TLC verdict + repair loop, live activity feed
+tracefix-tui      # then type:  /design  A 3-agent CI/CD pipeline: a builder, a tester, and a
+                  #             deployer that share a staging lock and hand off via review messages.
 ```
 
+**→ Or use the skill in your own harness.** If you already work inside Claude Code (or another
+agent harness), run the same design workflow as a skill — same human-in-the-loop review gates,
+no separate binary to build:
+
 ```
-# Or interactively in Claude Code (human-in-the-loop review gates):
 /tla-verify-pluscal  Design a 3-agent CI/CD pipeline: ...
 ```
-
-A third option is the **native TraceFix TUI** — a thin opencode fork with an
-interactive `designer` agent (question prompts + a plan-approval gate in the
-terminal). It is a separately-tracked fork, not part of this source tree; see
-[`tui/`](tui/) for what it is and how to build it. The headless and Claude Code
-paths above need only this repo.
 
 Both run the same workflow — hazard analysis, IR design, PlusCal, TLC verification with an
 auto-repair loop, state extraction, and (automatically, as a final step) per-agent prompt
 generation — and leave a runnable workspace under `workspace/<name>/` (`spec/` +
-`prompts/runtime_b/`). You never write IR or PlusCal by hand. The knowledge lives in the
-skill + the deterministic CLI, so the harness underneath is interchangeable.
+`prompts/runtime_b/`). You never write IR or PlusCal by hand.
+
+> For automation (CI, benchmarking, batch design) there is also a non-interactive
+> `tracefix design "<requirement>"` that drives the same workflow headlessly with no review
+> gate. It is an automation entry point, not the recommended way to design interactively —
+> reach for the TUI or the skill for that.
 
 **2. Run the whole system** — one command:
 

@@ -23,16 +23,17 @@ The two pieces are one product but two repos:
 | **this repo** (`tracefix-public`) | the Python verification platform: the `tla-verify-pluscal` CLI, the design knowledge (`.claude/skills/`), benchmarks, runtimes |
 | **the TUI fork** (`tracefix` branch) | the interactive front end you type in; its `designer` agent calls `tla-verify-pluscal guide` + the CLI from the install above |
 
-## You may not need it
+## This is the primary way to use TraceFix
 
-The full design → verify → prompts flow is available **without** building the TUI:
+The TUI is the intended, first-choice entry point: build it once and `/design`
+interactively. If you'd rather not run a separate binary and already work inside
+your own agent harness, the **second choice** is the `/tla-verify-pluscal` skill
+in Claude Code — the same workflow and review gates, using this repo's
+`.claude/skills/`.
 
-- **Headless:** `tracefix design "<requirement>"` (drives opencode through the
-  same design skill; add `--live` for a browser view).
-- **Claude Code:** the `/tla-verify-pluscal` skill (human-in-the-loop review
-  gates), using this repo's `.claude/skills/`.
-
-Build the TUI only if you want the native interactive `/design` experience.
+(There is also a non-interactive `tracefix design "<requirement>"` for
+automation/CI/benchmarking — same workflow, no review gate. It is not the
+recommended way to design interactively; use the TUI or the skill for that.)
 
 ## Build
 

@@ -56,10 +56,18 @@ python -m tracefix.pipeline --task "Design a 2PC protocol with coordinator and 2
 ```
 Provider/model: `--provider openai|anthropic|openrouter` `--model gpt-5` `--reasoning-effort high` `--thinking-budget N` `--max-turns 40`.
 
-### Design (headless, no Claude Code needed)
+### Design entry points (user priority: TUI first, skill second)
+The intended user experience is the **TraceFix TUI** (`tracefix-tui`, the opencode fork in
+`tui/`) — interactive `designer` with question prompts + a plan-approval gate. The
+second-choice path is the `/tla-verify-pluscal` **skill** for users who bring their own
+harness (Claude Code, etc.). Do NOT promote headless as a proactive user entry point.
+
+### Design (headless — automation/CI only, not a promoted user path)
 `tracefix design "<requirement>"` drives an **unmodified** headless opencode through the
 `/tla-verify-pluscal` skill (injected as the agent prompt + a non-interactive preamble;
-Phase 5 reads the prompt-gen skill directly) and judges the outcome from artifacts
+Phase 5 reads the prompt-gen skill directly). It is the mechanism the benchmark/eval harness
+uses (e.g. `benchmark.underspec_eval`) — keep it, but position it as automation, not the
+recommended way to design interactively. It judges the outcome from artifacts
 (`spec/states.json` + `summary.json.tlc_passed` + one prompt per IR agent). Flags:
 `--name`, `--model provider/id`, `--timeout`, `--live` (design-phase browser view:
 phase rail, IR topology, TLC verdict, activity feed — same SSE stack as the runtime).
