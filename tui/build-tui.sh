@@ -20,7 +20,7 @@ set -euo pipefail
 # --- the fork repo (override with env) --------------------------------------
 # Set this to your TraceFix TUI fork once it is pushed. The `tracefix` branch
 # carries the patches listed in the fork's PATCHES.md on top of opencode v1.17.4.
-REPO="${TRACEFIX_TUI_REPO:-https://github.com/YOUR_USERNAME/tracefix-tui.git}"
+REPO="${TRACEFIX_TUI_REPO:-https://github.com/xsrxdc/TraceFix-TUI.git}"
 BRANCH="${TRACEFIX_TUI_BRANCH:-tracefix}"
 DEST="${TRACEFIX_TUI_DIR:-$HOME/tracefix-tui-src}"
 
