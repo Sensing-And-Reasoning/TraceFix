@@ -1046,3 +1046,86 @@ def test_lift_domain_tasks_agentic_block_comment():
     assert "task" not in states[2]                       # terminal skip, no comment
     # the `(* --algorithm ... *)` wrapper must NOT be mistaken for a task
     assert all("algorithm" not in (s.get("task") or "") for s in states)
+
+
+# --- Typed domain-tool tags: [tool: name(params) -> returns; impl: kind] -----
+
+class TestDomainToolTags:
+    def test_split_tool_tag_separates_description_and_spec(self):
+        from tracefix.pipeline.pipeline.pluscal_parser import _split_tool_tag
+        desc, spec = _split_tool_tag(
+            "charge the customer [tool: charge_payment(amount: number) -> {ok, txn_id}; impl: external]")
+        assert desc == "charge the customer"
+        assert spec["name"] == "charge_payment"
+        assert spec["params"] == [{"name": "amount", "type": "number"}]
+        assert spec["impl"] == "external"
+        assert spec["returns"] == "{ok, txn_id}"
+
+    def test_no_tag_is_plain_description(self):
+        from tracefix.pipeline.pipeline.pluscal_parser import _split_tool_tag
+        desc, spec = _split_tool_tag("write your section into the document")
+        assert desc == "write your section into the document" and spec is None
+
+    def test_defaults_and_param_types(self):
+        from tracefix.pipeline.pipeline.pluscal_parser import _parse_tool_signature
+        spec = _parse_tool_signature("notify(to, body: string, urgent: boolean)")
+        assert spec["impl"] == "external"  # default
+        assert spec["params"] == [
+            {"name": "to", "type": "string"},        # untyped -> string
+            {"name": "body", "type": "string"},
+            {"name": "urgent", "type": "boolean"},
+        ]
+
+    def test_extract_domain_tools_assigns_agent_ids(self):
+        from tracefix.pipeline.pipeline.pluscal_parser import extract_domain_tools
+        tla = (
+            "BILLING_charge:\n"
+            "  skip; \\* domain: charge the card [tool: charge_payment(amount: number); impl: external]\n"
+            "NOTIFIER_send:\n"
+            "  skip; \\* domain: email receipt [tool: send_email(to: string, body: string); impl: external]\n"
+            "PICKER_pick:\n"
+            "  skip; \\* domain: gather items from storage\n"
+        )
+        states = [
+            {"id": "BILLING_charge", "agent": "BILLING"},
+            {"id": "NOTIFIER_send", "agent": "NOTIFIER"},
+            {"id": "PICKER_pick", "agent": "PICKER"},
+        ]
+        tools = extract_domain_tools(tla, states)
+        by_name = {t["function"]["name"]: t["function"] for t in tools}
+        assert set(by_name) == {"charge_payment", "send_email"}  # builtin step excluded
+        assert by_name["charge_payment"]["agent_ids"] == ["BILLING"]
+        assert by_name["send_email"]["agent_ids"] == ["NOTIFIER"]
+        assert by_name["charge_payment"]["parameters"]["required"] == ["amount"]
+        assert by_name["charge_payment"]["x-impl"] == "external"
+
+    def test_builtin_impl_emits_no_tool(self):
+        from tracefix.pipeline.pipeline.pluscal_parser import extract_domain_tools
+        tla = "A_step:\n  skip; \\* domain: do it [tool: foo(x); impl: builtin]\n"
+        assert extract_domain_tools(tla, [{"id": "A_step", "agent": "A"}]) == []
+
+    def test_shared_tool_merges_agent_ids(self):
+        from tracefix.pipeline.pipeline.pluscal_parser import extract_domain_tools
+        tla = (
+            "A_w:\n  skip; \\* domain: log [tool: audit(msg: string); impl: local]\n"
+            "B_w:\n  skip; \\* domain: log [tool: audit(msg: string); impl: local]\n"
+        )
+        tools = extract_domain_tools(tla, [{"id": "A_w", "agent": "A"}, {"id": "B_w", "agent": "B"}])
+        assert tools[0]["function"]["agent_ids"] == ["A", "B"]
+
+    def test_tag_stripped_from_task_description(self):
+        from tracefix.pipeline.pipeline.pluscal_parser import _extract_domain_tasks
+        tla = "X_pay:\n  skip; \\* domain: charge it [tool: pay(amount: number); impl: external]\n"
+        assert _extract_domain_tasks(tla)["X_pay"] == "charge it"
+
+    def test_generated_tools_json_loads_in_registry(self, tmp_path):
+        """End-to-end: the generated schema is consumable by ToolRegistry per-agent."""
+        from tracefix.pipeline.pipeline.pluscal_parser import extract_domain_tools
+        from benchmark.tools import ToolRegistry
+        tla = "B_c:\n  skip; \\* domain: charge [tool: charge_payment(amount: number); impl: external]\n"
+        tools = extract_domain_tools(tla, [{"id": "B_c", "agent": "BILLING"}])
+        (tmp_path / "tools.json").write_text(json.dumps(tools))
+        reg = ToolRegistry.from_file(tmp_path / "tools.json")
+        assert reg.tools_for_agent("BILLING") == ["charge_payment"]
+        assert reg.tools_for_agent("PICKER") == []  # not assigned
+        assert reg.openai_schemas("BILLING")[0]["function"]["name"] == "charge_payment"

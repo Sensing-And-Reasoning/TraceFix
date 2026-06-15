@@ -64,3 +64,50 @@ def test_guide_resolves_skill_root_from_package():
     root = cli._find_skill_root()
     assert root is not None
     assert (root / cli._SKILL_DESIGN / "SKILL.md").exists()
+
+
+# --- extract-states: generate domain tools.json + impl scaffolds ------------
+
+def test_generate_domain_tools_writes_schema_and_stubs(tmp_path, capsys):
+    spec = tmp_path / "spec"
+    spec.mkdir()
+    tla = (
+        "BILLING_charge:\n  skip; \\* domain: charge card "
+        "[tool: charge_payment(amount: number) -> {ok}; impl: external]\n"
+        "AUDIT_log:\n  skip; \\* domain: write audit row "
+        "[tool: audit(msg: string); impl: local]\n"
+    )
+    states = [{"id": "BILLING_charge", "agent": "BILLING"},
+              {"id": "AUDIT_log", "agent": "AUDIT"}]
+    cli._generate_domain_tools(spec, tla, states)
+
+    # tools.json at the WORKSPACE ROOT (spec's parent), per-agent assigned
+    tools = json.loads((tmp_path / "tools.json").read_text())
+    by = {t["function"]["name"]: t["function"] for t in tools}
+    assert by["charge_payment"]["agent_ids"] == ["BILLING"]
+    assert by["audit"]["agent_ids"] == ["AUDIT"]
+    # local impl → python stub; external → mcp.json stub
+    impl = (tmp_path / "tools_impl.py").read_text()
+    assert "def audit(msg):" in impl and "NotImplementedError" in impl
+    assert "charge_payment" not in impl  # external, not a local impl
+    mcp = json.loads((tmp_path / "mcp.json").read_text())
+    assert "charge_payment_service" in mcp["mcpServers"]
+    assert mcp["mcpServers"]["charge_payment_service"]["agent_ids"] == ["BILLING"]
+
+
+def test_generate_domain_tools_noop_without_tags(tmp_path):
+    spec = tmp_path / "spec"
+    spec.mkdir()
+    tla = "PICKER_pick:\n  skip; \\* domain: gather items from storage\n"
+    cli._generate_domain_tools(spec, tla, [{"id": "PICKER_pick", "agent": "PICKER"}])
+    assert not (tmp_path / "tools.json").exists()  # builtins-only → nothing generated
+
+
+def test_generate_domain_tools_preserves_filled_impl(tmp_path):
+    spec = tmp_path / "spec"
+    spec.mkdir()
+    (tmp_path / "tools_impl.py").write_text("def audit(msg):\n    return {'logged': True}\n")
+    tla = "A_log:\n  skip; \\* domain: log [tool: audit(msg: string); impl: local]\n"
+    cli._generate_domain_tools(spec, tla, [{"id": "A_log", "agent": "A"}])
+    # user's filled impl is NOT clobbered
+    assert "return {'logged': True}" in (tmp_path / "tools_impl.py").read_text()

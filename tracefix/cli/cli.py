@@ -359,6 +359,73 @@ def _annotate_tool_hints(states: list[dict]) -> None:
         # else: pure nondeterminism — no hint needed (LLM judgment)
 
 
+def _workspace_root(search_dir: Path) -> Path:
+    """The workspace root holding inputs (description.md, tools.json). extract-states
+    runs against `spec/`, so the root is its parent; a flat workspace is its own root."""
+    return search_dir.parent if search_dir.name == "spec" else search_dir
+
+
+def _generate_domain_tools(search_dir: Path, tla_content: str, states: list[dict]) -> None:
+    """Lift `[tool: ...]`-tagged `\\* domain:` steps into a workspace `tools.json`
+    (schemas + per-agent `agent_ids`) plus impl scaffolds: a `tools_impl.py` stub for
+    `impl: local` tools (auto-wrapped as MCP by the runtime) and an `mcp.json` stub
+    for `impl: external` tools (bind to a real service). Derived from the verified
+    PlusCal, so `tools.json` is regenerated each run; hand-filled stubs are preserved."""
+    from tracefix.pipeline.pipeline.pluscal_parser import extract_domain_tools
+    tools = extract_domain_tools(tla_content, states)
+    if not tools:
+        return
+    root = _workspace_root(search_dir)
+    (root / "tools.json").write_text(json.dumps(tools, indent=2) + "\n")
+    local = [t["function"]["name"] for t in tools if t["function"].get("x-impl") == "local"]
+    external = [t["function"] for t in tools if t["function"].get("x-impl") == "external"]
+    print(f"OK — wrote {len(tools)} domain tool schema(s) to {root / 'tools.json'} "
+          f"({len(local)} local, {len(external)} external)")
+    for t in tools:
+        fn = t["function"]
+        print(f"  - {fn['name']}({', '.join(fn['parameters']['properties'])}) "
+              f"[{fn.get('x-impl')}] → {', '.join(fn['agent_ids']) or '(unassigned)'}")
+
+    # impl: local → Python stub (preserve a user's filled-in version)
+    if local:
+        impl_path = root / "tools_impl.py"
+        if impl_path.exists():
+            print(f"  (kept existing {impl_path}; fill impls for: {', '.join(local)})")
+        else:
+            lines = ['"""Domain tool implementations (local). Fill each function body;',
+                     'the runtime auto-wraps these as a per-agent MCP server. Return a',
+                     'JSON-serializable dict."""', "", "from __future__ import annotations", ""]
+            for t in tools:
+                fn = t["function"]
+                if fn.get("x-impl") != "local":
+                    continue
+                params = list(fn["parameters"]["properties"])
+                sig = ", ".join(params)
+                lines += [f"def {fn['name']}({sig}):",
+                          f"    \"\"\"{fn['description']}\"\"\"",
+                          "    raise NotImplementedError(\"fill in this domain tool\")", ""]
+            impl_path.write_text("\n".join(lines))
+            print(f"  - wrote stub {impl_path} (fill: {', '.join(local)})")
+
+    # impl: external → mcp.json stub (preserve a user's bound version)
+    if external:
+        mcp_path = root / "mcp.json"
+        if mcp_path.exists():
+            print(f"  (kept existing {mcp_path}; bind servers for: "
+                  f"{', '.join(f['name'] for f in external)})")
+        else:
+            mcp = {"mcpServers": {
+                f"{f['name']}_service": {
+                    "command": "<command or url for the real service>",
+                    "args": [],
+                    "tools": [f["name"]],
+                    "agent_ids": f["agent_ids"],
+                } for f in external}}
+            mcp_path.write_text(json.dumps(mcp, indent=2) + "\n")
+            print(f"  - wrote stub {mcp_path} (bind: "
+                  f"{', '.join(f['name'] for f in external)})")
+
+
 def cmd_extract_states(args: argparse.Namespace) -> int:
     search_dir = Path(args.dir)
     tla_path = search_dir / "Protocol_translated.tla"
@@ -399,6 +466,10 @@ def cmd_extract_states(args: argparse.Namespace) -> int:
     if task_orphans:
         print(f"WARNING: {len(task_orphans)} state_tasks key(s) match no state "
               f"(typo, or stale after a repair?): {', '.join(sorted(task_orphans))}")
+
+    # Lift any [tool: ...]-tagged domain steps into a workspace tools.json + impl
+    # scaffolds (no-op when the design used only builtins — i.e. no tags).
+    _generate_domain_tools(search_dir, tla_content, result.states)
 
     # Lint: check for adjacent acquire→release without intermediate work
     from tracefix.pipeline.pipeline.pluscal_parser import lint_adjacent_acquire_release

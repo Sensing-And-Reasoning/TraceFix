@@ -1121,6 +1121,64 @@ _DOMAIN_RE = re.compile(r'\\\*[ \t]*domain:[ \t]*(.+?)[ \t]*$', re.M)
 _BLOCK_RE = re.compile(r'skip[ \t]*;?[ \t]*\(\*[ \t]*(.+?)[ \t]*\*\)')
 _CALL_PREFIX_RE = re.compile(r'^(?:call|domain)[ \t]*:[ \t]*', re.I)
 
+# Optional typed-tool tag inside a `\* domain:` comment, e.g.
+#   \* domain: charge the customer [tool: charge_payment(amount: number) -> {ok, txn_id}; impl: external]
+# The tag declares a structured domain tool the step needs (beyond the file/shell
+# builtins). `impl` is external (a real MCP service), local (a generated Python impl
+# stub, auto-wrapped as MCP), or builtin (no tool — same as no tag). The human
+# description before the tag stays the state's task; the tag drives tools.json
+# generation, with agent_ids set to the process body the comment lives in.
+_TOOL_TAG_RE = re.compile(r'\[tool:\s*(.+?)\]\s*$', re.I)
+_TOOL_SIG_RE = re.compile(
+    r'(?P<name>[A-Za-z_]\w*)\s*\((?P<params>.*?)\)\s*'
+    r'(?:->\s*(?P<returns>.+?))?\s*'
+    r'(?:;\s*impl\s*:\s*(?P<impl>\w+))?\s*$',
+    re.I | re.S,
+)
+_PARAM_TYPES = {"string", "number", "integer", "boolean", "object", "array"}
+
+
+def _split_tool_tag(text: str) -> tuple[str, dict | None]:
+    """Split a domain comment into (human description, parsed tool spec or None).
+
+    The `[tool: ...]` tag (if any) is removed from the description so the per-state
+    task stays clean prose; the spec drives tools.json generation."""
+    m = _TOOL_TAG_RE.search(text)
+    if not m:
+        return text.strip(), None
+    desc = text[: m.start()].strip()
+    spec = _parse_tool_signature(m.group(1).strip())
+    return desc, spec
+
+
+def _parse_tool_signature(body: str) -> dict | None:
+    """Parse `name(p: type, ...) -> returns; impl: kind` into a spec dict."""
+    m = _TOOL_SIG_RE.match(body)
+    if not m:
+        return None
+    params: list[dict] = []
+    raw = (m.group("params") or "").strip()
+    if raw:
+        for part in raw.split(","):
+            part = part.strip()
+            if not part:
+                continue
+            if ":" in part:
+                pname, ptype = (x.strip() for x in part.split(":", 1))
+            else:
+                pname, ptype = part, "string"
+            ptype = ptype.lower()
+            params.append({"name": pname, "type": ptype if ptype in _PARAM_TYPES else "string"})
+    impl = (m.group("impl") or "external").lower()
+    if impl not in ("external", "local", "builtin"):
+        impl = "external"
+    return {
+        "name": m.group("name"),
+        "params": params,
+        "returns": (m.group("returns") or "").strip(),
+        "impl": impl,
+    }
+
 
 def _extract_domain_tasks(tla_content: str) -> dict[str, str]:
     """Map each PlusCal label id -> its work-description comment text, if present.
@@ -1128,6 +1186,7 @@ def _extract_domain_tasks(tla_content: str) -> dict[str, str]:
     Recognizes BOTH design dialects (`\\* domain:` line comment and `(* ... *)` block
     comment), preferring the explicit `domain:` marker. Lifts the descriptions the
     design flow already writes so the per-state task flows for free from existing output.
+    Any `[tool: ...]` tag is stripped — it drives tools.json, not the prose task.
     """
     labels = [(m.group(1), m.start()) for m in _LABEL_RE.finditer(tla_content)]
     out: dict[str, str] = {}
@@ -1140,8 +1199,58 @@ def _extract_domain_tasks(tla_content: str) -> dict[str, str]:
             if bm and "--algorithm" not in bm.group(1) and "--fair" not in bm.group(1):
                 text = bm.group(1)
         if text:
-            out[label] = _CALL_PREFIX_RE.sub("", text.strip()).strip()
+            desc = _CALL_PREFIX_RE.sub("", text.strip()).strip()
+            desc, _ = _split_tool_tag(desc)
+            out[label] = desc
     return out
+
+
+def extract_domain_tools(tla_content: str, states: list[dict]) -> list[dict]:
+    """Parse `[tool: ...]` tags from `\\* domain:` comments into tools.json schemas.
+
+    Each typed tool's `agent_ids` is the process body (agent) whose label carries
+    the tag; a tool named in several bodies merges their ids. Returns the
+    OpenAI-function list ToolRegistry.from_file consumes (with extra `agent_ids`,
+    `can_fail`, and `x-impl` fields). `impl: builtin` tags emit nothing — they are
+    declarations that the step needs no structured tool."""
+    label_agent = {s.get("id"): s.get("agent") for s in states}
+    # label -> raw domain text (incl. any tag), via the same label-window scan
+    labels = [(m.group(1), m.start()) for m in _LABEL_RE.finditer(tla_content)]
+    tools: dict[str, dict] = {}
+    for i, (label, start) in enumerate(labels):
+        end = labels[i + 1][1] if i + 1 < len(labels) else len(tla_content)
+        m = _DOMAIN_RE.search(tla_content, start, end)
+        if not m:
+            continue
+        _, spec = _split_tool_tag(_CALL_PREFIX_RE.sub("", m.group(1).strip()).strip())
+        if not spec or spec["impl"] == "builtin":
+            continue
+        agent = label_agent.get(label)
+        name = spec["name"]
+        if name not in tools:
+            props = {p["name"]: {"type": p["type"]} for p in spec["params"]}
+            desc = f"Domain tool ({spec['impl']})."
+            if spec["returns"]:
+                desc += f" Returns: {spec['returns']}."
+            tools[name] = {
+                "type": "function",
+                "function": {
+                    "name": name,
+                    "description": desc,
+                    "parameters": {
+                        "type": "object",
+                        "properties": props,
+                        "required": [p["name"] for p in spec["params"]],
+                    },
+                    "agent_ids": [],
+                    "can_fail": spec["impl"] == "external",
+                    "x-impl": spec["impl"],
+                },
+            }
+        ids = tools[name]["function"]["agent_ids"]
+        if agent and agent not in ids:
+            ids.append(agent)
+    return list(tools.values())
 
 
 def lift_domain_tasks(states: list[dict], tla_content: str) -> None:

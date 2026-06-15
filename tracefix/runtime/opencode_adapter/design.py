@@ -62,6 +62,11 @@ below with these adjustments:
   each shared resource is and why it is exclusive (Lock) vs a capacity pool
   (Counter), and the channel topology — in `plan.md` under an
   `## Assumptions` heading. Unrecorded assumptions count as silent guessing.
+- Typed tools: most domain work runs on builtins (read/write/edit/bash). If a
+  step needs a structured typed tool (a real external API, or custom typed
+  logic), tag it in PlusCal `[tool: ...; impl: external|local]` and list it
+  (name, owning agent, impl kind) under `## Assumptions` — extract-states turns
+  the tags into a generated `tools.json` + impl stub the user binds later.
 - "Never pause" means do NOT ask the user — it does NOT mean skip the checks.
   Still do the SKILL.md Phase 1.5 self-critique (verify every hazard, channel,
   ordering constraint, and failure path is represented against the requirement)
