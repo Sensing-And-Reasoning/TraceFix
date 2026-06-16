@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import shutil
 import sys
 from pathlib import Path
 
@@ -61,6 +62,47 @@ def _preflight(workspace: str) -> list[str]:
     return problems
 
 
+def _opencode_bin_from(extra: list[str], default: str = "opencode") -> str:
+    """The opencode command a run will use, honoring a passthrough ``--opencode-bin``."""
+    for i, tok in enumerate(extra):
+        if tok == "--opencode-bin" and i + 1 < len(extra):
+            return extra[i + 1]
+        if tok.startswith("--opencode-bin="):
+            return tok.split("=", 1)[1]
+    return default
+
+
+def _opencode_blockers(opencode_cmd: str, *, needs_mcp: bool) -> list[str]:
+    """Human-readable blockers for the opencode path (empty list = ready).
+
+    Catches the two onboarding footguns: the ``opencode`` CLI not being installed
+    (it is an external binary, not a pip dependency), and — for ``tracefix run`` —
+    the ``mcp`` package being absent (each agent spawns the ``tracefix-coord`` stdio
+    MCP server, which imports it).
+    """
+    import importlib.util
+    import shlex
+
+    problems: list[str] = []
+    parts = shlex.split(opencode_cmd)
+    exe = parts[0] if parts else "opencode"
+    if shutil.which(exe) is None:
+        problems.append(
+            f"opencode CLI not found on PATH: {exe!r}\n"
+            "    The opencode harness runs each agent as an opencode process. Install it:\n"
+            "        curl -fsSL https://opencode.ai/install | bash      (or: npm i -g opencode-ai)\n"
+            "    Already built one? Point at it:  --opencode-bin '/path/to/opencode'\n"
+            "    Or use a harness that needs no opencode:  --harness sdk   (or  --harness monitoring)"
+        )
+    if needs_mcp and importlib.util.find_spec("mcp") is None:
+        problems.append(
+            "the 'mcp' package is missing (each opencode agent spawns the tracefix-coord\n"
+            "    stdio MCP server, which imports it). Install the run extras:\n"
+            "        pip install -e \".[opencode]\""
+        )
+    return problems
+
+
 def cmd_run(args: argparse.Namespace, extra: list[str]) -> int:
     problems = _preflight(args.workspace)
     if problems:
@@ -74,6 +116,14 @@ def cmd_run(args: argparse.Namespace, extra: list[str]) -> int:
             file=sys.stderr,
         )
         return 2
+
+    if args.harness == "opencode":
+        blockers = _opencode_blockers(_opencode_bin_from(extra), needs_mcp=True)
+        if blockers:
+            print("Cannot run the opencode harness yet:", file=sys.stderr)
+            for b in blockers:
+                print(f"  - {b}", file=sys.stderr)
+            return 2
 
     ws = Path(args.workspace)
     if not spec_path(ws, "states.json").exists():
@@ -114,6 +164,13 @@ def cmd_design(args: argparse.Namespace) -> int:
     from tracefix.runtime.opencode_adapter.design import run_design
 
     load_repo_env()  # the spawned opencode inherits the API keys from .env
+
+    blockers = _opencode_blockers(args.opencode_bin or "opencode", needs_mcp=False)
+    if blockers:
+        print("Cannot run `tracefix design` yet:", file=sys.stderr)
+        for b in blockers:
+            print(f"  - {b}", file=sys.stderr)
+        return 2
 
     opencode_cmd = shlex.split(args.opencode_bin) if args.opencode_bin else ["opencode"]
     result = asyncio.run(run_design(

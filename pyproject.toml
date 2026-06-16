@@ -28,11 +28,13 @@ test = [
     "pytest",
     "pytest-asyncio",   # monitoring/tests/test_coord.py uses @pytest.mark.asyncio
 ]
-# Install with: pip install -e ".[opencode]"
-# Only the standalone `tracefix-coord` MCP server (coord_mcp/server.py) needs mcp;
-# the opencode_adapter orchestrator/driver/config-gen import fine without it.
+# Required to actually RUN the opencode harness (the DEFAULT for `tracefix run`):
+# each agent spawns the `tracefix-coord` / `tracefix-domain` stdio MCP servers, which
+# import `mcp`. (The orchestrator/driver/config-gen import fine without it, but a real
+# run will not.) This also needs the `opencode` CLI on PATH — installed separately, NOT
+# via pip (see README Quick Start). Install with: pip install -e ".[opencode]"
 opencode = [
-    "mcp",   # official Model Context Protocol SDK
+    "mcp",   # official Model Context Protocol SDK (coord_mcp + domain_mcp servers)
 ]
 
 [project.scripts]

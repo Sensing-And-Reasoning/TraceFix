@@ -22,6 +22,7 @@ tla-verify-pluscal doctor        # confirm Java 17 + jar + tree-sitter (runs a s
 tree-sitter, tree-sitter-tlaplus, python-dotenv). External requirements not handled by pip:
 - **Java 17** — auto-detected via `TLA_VERIFY_JAVA` → Homebrew `openjdk@17` → `$JAVA_HOME` → `java` on `PATH`; override with `--java-path`. `doctor` reports the resolved path.
 - **`lib/tla2tools.jar`** v1.8.0 — fetched by `scripts/download_tla2tools.sh` (override with `TLA_VERIFY_JAR` env var or `--jar-path`).
+- **`opencode` CLI** on `PATH` — only the **default `opencode` harness** (`tracefix run`) and headless `tracefix design` need it; each agent runs as a stock *upstream* opencode process (no fork — TraceFix injects its behavior via `OPENCODE_CONFIG_CONTENT`). Install separately (`curl -fsSL https://opencode.ai/install | bash` or `npm i -g opencode-ai`); override with `--opencode-bin`. The `sdk`/`monitoring` harnesses and the verify path need none. Running this harness also needs the `mcp` package (`pip install -e ".[opencode]"`) — each agent spawns the `tracefix-coord`/`tracefix-domain` stdio MCP servers. (The interactive TUI is a *separate* opencode fork — see the `tui/` recipe — not this CLI.)
 - **API keys** in `.env` at repo root (copy `.env.example`): only the agentic pipeline/runtimes need them — `validate`/`scaffold`/`verify`/`extract-states` do not. Keys: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` (also `OPENROUTER_API_KEY` for OpenRouter).
 
 ### Verification CLI

@@ -65,6 +65,8 @@ def test_cmd_run_delegates_with_derived_task(tmp_path, monkeypatch):
         captured["argv"] = argv
         return 0
     monkeypatch.setattr(oc, "main", _fake)
+    # neutralize the opencode-deps preflight (env-dependent; covered separately)
+    monkeypatch.setattr(cli, "_opencode_blockers", lambda *a, **k: [])
 
     rc = cli.cmd_run(_args(ws), ["--opencode-bin", "opencode"])
     assert rc == 0
@@ -109,4 +111,36 @@ def test_cmd_run_propagates_systemexit_code(tmp_path, monkeypatch):
     def _boom(argv):
         raise SystemExit(3)
     monkeypatch.setattr(oc, "main", _boom)
+    monkeypatch.setattr(cli, "_opencode_blockers", lambda *a, **k: [])
     assert cli.cmd_run(_args(ws), []) == 3
+
+
+def test_cmd_run_blocks_when_opencode_deps_missing(tmp_path, monkeypatch):
+    """The opencode harness refuses to start (and never invokes the harness) when
+    its external deps (the opencode CLI / the mcp package) are absent."""
+    ws = _make_ws(tmp_path, with_states=True)
+    import tracefix.runtime.opencode_adapter.cli as oc
+    called = {"n": 0}
+    monkeypatch.setattr(oc, "main", lambda argv: called.__setitem__("n", called["n"] + 1) or 0)
+    monkeypatch.setattr(cli, "_opencode_blockers", lambda *a, **k: ["opencode CLI not found"])
+    rc = cli.cmd_run(_args(ws), [])
+    assert rc == 2
+    assert called["n"] == 0  # harness never invoked
+
+
+def test_cmd_run_sdk_harness_skips_opencode_check(tmp_path, monkeypatch):
+    """A non-opencode harness must not be gated by the opencode-deps preflight."""
+    ws = _make_ws(tmp_path, with_states=True)
+    import tracefix.runtime.sdk_adapter.cli as sdk
+    monkeypatch.setattr(sdk, "main", lambda argv: 0)
+    # would raise if consulted for the sdk harness
+    def _explode(*a, **k):
+        raise AssertionError("opencode preflight ran for a non-opencode harness")
+    monkeypatch.setattr(cli, "_opencode_blockers", _explode)
+    assert cli.cmd_run(_args(ws, harness="sdk"), []) == 0
+
+
+def test_opencode_bin_from_passthrough():
+    assert cli._opencode_bin_from([]) == "opencode"
+    assert cli._opencode_bin_from(["--model", "x", "--opencode-bin", "foo"]) == "foo"
+    assert cli._opencode_bin_from(["--opencode-bin=/usr/bin/oc"]) == "/usr/bin/oc"

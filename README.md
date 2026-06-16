@@ -10,16 +10,28 @@ https://github.com/user-attachments/assets/110307e8-9fba-4249-9545-5d577918c6a0
 
 ## Quick Start
 
-**1. Install** (Python 3.11+ and Java 17 — Java is auto-detected on `PATH` / `$JAVA_HOME` / Homebrew `openjdk@17`)
+**1. Install** — the Python package plus the two external tools TraceFix shells out to:
+the **TLC** model checker (the *verify* half) and the **opencode** CLI (the *run* half).
 
 ```bash
 git clone https://github.com/xsrxdc/TraceFix-Repairing-Agent-Coordination-Protocols.git tracefix
 cd tracefix
 python -m venv .venv && source .venv/bin/activate
-pip install -e ".[agentic]"            # core + the LLM design/run extras
-bash scripts/download_tla2tools.sh     # fetch the pinned TLC jar
-tla-verify-pluscal doctor              # confirm Java 17 + jar + tree-sitter
+pip install -e ".[agentic,opencode]"            # Python: design/verify + run-harness deps
+bash scripts/download_tla2tools.sh              # TLC model checker  (the verify half)
+curl -fsSL https://opencode.ai/install | bash   # opencode CLI       (the run half; or: npm i -g opencode-ai)
+tla-verify-pluscal doctor                       # check Java 17 + jar + tree-sitter
 ```
+
+| Prerequisite | Needed for | Notes |
+|---|---|---|
+| **Python 3.11+** | everything | |
+| **Java 17** | `verify` (TLC) | auto-detected on `PATH` / `$JAVA_HOME` / Homebrew `openjdk@17` |
+| **`opencode` CLI** | `tracefix run` (default harness) & `tracefix design` | **stock upstream opencode** — TraceFix drives it via injected config, *not* a fork |
+| **bun ≥ 1.3.14** | *only* to build the TUI (step 3) | skip it if you use the skill or `--harness sdk` |
+
+> Just verifying, no runs? `pip install -e .` + the TLC jar is enough — you can skip the
+> opencode CLI, the API key, and the TUI. (`tla-verify-pluscal verify examples/2pc_minimal` → `PASS`.)
 
 **2. Add your API key** — copy the template and fill in one provider key:
 
@@ -44,7 +56,8 @@ tracefix-tui              # launch from this repo, then type:
 #           deployer that hand off in order. Coordinate them so nothing conflicts.
 ```
 
-When it finishes, run the whole multi-agent system with the command it prints:
+When it finishes, run the whole multi-agent system with the command it prints — this uses
+the `opencode` CLI from step 1 (each agent is one opencode process):
 
 ```bash
 tracefix run --workspace workspace/<name>      # add --live for the browser view
@@ -52,9 +65,8 @@ tracefix run --workspace workspace/<name>      # add --live for the browser view
 
 > **Prefer not to build the TUI?** The same workflow runs as the `/tla-verify-pluscal`
 > skill in Claude Code, or headless via `tracefix design "<requirement>"` — see
-> [The full flow](#the-full-flow-requirement--running-mas).
-> **No API key yet?** The verify half works fully offline:
-> `tla-verify-pluscal verify examples/2pc_minimal` → `PASS`.
+> [The full flow](#the-full-flow-requirement--running-mas). Both still use the `opencode`
+> CLI for the `run` step (or pick `--harness sdk` to run with no opencode at all).
 
 ## Core Idea
 
@@ -235,9 +247,12 @@ generation — and leave a runnable workspace under `workspace/<name>/` (`spec/`
 tracefix run --workspace workspace/<name>
 ```
 
-This launches every agent on the verified coordination layer (the **opencode** harness by
-default; `--harness sdk` for the Claude Agent SDK). The monitor blocks any agent action
-that would violate the verified protocol. Add `--live` for the real-time browser view.
+This launches every agent on the verified coordination layer. By default it uses the
+**opencode** harness — each agent runs as a stock `opencode` process (the CLI from
+[Quick Start](#quick-start); point elsewhere with `--opencode-bin`). The monitor blocks any
+agent action that would violate the verified protocol. Add `--live` for the real-time
+browser view. No opencode installed? `--harness sdk` (Claude Agent SDK) and
+`--harness monitoring` need no external binary.
 
 Each agent does its **domain work** with the runtime's builtins (read/write/edit/bash) by
 default — right for collaborative file/shell tasks. When a step needs a **structured typed
