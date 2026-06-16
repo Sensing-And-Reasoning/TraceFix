@@ -8,6 +8,54 @@ A research platform for verifying LLM-based Multi-Agent Systems (MAS) using TLA+
 
 https://github.com/user-attachments/assets/110307e8-9fba-4249-9545-5d577918c6a0
 
+## Quick Start
+
+**1. Install** (Python 3.11+ and Java 17 — Java is auto-detected on `PATH` / `$JAVA_HOME` / Homebrew `openjdk@17`)
+
+```bash
+git clone https://github.com/xsrxdc/TraceFix-Repairing-Agent-Coordination-Protocols.git tracefix
+cd tracefix
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[agentic]"            # core + the LLM design/run extras
+bash scripts/download_tla2tools.sh     # fetch the pinned TLC jar
+tla-verify-pluscal doctor              # confirm Java 17 + jar + tree-sitter
+```
+
+**2. Add your API key** — copy the template and fill in one provider key:
+
+```bash
+cp .env.example .env
+# then edit .env and set ONE of:
+#   OPENAI_API_KEY=sk-...
+#   ANTHROPIC_API_KEY=sk-ant-...
+#   OPENROUTER_API_KEY=...
+```
+
+`.env` is gitignored and **auto-loaded from the repo root** — no `source` needed.
+
+**3. Design and run a protocol — with the TUI (recommended)**
+
+The TraceFix TUI is the intended experience: describe what your agents need to coordinate in plain language, and it asks clarifying questions, pauses for your approval, then verifies the protocol and writes each agent's prompts.
+
+```bash
+./tui/build-tui.sh        # build the TUI once (needs bun >= 1.3.14)
+tracefix-tui              # launch from this repo, then type:
+#  /design  Three engineers share one staging server — a builder, a tester, and a
+#           deployer that hand off in order. Coordinate them so nothing conflicts.
+```
+
+When it finishes, run the whole multi-agent system with the command it prints:
+
+```bash
+tracefix run --workspace workspace/<name>      # add --live for the browser view
+```
+
+> **Prefer not to build the TUI?** The same workflow runs as the `/tla-verify-pluscal`
+> skill in Claude Code, or headless via `tracefix design "<requirement>"` — see
+> [The full flow](#the-full-flow-requirement--running-mas).
+> **No API key yet?** The verify half works fully offline:
+> `tla-verify-pluscal verify examples/2pc_minimal` → `PASS`.
+
 ## Core Idea
 
 LangGraph-style centralized orchestration avoids concurrency — but also limits scalability. This project targets **independent concurrent agents** with shared resources and message channels, where coordination bugs (deadlocks, race conditions, liveness failures) are real risks.
@@ -138,39 +186,14 @@ workspace/my_task/
     └── runtime_b/       # Per-agent runtime prompts (control + business steps)
 ```
 
-## Quick Start
+## Development
 
 ```bash
-# Setup (core design+verify — no API key needed)
-python -m venv .venv && source .venv/bin/activate
-pip install -e .
-bash scripts/download_tla2tools.sh    # fetch + checksum tla2tools.jar v1.8.0
-tla-verify-pluscal doctor             # confirm Java 17 + jar + tree-sitter
-
-# Verify the bundled example end-to-end — no LLM, no API key
-tla-verify-pluscal validate examples/2pc_minimal/ir.json
-tla-verify-pluscal verify   examples/2pc_minimal          # → PASS
-tla-verify-pluscal extract-states examples/2pc_minimal    # → states.json
-
-# Run the test suite
-pip install -e ".[test]"
-pytest tracefix/ benchmark/ -q
-
-# Agentic pipeline + runtime (needs an API key: cp .env.example .env)
-pip install -e ".[agentic]"
-python -m tracefix.pipeline --benchmark 3E --verbose
-python -m tracefix.runtime.monitoring run --task 3E --workspace workspace/3E --verbose
+pip install -e ".[test]" && pytest tracefix/ benchmark/ -q   # run the test suite
+python -m tracefix.pipeline --benchmark 3E --verbose         # the raw agentic pipeline (no TUI)
 ```
 
-See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for the full design+verify → execute flow (with diagrams).
-
-**Continuous verification:** [`.github/workflows/verify.yml`](.github/workflows/verify.yml) gates every push on `tla-verify-pluscal verify` + the test suite (no API keys needed). Copy it as a template to gate your own specs — `verify --json` gives a machine-readable verdict and a non-zero exit fails the job.
-
-**Requirements:**
-- Python 3.11+ (3.13 tested)
-- Java 17 (for TLC) — auto-detected on `PATH` / `$JAVA_HOME` / Homebrew `openjdk@17`; override with `TLA_VERIFY_JAVA` or `--java-path`
-- `lib/tla2tools.jar` v1.8.0 — fetched by `scripts/download_tla2tools.sh` (or set `TLA_VERIFY_JAR`)
-- API keys (only for the agentic pipeline / runtimes): copy `.env.example` → `.env`
+[`.github/workflows/verify.yml`](.github/workflows/verify.yml) gates every push on `tla-verify-pluscal verify` + the test suite (no API keys needed); `verify --json` gives a machine-readable verdict. See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for the full design → verify → execute flow with diagrams.
 
 ## The full flow: requirement → running MAS
 

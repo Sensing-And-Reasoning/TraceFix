@@ -27,6 +27,7 @@
    - [5.4 Three harnesses over one core](#54-three-harnesses-over-one-core)
    - [5.5 The distributed boundary](#55-the-distributed-boundary)
    - [5.6 The mixed-harness proof](#56-the-mixed-harness-proof)
+   - [5.7 Typed domain tools](#57-typed-domain-tools--real-apis-beside-the-builtins)
 6. [Part IV — Benchmarks](#6-part-iv--benchmarks)
 7. [Part V — The observability plane](#7-part-v--the-observability-plane)
 8. [Appendix A — Artifact reference](#8-appendix-a--artifact-reference)
@@ -287,16 +288,27 @@ flowchart LR
 
 | Command | Inner call | Output |
 |---|---|---|
-| `init <name>` | — | `workspace/<name>/` with `spec/ prompts/ output/` + `description.md` |
+| `init <name>` | — | `workspace/<name>_<timestamp>/` (a *fresh* dir each init) with `spec/ prompts/ output/` + `description.md` |
 | `validate ir.json` | `validate_ir` | `VALID` / `INVALID` + errors |
 | `scaffold ir.json -o ws/` | `generate_pluscal_scaffold` | `Protocol.tla` + `Protocol.cfg` |
 | `verify ws/` | `translate_pluscal` + `run_tlc` | `Protocol_translated.tla`, `tlc_output.log`, `tlc_error.md` |
-| `extract-states ws/` | `parse_pluscal` (tree-sitter) | `states.json` |
+| `extract-states ws/` | `parse_pluscal` (tree-sitter) | `states.json` (+ `tools.json` if the PlusCal carries `[tool:]` tags) |
+| `guide [topic]` | — | prints the **single-source design knowledge** (workflow · PlusCal patterns · prompt-gen) — the same files the skill and the TUI `designer` consume |
 
 Java and the TLA+ toolchain jar resolve through a fallback chain:
 `--java-path`/`--jar-path` flag → `TLA_VERIFY_JAVA`/`TLA_VERIFY_JAR` env → hard-coded
 macOS Homebrew default. Failed `verify` attempts are archived to
 `workspace/history/attempt_N/` (suppress with `--no-history`).
+
+> **Design entry points & single-source knowledge.** Driving this design+verify workflow
+> *interactively* has a first-choice front door: the **TraceFix TUI** (`tracefix-tui`, an
+> opencode fork) whose `designer` agent runs `tla-verify-pluscal guide` and walks the user
+> through it with question prompts + a plan-approval gate. The second choice is the
+> `/tla-verify-pluscal` **skill** for users on their own agent harness (Claude Code, etc.).
+> `tracefix design` (headless, via `opencode_adapter/design.py`) is the same workflow run
+> non-interactively — kept for automation/CI/benchmarking, not promoted as a user path. All
+> three read the **one** design knowledge source (the skill files), so they never drift: the
+> TUI/headless pull it through `guide`, the skill reads it directly.
 
 ---
 
@@ -363,7 +375,7 @@ flowchart TB
         direction TB
         D1["post_content → opaque ref 'cs_N'"]
         D2["get_content(ref)"]
-        D3["domain tools: Read / Write / Edit / Bash<br/>or benchmark simulators"]
+        D3["domain tools: Read / Write / Edit / Bash<br/>· typed tools (MCP) · benchmark simulators"]
         DNOTE["business content lives here (claim-check).<br/>bypasses the monitor entirely."]
     end
     subgraph OBS["📡 OBSERVABILITY PLANE — telemetry, never gates"]
@@ -502,9 +514,9 @@ What stays identical across all three: the coordination tool schemas
 three-plane split, and the per-agent prompts. Swapping the harness changes *who runs the
 agent*, never *what the protocol allows*.
 
-> **`monitoring/` is the benchmark/eval harness** (deterministic simulators, failure
-> injection, cost tracking). **`sdk_adapter/` and `opencode_adapter/` do real work** with
-> real file/shell tools.
+> **`opencode_adapter/` is the default harness** (what `tracefix run` and the TUI use).
+> **`sdk_adapter/`** also does real work with real file/shell tools. **`monitoring/` is the
+> benchmark/eval harness** (deterministic simulators, failure injection, cost tracking).
 
 ### 5.5 The distributed boundary
 
@@ -572,11 +584,46 @@ flowchart TB
     A2 -. "channel crosses the harness boundary" .-> A3
 ```
 
+### 5.7 Typed domain tools — real APIs beside the builtins
+
+By default an agent's domain work uses the harness builtins (`Read`/`Write`/`Edit`/`Bash`)
+or a benchmark simulator. But a design can give a *specific* agent a **typed domain tool**
+— a named function with a real implementation — by tagging the PlusCal step:
+
+```
+\* domain: charge the customer [tool: charge_payment(amount: number) -> {ok, txn_id}; impl: external]
+```
+
+`extract-states` lifts each tag into a workspace `tools.json` (JSON-Schema + per-tool
+`agent_ids` = the process the tag lives in) plus an implementation stub, and the runtime
+exposes each typed tool **only to its owning agent** over MCP:
+
+```mermaid
+flowchart LR
+    TAG["PlusCal step:<br/>domain: … [tool: name(args) -&gt; ret; impl: external · local]"]
+    TJ["tools.json (schema + agent_ids)<br/>+ impl stub"]
+    LOC["impl: local → domain_mcp/<br/>(Python impls, in-process MCP)"]
+    EXT["impl: external → config_gen.domain_wiring<br/>(attaches an external MCP server)"]
+    AG["only the owning agent sees the tool"]
+    TAG -- "extract-states" --> TJ
+    TJ -- "impl: local" --> LOC --> AG
+    TJ -- "impl: external" --> EXT --> AG
+```
+
+So one run mixes **builtin collaboration** (agents editing shared files under the verified
+locks) with **real typed API calls** (an agent invoking an external service) — and the
+coordination protocol is identical either way: typed tools live on the **data plane** and
+are never seen by the monitor. A hand-written workspace `tools.json` works the same way;
+benchmark tasks ship one. Plain `\* domain:` work (no tag) just runs on the builtins.
+
 ---
 
 ## 6. Part IV — Benchmarks
 
-`benchmark/` ships **48 coordination tasks = 16 scenarios × 3 difficulties (E/M/H)**.
+`benchmark/` ships two tiers. The **fully-specified tier** is **48 coordination tasks =
+16 scenarios × 3 difficulties (E/M/H)** — descriptions enumerate the agents, resources, and
+communication, so they measure *extraction + compilation + verification + repair* against
+canonical IDs.
 
 ```mermaid
 flowchart TB
@@ -614,6 +661,16 @@ flowchart TB
   - `--difficulty 0-3` → probabilistic failure `{0%, 30%, 60%, 90%}` on decision tools;
   - `--scenario N` → deterministic: fail the first N calls per tool per agent.
 - Scenarios **1–11 are coordination-only** (descriptions + checklist, no simulator).
+
+The **narrative tier** (`benchmark/underspecified/{id}/` — `description.md` + `meta.json`)
+measures the *design* capability instead: 6 scenarios rewritten as unscaffolded prose, with
+**no** agent/resource enumeration, so the designer must derive the topology itself. It is
+scored property-based by `python -m benchmark.underspec_eval --task <id>`: TLC PASS
+(`spec/summary.json`) + structural assumptions recorded in `plan.md` under `## Assumptions`
++ every requirement on the parent scenario's `checklist.json` satisfied, judged by an LLM
+that is **name-agnostic** (the designer picks its own IDs). `meta.json` links each task to
+its fully-specified parent; `benchmark/tests/test_underspecified.py` guards that no
+scaffolding or canonical IDs leak back into the prose.
 
 ---
 
@@ -708,18 +765,24 @@ tracefix/
     ├── sdk_adapter/          # Claude Agent SDK harness (dispatch · mcp_server · sdk_runner)
     ├── opencode_adapter/     # opencode harness (config_gen · driver · orchestrator)
     ├── coord_mcp/            # shared stdio MCP server (coordination tools)
+    ├── domain_mcp/           # typed domain tools — impl: local Python impls over MCP
     ├── coordination/         # distributed seam (backend · service · client)
     └── mixed_run.py          # cross-harness proof
 
-benchmark/                    # 48 tasks (16 scenarios × E/M/H)
+benchmark/                    # fully-specified tier (48 tasks = 16 scenarios × E/M/H)
 ├── loader.py
 ├── descriptions/{id}/        # description.md · tools.json · metadata.json
 ├── environments/{id}/        # sim.py · tools_impl.py · checklist.json
+├── underspecified/{id}/      # narrative tier — description.md · meta.json (prose, no scaffolding)
+├── underspec_eval.py         # property-based scorer for the narrative tier
 └── tools/                    # ToolRegistry · SimContext base
 ```
 
 ---
 
 *Generated for the TraceFix open-source release. For build/run commands see the root
-[`README.md`](../README.md) and [`CLAUDE.md`](../CLAUDE.md); for the human-in-the-loop
-verification workflow see the `/tla-verify-pluscal` and `/tla-prompt-gen` skills.*
+[`README.md`](../README.md) and [`CLAUDE.md`](../CLAUDE.md). The first-choice way to design
+a protocol interactively is the **TraceFix TUI** (`tracefix-tui`); for users on their own
+agent harness the human-in-the-loop workflow lives in the `/tla-verify-pluscal` and
+`/tla-prompt-gen` skills (the single source the TUI also consumes via `tla-verify-pluscal
+guide`).*
