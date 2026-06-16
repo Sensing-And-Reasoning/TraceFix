@@ -119,6 +119,7 @@ def render_live_html(ir: dict, title: str = "", model: str = "") -> str:
         "resources": resources_data,
         "resource_users": {k: sorted(v) for k, v in resource_users.items()},
         "cost_config": cost_config,
+        "model": model or "",
     })
 
     return _HTML_TEMPLATE.replace("__PAGE_TITLE__", page_title).replace("__GRAPH_DATA__", graph_data)
@@ -410,6 +411,8 @@ const tokenState = { totalIn: 0, totalOut: 0 };
 const agentTokens = {};
 TOPO.agents.forEach(a => { agentTokens[a.id] = { in: 0, out: 0 }; });
 const COST_CFG = TOPO.cost_config || null;  // {model, input, output} per 1M tokens or null
+const RUN_MODEL = TOPO.model || "";          // the model the agents run on (if known)
+const costState = { total: 0 };              // accumulated API cost ($), from llm_end events
 
 function calcCost(inTok, outTok) {
   if (!COST_CFG) return null;
@@ -537,13 +540,19 @@ function updateSummary() {
   const box = document.getElementById("summaryBox");
   const elapsed = finalElapsed !== null ? finalElapsed.toFixed(1)
     : (runStartTime !== null ? (Date.now() / 1000 - runStartTime).toFixed(1) : "0.0");
-  const cost = calcCost(tokenState.totalIn, tokenState.totalOut);
+  // Cost: prefer the runtime's own per-step figure (costState, from opencode);
+  // fall back to estimating from tokens × the pricing table (monitoring runtime).
+  const cost = costState.total > 0 ? costState.total
+    : calcCost(tokenState.totalIn, tokenState.totalOut);
+  const modelName = RUN_MODEL || "opencode default";
+  const modelRow = `<div class="summary-row"><span>Model</span><span class="val" title="${modelName}">${modelName}</span></div>`;
   const tokenRow = (tokenState.totalIn || tokenState.totalOut)
     ? `<div class="summary-row"><span>Tokens in/out</span><span class="val">${tokenState.totalIn.toLocaleString()} / ${tokenState.totalOut.toLocaleString()}</span></div>
-       <div class="summary-row"><span>Est. cost</span><span class="val">${cost !== null ? "~$" + cost.toFixed(4) : "N/A"}</span></div>`
+       <div class="summary-row"><span>API cost</span><span class="val">${cost !== null ? "~$" + cost.toFixed(4) : "N/A"}</span></div>`
     : "";
   box.innerHTML = `
     <div class="summary-row"><span>Elapsed</span><span class="val">${elapsed}s</span></div>
+    ${modelRow}
     <div class="summary-row"><span>Agents</span><span class="val">${TOPO.agents.length}</span></div>
     <div class="summary-row"><span>Channels</span><span class="val">${TOPO.channels.length}</span></div>
     <div class="summary-row"><span>Resources</span><span class="val">${TOPO.resources.length}</span></div>
@@ -1130,6 +1139,10 @@ function findChannelRoute(channelId) {
 // ========== SSE EVENT HANDLING ==========
 const evtSource = new EventSource("/api/events");
 
+// Bulletproof timer start: tick from the moment the stream connects, regardless of
+// whether run.start is received in time. run.start/_ts refines the start if earlier.
+evtSource.onopen = () => ensureTimer(Date.now() / 1000);
+
 evtSource.addEventListener("run.start", (e) => {
   const data = JSON.parse(e.data);
   ensureTimer(data._ts);
@@ -1141,13 +1154,14 @@ evtSource.addEventListener("agent.llm_start", (e) => {
 });
 
 evtSource.addEventListener("agent.llm_end", (e) => {
-  const { agent_id, input_tokens, output_tokens } = JSON.parse(e.data);
+  const { agent_id, input_tokens, output_tokens, cost } = JSON.parse(e.data);
   if (agentTokens[agent_id]) {
     agentTokens[agent_id].in += input_tokens || 0;
     agentTokens[agent_id].out += output_tokens || 0;
   }
   tokenState.totalIn += input_tokens || 0;
   tokenState.totalOut += output_tokens || 0;
+  costState.total += cost || 0;
   updateSummary();
 });
 

@@ -257,15 +257,19 @@ class OpencodeOrchestrator:
                 asyncio.create_task(event_bus.emit("agent.llm_start", {"agent_id": agent_id}))
                 return
             if etype == "step_finish":
-                toks = (ev.get("part") or {}).get("tokens") or {}
+                part = ev.get("part") or {}
+                toks = part.get("tokens") or {}
                 cur_in = int(toks.get("input", 0) or 0)
                 cur_out = int(toks.get("output", 0) or 0)
                 prev_in, prev_out = tok_seen.get(agent_id, (0, 0))
                 tok_seen[agent_id] = (cur_in, cur_out)
                 asyncio.create_task(event_bus.emit("agent.llm_end", {
                     "agent_id": agent_id,
+                    # tokens are cumulative per message → emit the per-step delta
                     "input_tokens": max(0, cur_in - prev_in),
                     "output_tokens": max(0, cur_out - prev_out),
+                    # cost is opencode's own per-step figure → emit as-is (JS sums it)
+                    "cost": float(part.get("cost") or 0),
                 }))
                 return
             if etype != "tool_use":
