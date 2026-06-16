@@ -13,8 +13,11 @@ https://github.com/user-attachments/assets/110307e8-9fba-4249-9545-5d577918c6a0
 **1. Install** — the Python package plus the two external tools TraceFix shells out to:
 the **TLC** model checker (the *verify* half) and the **opencode** CLI (the *run* half).
 
+> **Platform:** TraceFix runs on **macOS and Linux**. On **Windows, use WSL2** (e.g. Ubuntu)
+> and run everything below *inside the WSL shell* — native Windows / Git Bash is not supported.
+
 ```bash
-git clone https://github.com/xsrxdc/TraceFix-Repairing-Agent-Coordination-Protocols.git tracefix
+git clone https://github.com/Sensing-And-Reasoning/TraceFix.git tracefix
 cd tracefix
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[agentic,opencode]"            # Python: design/verify + run-harness deps
