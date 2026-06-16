@@ -1,0 +1,35 @@
+name: Sync to organization TraceFix repo
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sync-to-org:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout private repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # Don't leave the default GITHUB_TOKEN (github-actions[bot]) in git config:
+          # its http.extraheader for github.com would override ORG_REPO_TOKEN on the
+          # push below and get denied. With this off, the org remote URL's token is used.
+          persist-credentials: false
+
+      - name: Configure git
+        run: |
+          git config user.name "shuren-xia"
+          git config user.email "shuren.xia@hotmail.com"
+
+      - name: Push to organization repo
+        env:
+          ORG_REPO_TOKEN: ${{ secrets.ORG_REPO_TOKEN }}
+        run: |
+          if [ -z "$ORG_REPO_TOKEN" ]; then
+            echo "::error::ORG_REPO_TOKEN is empty — set it as a *Repository* secret (Settings → Secrets and variables → Actions) with the bare token only."
+            exit 1
+          fi
+          git push --force "https://x-access-token:${ORG_REPO_TOKEN}@github.com/Sensing-And-Reasoning/TraceFix.git" main:main
