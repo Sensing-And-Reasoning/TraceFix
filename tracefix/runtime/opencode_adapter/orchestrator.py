@@ -280,6 +280,20 @@ class OpencodeOrchestrator:
                 return  # ignore pending/running — one row per finished call
             tool_rounds[agent_id] = tool_rounds.get(agent_id, 0) + 1
             payload = st.get("output") if status == "completed" else st.get("error")
+            # Coordination tools return a JSON result ({"status":"acquired"/"sent"/
+            # "received"/"released", ...}). Surface THAT as `result` so the live view's
+            # lock-holder, beam, and channel-count logic (which keys off
+            # result.status === "acquired"/"received"/…) fires — otherwise opencode's
+            # tool-execution "completed" masks the coordination outcome and locks read
+            # "free" forever. Builtins return plain text → wrap it.
+            result = {"status": status, "output": payload}
+            if isinstance(payload, str):
+                try:
+                    parsed = json.loads(payload)
+                    if isinstance(parsed, dict) and "status" in parsed:
+                        result = parsed
+                except (ValueError, TypeError):
+                    pass
             # opencode namespaces MCP tools `<server>_<tool>`; strip the `tracefix_`
             # prefix so coordination tools match the live view's names (acquire_lock,
             # send_message, ...) and drive its beam / lock-holder / channel-count
@@ -292,7 +306,7 @@ class OpencodeOrchestrator:
                 "round": tool_rounds[agent_id],
                 "tool_name": tool,
                 "arguments": st.get("input") or {},
-                "result": {"status": status, "output": payload},
+                "result": result,
                 "elapsed": time.time() - start,
             }))
 

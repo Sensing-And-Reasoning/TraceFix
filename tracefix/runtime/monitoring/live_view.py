@@ -402,6 +402,7 @@ function stopTimer(duration) {
 let traceItems = [];
 let activeFilter = "all";
 let activeChannelFilter = null;  // channel id or null
+let activeResourceFilter = null; // resource (lock/counter) id or null
 
 // Agent state tracking
 const agentState = {};
@@ -447,7 +448,9 @@ const agentElements = {};
     div.addEventListener("click", () => {
       activeFilter = a.id;
       activeChannelFilter = null;
+      activeResourceFilter = null;
       Object.values(channelElements).forEach(el => el.classList.remove("selected"));
+      Object.values(resourceElements).forEach(el => el.classList.remove("selected"));
       updateFilterButtons();
       filterTraceItems();
     });
@@ -470,10 +473,26 @@ const resourceElements = {};
     div.innerHTML = `
       <div class="channel-name">${typeIcon} ${r.id}</div>
       <div class="channel-route">${r.type}${initStr} | <span data-lock-holder="${r.id}" style="color:var(--text2)">free</span></div>`;
+    div.addEventListener("click", () => selectResource(r.id));
     resourceElements[r.id] = div;
     list.appendChild(div);
   });
 })();
+
+// Click a resource to filter the trace to its acquire/release operations.
+function selectResource(resId) {
+  activeResourceFilter = (activeResourceFilter === resId) ? null : resId;
+  if (activeResourceFilter) {
+    activeChannelFilter = null;
+    activeFilter = "all";
+    updateFilterButtons();
+    Object.values(channelElements).forEach(el => el.classList.remove("selected"));
+    Object.values(agentElements).forEach(el => el.classList.remove("selected"));
+  }
+  Object.entries(resourceElements).forEach(([id, el]) =>
+    el.classList.toggle("selected", activeResourceFilter === id));
+  filterTraceItems();
+}
 
 // Track lock holders for display
 const lockHolders = {};
@@ -520,6 +539,8 @@ function selectChannel(chId) {
   } else {
     activeChannelFilter = chId;
     activeFilter = "all";  // clear agent filter
+    activeResourceFilter = null;  // clear resource filter
+    Object.values(resourceElements).forEach(el => el.classList.remove("selected"));
     updateFilterButtons();
   }
   // Update channel item highlights
@@ -757,7 +778,9 @@ function filterTraceItems() {
   const items = container.querySelectorAll(".trace-item");
   items.forEach(el => {
     let show = true;
-    if (activeChannelFilter) {
+    if (activeResourceFilter) {
+      show = el.dataset.resource === activeResourceFilter;
+    } else if (activeChannelFilter) {
       show = el.dataset.channel === activeChannelFilter;
     } else if (activeFilter !== "all") {
       show = el.dataset.agent === activeFilter;
@@ -832,12 +855,19 @@ function appendTraceItem(agentId, round, toolName, args, result, elapsed) {
   const div = document.createElement("div");
   div.className = "trace-item";
   div.dataset.agent = agentId;
-  // Tag channel for send/receive operations
+  // Tag channel for send/receive, and resource for acquire/release, so the trace
+  // can be filtered by clicking a channel or a resource.
   if ((toolName === "send_message" || toolName === "receive_message") && args.channel_id) {
     div.dataset.channel = args.channel_id;
   }
-  // Visibility
-  if (activeChannelFilter) {
+  const resId = args.lock_id || args.counter_id;
+  if (resId && /lock|counter/.test(toolName)) {
+    div.dataset.resource = resId;
+  }
+  // Visibility under the active filter (resource > channel > agent)
+  if (activeResourceFilter) {
+    if (div.dataset.resource !== activeResourceFilter) div.style.display = "none";
+  } else if (activeChannelFilter) {
     if (div.dataset.channel !== activeChannelFilter) div.style.display = "none";
   } else if (activeFilter !== "all" && activeFilter !== agentId) {
     div.style.display = "none";
