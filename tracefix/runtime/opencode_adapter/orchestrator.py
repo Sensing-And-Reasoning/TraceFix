@@ -187,7 +187,7 @@ class OpencodeOrchestrator:
             event_bus = EventBus()
             live_server = await start_live_server(
                 ir, event_bus, port=self.live_port,
-                title=f"Task {self.task_id} | OpenCode | {self.model or 'default'}",
+                title=f"Task {self.task_id} | OpenCode",  # model now shown in the summary panel
                 model=self.model or "")
             url = f"http://127.0.0.1:{self.live_port}"
             print(f"[opencode] Live view: {url}  (opening browser; agents start in "

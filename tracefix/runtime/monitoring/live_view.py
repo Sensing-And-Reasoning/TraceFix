@@ -155,12 +155,14 @@ body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,
 /* Header */
 .header { height:40px; background:var(--bg3); border-bottom:1px solid var(--border);
           display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:600; gap:8px; }
-.header .title { color:var(--text); }
-.header .badge { font-size:11px; padding:2px 8px; border-radius:10px; }
+.header .title { color:var(--text); flex:0 1 auto; min-width:0;
+                 overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.header .badge { font-size:11px; padding:2px 8px; border-radius:10px; flex-shrink:0; }
 .badge-running { background:var(--accent); color:var(--bg); }
 .badge-success { background:var(--green); color:var(--bg); }
 .badge-fail { background:var(--red); color:#fff; }
-.header .meta { margin-left:auto; font-size:11px; color:var(--text2); font-weight:400; }
+.badge-disconnected { background:var(--orange); color:var(--bg); }
+.header .meta { margin-left:auto; font-size:11px; color:var(--text2); font-weight:400; flex-shrink:0; }
 
 /* Left panel */
 .panel-header { padding:10px 14px 6px; font-size:11px; text-transform:uppercase;
@@ -339,7 +341,7 @@ svg { width:100%; height:100%; }
     <!-- Left Panel -->
     <div class="left-panel">
       <div class="header" id="headerBar">
-        <span class="title">__PAGE_TITLE__</span>
+        <span class="title" title="__PAGE_TITLE__">__PAGE_TITLE__</span>
         <span class="badge badge-running" id="statusBadge">RUNNING</span>
         <span class="meta" id="headerMeta">0.0s</span>
       </div>
@@ -382,6 +384,7 @@ const TOPO = __GRAPH_DATA__;
 let runStartTime = null;
 let elapsedTimer = null;    // setInterval id while the run is live
 let finalElapsed = null;    // frozen elapsed once run.done arrives
+let runDone = false;        // true once run.done arrives (so a dropped SSE ≠ a crash)
 // Start the elapsed clock from the first event carrying a _ts (so the timer works
 // even if the browser connects after run.start). Idempotent.
 function ensureTimer(ts) {
@@ -540,6 +543,10 @@ function updateSummary() {
   const box = document.getElementById("summaryBox");
   const elapsed = finalElapsed !== null ? finalElapsed.toFixed(1)
     : (runStartTime !== null ? (Date.now() / 1000 - runStartTime).toFixed(1) : "0.0");
+  // Keep the header clock in sync with the left-panel Elapsed (ticks live, not
+  // just at run.done).
+  const hm = document.getElementById("headerMeta");
+  if (hm) hm.textContent = elapsed + "s";
   // Cost: prefer the runtime's own per-step figure (costState, from opencode);
   // fall back to estimating from tokens × the pricing table (monitoring runtime).
   const cost = costState.total > 0 ? costState.total
@@ -1140,8 +1147,28 @@ function findChannelRoute(channelId) {
 const evtSource = new EventSource("/api/events");
 
 // Bulletproof timer start: tick from the moment the stream connects, regardless of
-// whether run.start is received in time. run.start/_ts refines the start if earlier.
-evtSource.onopen = () => ensureTimer(Date.now() / 1000);
+// whether run.start is received in time. Also resume + clear a DISCONNECTED badge if
+// this is a reconnect after a transient drop.
+evtSource.onopen = () => {
+  ensureTimer(Date.now() / 1000);
+  if (runDone) return;
+  finalElapsed = null;  // resume ticking if we'd frozen on a drop
+  if (elapsedTimer === null && runStartTime !== null) elapsedTimer = setInterval(updateSummary, 1000);
+  const badge = document.getElementById("statusBadge");
+  if (badge && badge.textContent === "DISCONNECTED") {
+    badge.textContent = "RUNNING"; badge.className = "badge badge-running";
+  }
+};
+
+// The SSE connection dropped before run.done — the backend run was killed or crashed.
+// Show it as DISCONNECTED (orange) and freeze the clock, instead of a forever-"RUNNING"
+// page that looks like a stuck run.
+evtSource.onerror = () => {
+  if (runDone) return;
+  const badge = document.getElementById("statusBadge");
+  if (badge) { badge.textContent = "DISCONNECTED"; badge.className = "badge badge-disconnected"; }
+  stopTimer();
+};
 
 evtSource.addEventListener("run.start", (e) => {
   const data = JSON.parse(e.data);
@@ -1303,6 +1330,7 @@ evtSource.addEventListener("agent.done", (e) => {
 
 evtSource.addEventListener("run.done", (e) => {
   const data = JSON.parse(e.data);
+  runDone = true;             // a normal finish — onerror must not flag DISCONNECTED
   evtSource.close();
   stopTimer(data.duration);   // freeze elapsed; stop the live ticker
 
