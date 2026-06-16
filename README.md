@@ -29,13 +29,12 @@ TLC doesn't check business logic — it checks coordination: *"Can two agents ho
 │   ├── pipeline/                   # Agentic verification pipeline (IR → PlusCal → TLA+)
 │   ├── cli/                        # CLI tool: tla-verify-pluscal
 │   └── runtime/
-│       ├── enforcement/            # Architecture A: runtime enforcement engine
-│       ├── monitoring/             # Architecture B: runtime monitoring engine
-│       └── baselines/
-│           ├── shared_chat/        # Baseline: shared-chat (no protocol)
-│           └── null_monitor/       # Baseline: null-monitor (no protocol)
-├── benchmark/                      # 48 coordination tasks (16 scenarios × 3 difficulties)
-├── lib/                            # tla2tools.jar (download separately, see Requirements)
+│       ├── monitoring/             # Verified coordination core (monitor + corrector)
+│       ├── opencode_adapter/       # Harness: each agent as an opencode process (default)
+│       ├── sdk_adapter/            # Harness: each agent via the Claude Agent SDK
+│       └── coordination/           # Distributed: coord core behind a network boundary
+├── benchmark/                      # 48 fully-specified tasks + an underspecified narrative tier
+├── tui/                            # Recipe to build the TraceFix TUI (a thin opencode fork)
 ├── .claude/skills/                 # Claude Code interactive skills
 ├── pyproject.toml
 └── LICENSE
@@ -74,13 +73,15 @@ Each task has `description.md`, `tools.json` (per-agent tool schemas), and `meta
 
 ## Runtime Architectures
 
-Both consume the same TLC-verified spec and provide fine-grained locking (agents run in parallel, blocking only at contention) — unlike LangGraph's global serialization.
+All runtimes consume the same TLC-verified spec and provide fine-grained locking (agents run in parallel, blocking only at contention) — unlike LangGraph's global serialization. Agents autonomously call coordination tools (`acquire_lock`, `send_message`, …); the monitor validates every operation against the verified spec and **blocks + corrects** any out-of-order action before it takes effect.
 
-**`tracefix/runtime/enforcement/`** — **Enforcement**: Runtime mediator structurally prevents coordination violations. Agents are unaware of locks/channels.
+**`tracefix/runtime/monitoring/`** — the verified coordination **core**: the monitor, per-agent state tracker, and corrector that every harness shares.
 
-**`tracefix/runtime/monitoring/`** — **Monitoring**: Agents autonomously call coordination tools (`acquire_lock`, `send_message`, etc.). Monitor validates every operation against the verified spec.
+**`tracefix/runtime/opencode_adapter/`** — the default harness: each agent runs as its own **opencode** process with real `Read`/`Write`/`Edit`/`Bash`, reaching the coordination core over a per-agent MCP server.
 
-**`tracefix/runtime/baselines/shared_chat/`** and **`tracefix/runtime/baselines/null_monitor/`** — Baselines without protocol monitoring, for comparison experiments.
+**`tracefix/runtime/sdk_adapter/`** — the same core, with each agent driven by the **Claude Agent SDK**.
+
+**`tracefix/runtime/coordination/`** — puts the coordination core behind a network boundary (one service + per-agent clients) so agents can run as separate processes/machines.
 
 ## Orchestration Workflow
 
