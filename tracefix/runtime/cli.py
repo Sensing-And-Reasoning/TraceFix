@@ -7,11 +7,10 @@ on the verified coordination layer:
     tracefix run --workspace workspace/my_task
 
 Defaults to the **opencode** harness (tracefix's per-agent OpenCode harness).
-Switch with ``--harness {opencode,sdk,monitoring}``. Common flags (--model,
+Switch with ``--harness {opencode,monitoring}``. Common flags (--model,
 --live, --verbose) are forwarded; any harness-specific flags after them are
 passed straight through to that harness's ``run`` command, e.g.::
 
-    tracefix run --workspace ws --harness sdk --builtins Read,Write,Edit,Bash
     tracefix run --workspace ws --opencode-bin 'bun run /path/to/opencode'
 """
 
@@ -26,9 +25,10 @@ from pathlib import Path
 from tracefix.runtime.workspace_layout import spec_path
 
 # harness name → CLI module exposing main(argv)
+# (The Claude-SDK harness exists in the tree but is intentionally not surfaced here;
+# the default is opencode, with the built-in monitoring loop for benchmark-style runs.)
 _HARNESS_MODULES = {
     "opencode": "tracefix.runtime.opencode_adapter.cli",
-    "sdk": "tracefix.runtime.sdk_adapter.cli",
     "monitoring": "tracefix.runtime.monitoring.cli",
 }
 
@@ -91,8 +91,7 @@ def _opencode_blockers(opencode_cmd: str, *, needs_mcp: bool) -> list[str]:
             f"opencode CLI not found on PATH: {exe!r}\n"
             "    The opencode harness runs each agent as an opencode process. Install it:\n"
             "        curl -fsSL https://opencode.ai/install | bash      (or: npm i -g opencode-ai)\n"
-            "    Already built one? Point at it:  --opencode-bin '/path/to/opencode'\n"
-            "    Or use a harness that needs no opencode:  --harness sdk   (or  --harness monitoring)"
+            "    Already built one (e.g. the TraceFix TUI)? Point at it:  --opencode-bin '/path/to/opencode'"
         )
     if needs_mcp and importlib.util.find_spec("mcp") is None:
         problems.append(

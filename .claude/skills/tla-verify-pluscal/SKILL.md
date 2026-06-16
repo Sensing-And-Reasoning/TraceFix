@@ -264,7 +264,7 @@ When prompt generation finishes, tell the user the workspace is ready and give t
 tracefix run --workspace <workspace>
 ```
 
-(That starts the whole MAS on the verified coordination layer — opencode harness by default; `--harness sdk` to use the Claude Agent SDK.)
+(That starts the whole MAS on the verified coordination layer via the opencode harness.)
 
 ## Rules
 

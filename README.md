@@ -28,7 +28,7 @@ tla-verify-pluscal doctor                       # check Java 17 + jar + tree-sit
 | **Python 3.11+** | everything | |
 | **Java 17** | `verify` (TLC) | auto-detected on `PATH` / `$JAVA_HOME` / Homebrew `openjdk@17` |
 | **`opencode` CLI** | `tracefix run` (default harness) & `tracefix design` | **stock upstream opencode** — TraceFix drives it via injected config, *not* a fork |
-| **bun ≥ 1.3.14** | *only* to build the TUI (step 3) | skip it if you use the skill or `--harness sdk` |
+| **bun ≥ 1.3.14** | *only* to build the TUI (step 3) | skip it if you design with the skill instead of the TUI |
 
 > Just verifying, no runs? `pip install -e .` + the TLC jar is enough — you can skip the
 > opencode CLI, the API key, and the TUI. (`tla-verify-pluscal verify examples/2pc_minimal` → `PASS`.)
@@ -66,7 +66,7 @@ tracefix run --workspace workspace/<name>      # add --live for the browser view
 > **Prefer not to build the TUI?** The same workflow runs as the `/tla-verify-pluscal`
 > skill in Claude Code, or headless via `tracefix design "<requirement>"` — see
 > [The full flow](#the-full-flow-requirement--running-mas). Both still use the `opencode`
-> CLI for the `run` step (or pick `--harness sdk` to run with no opencode at all).
+> CLI for the `run` step.
 
 ## Core Idea
 
@@ -91,7 +91,6 @@ TLC doesn't check business logic — it checks coordination: *"Can two agents ho
 │   └── runtime/
 │       ├── monitoring/             # Verified coordination core (monitor + corrector)
 │       ├── opencode_adapter/       # Harness: each agent as an opencode process (default)
-│       ├── sdk_adapter/            # Harness: each agent via the Claude Agent SDK
 │       └── coordination/           # Distributed: coord core behind a network boundary
 ├── benchmark/                      # 48 fully-specified tasks + an underspecified narrative tier
 ├── tui/                            # Recipe to build the TraceFix TUI (a thin opencode fork)
@@ -138,8 +137,6 @@ All runtimes consume the same TLC-verified spec and provide fine-grained locking
 **`tracefix/runtime/monitoring/`** — the verified coordination **core**: the monitor, per-agent state tracker, and corrector that every harness shares.
 
 **`tracefix/runtime/opencode_adapter/`** — the default harness: each agent runs as its own **opencode** process with real `Read`/`Write`/`Edit`/`Bash`, reaching the coordination core over a per-agent MCP server.
-
-**`tracefix/runtime/sdk_adapter/`** — the same core, with each agent driven by the **Claude Agent SDK**.
 
 **`tracefix/runtime/coordination/`** — puts the coordination core behind a network boundary (one service + per-agent clients) so agents can run as separate processes/machines.
 
@@ -247,12 +244,11 @@ generation — and leave a runnable workspace under `workspace/<name>/` (`spec/`
 tracefix run --workspace workspace/<name>
 ```
 
-This launches every agent on the verified coordination layer. By default it uses the
-**opencode** harness — each agent runs as a stock `opencode` process (the CLI from
-[Quick Start](#quick-start); point elsewhere with `--opencode-bin`). The monitor blocks any
-agent action that would violate the verified protocol. Add `--live` for the real-time
-browser view. No opencode installed? `--harness sdk` (Claude Agent SDK) and
-`--harness monitoring` need no external binary.
+This launches every agent on the verified coordination layer using the **opencode**
+harness — each agent runs as a stock `opencode` process (the CLI from
+[Quick Start](#quick-start); point at another build, e.g. the TUI, with `--opencode-bin`).
+The monitor blocks any agent action that would violate the verified protocol. Add `--live`
+for the real-time browser view.
 
 Each agent does its **domain work** with the runtime's builtins (read/write/edit/bash) by
 default — right for collaborative file/shell tasks. When a step needs a **structured typed

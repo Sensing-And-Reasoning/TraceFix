@@ -75,23 +75,23 @@ def test_cmd_run_delegates_with_derived_task(tmp_path, monkeypatch):
     ]
 
 
-def test_cmd_run_forwards_common_flags_to_sdk(tmp_path, monkeypatch):
+def test_cmd_run_forwards_common_flags_to_monitoring(tmp_path, monkeypatch):
     ws = _make_ws(tmp_path, with_states=True)
-    import tracefix.runtime.sdk_adapter.cli as sdk
+    import tracefix.runtime.monitoring.cli as mon
     captured = {}
 
     def _fake(argv):
         captured["argv"] = argv
         return 0
-    monkeypatch.setattr(sdk, "main", _fake)
+    monkeypatch.setattr(mon, "main", _fake)
 
-    rc = cli.cmd_run(_args(ws, harness="sdk", model="claude-x", verbose=True),
-                     ["--builtins", "Read,Write,Edit,Bash"])
+    rc = cli.cmd_run(_args(ws, harness="monitoring", model="gpt-x", verbose=True),
+                     ["--difficulty", "2"])
     assert rc == 0
     argv = captured["argv"]
-    assert "--model" in argv and "claude-x" in argv
+    assert "--model" in argv and "gpt-x" in argv
     assert "--verbose" in argv
-    assert argv[-2:] == ["--builtins", "Read,Write,Edit,Bash"]
+    assert argv[-2:] == ["--difficulty", "2"]
 
 
 def test_cmd_run_blocks_on_preflight(tmp_path, monkeypatch):
@@ -128,16 +128,16 @@ def test_cmd_run_blocks_when_opencode_deps_missing(tmp_path, monkeypatch):
     assert called["n"] == 0  # harness never invoked
 
 
-def test_cmd_run_sdk_harness_skips_opencode_check(tmp_path, monkeypatch):
+def test_cmd_run_monitoring_harness_skips_opencode_check(tmp_path, monkeypatch):
     """A non-opencode harness must not be gated by the opencode-deps preflight."""
     ws = _make_ws(tmp_path, with_states=True)
-    import tracefix.runtime.sdk_adapter.cli as sdk
-    monkeypatch.setattr(sdk, "main", lambda argv: 0)
-    # would raise if consulted for the sdk harness
+    import tracefix.runtime.monitoring.cli as mon
+    monkeypatch.setattr(mon, "main", lambda argv: 0)
+    # would raise if consulted for a non-opencode harness
     def _explode(*a, **k):
         raise AssertionError("opencode preflight ran for a non-opencode harness")
     monkeypatch.setattr(cli, "_opencode_blockers", _explode)
-    assert cli.cmd_run(_args(ws, harness="sdk"), []) == 0
+    assert cli.cmd_run(_args(ws, harness="monitoring"), []) == 0
 
 
 def test_opencode_bin_from_passthrough():
