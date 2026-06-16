@@ -68,7 +68,9 @@ Run the pipeline to generate verified workspaces (`ir.json`, `Protocol.tla`, `st
 | 7 | Document Co-authoring | 15 | Semiconductor Fabrication |
 | 8 | API System Development | 16 | CI/CD Pipeline |
 
-Each task has `description.md`, `tools.json` (per-agent tool schemas), and `metadata.json`. Scenarios 12–16 include simulation environments with failure injection (`--difficulty 0-3`).
+Each task has `description.md`, `tools.json` (per-agent tool schemas), and `metadata.json`. Scenarios 12–16 include simulation environments with failure injection (`--difficulty 0-3`). These 48 are the **fully-specified tier** — descriptions enumerate the agents/resources/communication, so they measure extraction + verification + repair.
+
+**`benchmark/underspecified/`** — a **narrative tier**: 6 scenarios rewritten as plain-prose requirements with no agent/resource enumeration, to measure the *design* capability (deriving the coordination structure from a high-level ask). Scored property-based — TLC pass + parent-checklist coverage + recorded assumptions — by `python -m benchmark.underspec_eval --task <id>`.
 
 ## Runtime Architectures
 
@@ -100,14 +102,18 @@ Phase 4: tla-verify-pluscal extract-states . → states.json
 Phase 5: Generate per-agent prompts → prompts/runtime_a/ + prompts/runtime_b/
 ```
 
-### Using Claude Code (Recommended)
+For the recommended, interactive way to drive this end to end — the TraceFix TUI
+first, the `/tla-verify-pluscal` skill second — see [The full flow](#the-full-flow-requirement--running-mas)
+below. The pieces below are the underlying steps those entry points automate.
+
+### Using the skill (in your own harness)
 
 ```
 > /tla-verify-pluscal
 "Design a protocol for task 3E (Two-Author Research Report)"
 ```
 
-### Using CLI Directly
+### Using the CLI directly
 
 ```bash
 pip install -e .
@@ -208,6 +214,13 @@ tracefix run --workspace workspace/<name>
 This launches every agent on the verified coordination layer (the **opencode** harness by
 default; `--harness sdk` for the Claude Agent SDK). The monitor blocks any agent action
 that would violate the verified protocol. Add `--live` for the real-time browser view.
+
+Each agent does its **domain work** with the runtime's builtins (read/write/edit/bash) by
+default — right for collaborative file/shell tasks. When a step needs a **structured typed
+tool** (a real external API, or custom typed logic), the designer tags it in PlusCal
+(`[tool: name(args); impl: external|local]`); `extract-states` then generates a per-agent
+`tools.json` + impl stub, and the runtime exposes each tool only to its owning agent (over
+MCP). So one system can mix builtin collaboration with real typed API calls.
 
 > Want to drive the verify half by hand with no API key? See the [Quick Start](#quick-start)
 > CLI path and the bundled, already-verified [`examples/2pc_minimal`](examples/2pc_minimal).
