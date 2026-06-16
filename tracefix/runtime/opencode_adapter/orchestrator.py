@@ -343,6 +343,7 @@ class OpencodeOrchestrator:
                 # finishes (agent.done), instead of leaving every node idle until the
                 # whole run ends.
                 async def _run_agent(aid=agent_id, cfg=cfg, xdg_env=xdg_env):
+                    t0 = time.time()  # this agent's own wall-clock (it may start staggered)
                     try:
                         res = await run_opencode_agent(
                             aid, cfg, opencode_cmd=self.opencode_cmd,
@@ -352,12 +353,13 @@ class OpencodeOrchestrator:
                         if event_bus is not None:
                             await event_bus.emit("agent.done", {
                                 "agent_id": aid, "status": "error",
+                                "duration": time.time() - t0,
                                 "error": f"{type(e).__name__}: {e}"})
                         raise
                     if event_bus is not None:
                         await event_bus.emit("agent.done", {
                             "agent_id": aid, "status": res.get("status", "completed"),
-                            "duration": res.get("duration", 0),
+                            "duration": time.time() - t0,
                             "error": res.get("error")})
                     return res
 

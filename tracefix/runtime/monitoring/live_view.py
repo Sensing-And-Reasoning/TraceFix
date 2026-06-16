@@ -184,6 +184,7 @@ body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,
 .status-word-busy { color:var(--bg); background:var(--accent); }
 .status-word-completed { color:var(--bg); background:var(--green); }
 .status-word-error, .status-word-timeout { color:#fff; background:var(--red); }
+.agent-dur { color:var(--green); font-size:10px; flex-shrink:0; }
 .agent-steps { color:var(--text2); font-size:11px; flex-shrink:0; }
 .agent-state { margin-top:4px; font-size:10px; color:var(--accent);
                overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -433,6 +434,7 @@ const agentElements = {};
         <span class="agent-status status-idle" data-status-dot="${a.id}"></span>
         <span class="agent-name">${a.id}</span>
         <span class="agent-statusword status-word-idle" data-status-word="${a.id}">idle</span>
+        <span class="agent-dur" data-agent-dur="${a.id}"></span>
         <span class="agent-steps" data-steps="${a.id}">0</span>
       </div>
       <div class="agent-state" data-agent-state="${a.id}"></div>`;
@@ -1280,6 +1282,9 @@ evtSource.addEventListener("agent.done", (e) => {
     agentState[data.agent_id].duration = data.duration || 0;
     agentState[data.agent_id].error = data.error || null;
   }
+  // Show this agent's own wall-clock duration once it finishes.
+  const durEl = document.querySelector(`[data-agent-dur="${data.agent_id}"]`);
+  if (durEl && data.duration) durEl.textContent = data.duration.toFixed(1) + "s";
 });
 
 evtSource.addEventListener("run.done", (e) => {
