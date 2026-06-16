@@ -242,9 +242,33 @@ class OpencodeOrchestrator:
         # event per state (pending/running/completed); emit one trace row per call,
         # on the terminal state, with a per-agent round counter and elapsed-since-start.
         tool_rounds: dict[str, int] = {}
+        # Last cumulative (input, output) tokens seen per agent — opencode reports a
+        # running total on each step_finish, so we emit the DELTA (the live view adds
+        # llm_end token counts) to avoid double-counting.
+        tok_seen: dict[str, tuple] = {}
 
         def _on_event(agent_id: str, ev: dict) -> None:
-            if event_bus is None or ev.get("type") != "tool_use":
+            if event_bus is None:
+                return
+            etype = ev.get("type")
+            # Agent "thinking" pulse + token meter: opencode emits step-start when a
+            # model turn begins and step-finish (with cumulative tokens) when it ends.
+            if etype == "step_start":
+                asyncio.create_task(event_bus.emit("agent.llm_start", {"agent_id": agent_id}))
+                return
+            if etype == "step_finish":
+                toks = (ev.get("part") or {}).get("tokens") or {}
+                cur_in = int(toks.get("input", 0) or 0)
+                cur_out = int(toks.get("output", 0) or 0)
+                prev_in, prev_out = tok_seen.get(agent_id, (0, 0))
+                tok_seen[agent_id] = (cur_in, cur_out)
+                asyncio.create_task(event_bus.emit("agent.llm_end", {
+                    "agent_id": agent_id,
+                    "input_tokens": max(0, cur_in - prev_in),
+                    "output_tokens": max(0, cur_out - prev_out),
+                }))
+                return
+            if etype != "tool_use":
                 return
             st = (ev.get("part") or {}).get("state") or {}
             status = st.get("status")

@@ -167,18 +167,28 @@ body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,
 .agent-list { overflow-y:auto; padding:0 8px 4px; }
 .agent-item { padding:7px 10px; margin-bottom:3px; border-radius:6px;
               background:var(--bg3); border:1px solid var(--border); cursor:pointer;
-              display:flex; align-items:center; gap:8px;
               transition:border-color 0.15s; font-size:12px; }
 .agent-item:hover { border-color:var(--accent); }
 .agent-item.selected { border-color:var(--accent); background:rgba(88,166,255,0.08); }
-.agent-status { width:8px; height:8px; border-radius:50%; flex-shrink:0; transition: background 0.3s; }
+.agent-row1 { display:flex; align-items:center; gap:8px; }
+.agent-status { width:9px; height:9px; border-radius:50%; flex-shrink:0; transition: background 0.3s; }
 .status-idle { background:var(--text2); }
 .status-busy { background:var(--accent); animation: pulse-busy 1s ease-in-out infinite; }
 .status-completed { background:var(--green); }
 .status-error { background:var(--red); }
 .status-timeout { background:var(--orange); }
 .agent-name { font-weight:600; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.agent-statusword { font-size:9px; text-transform:uppercase; letter-spacing:0.4px;
+                    padding:1px 6px; border-radius:8px; flex-shrink:0; font-weight:600; }
+.status-word-idle { color:var(--text2); background:var(--bg); }
+.status-word-busy { color:var(--bg); background:var(--accent); }
+.status-word-completed { color:var(--bg); background:var(--green); }
+.status-word-error, .status-word-timeout { color:#fff; background:var(--red); }
 .agent-steps { color:var(--text2); font-size:11px; flex-shrink:0; }
+.agent-state { margin-top:4px; font-size:10px; color:var(--accent);
+               overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.agent-state:empty { display:none; }
+.agent-state-at { color:var(--text2); }
 
 .channel-list { overflow-y:auto; padding:0 8px 4px; }
 .channel-item { padding:6px 10px; margin-bottom:3px; border-radius:6px;
@@ -233,10 +243,16 @@ body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,
               transition:all 0.15s; }
 .filter-btn.active { border-color:var(--accent); color:var(--accent); background:rgba(88,166,255,0.1); }
 .trace-scroll { flex:1; overflow-y:auto; padding:4px 0; }
-.trace-item { display:flex; align-items:flex-start; padding:5px 8px; margin-bottom:2px;
+.trace-item { padding:5px 8px; margin-bottom:2px;
               border-radius:4px; background:var(--bg); font-size:11px;
-              font-family:"SF Mono",Menlo,monospace; gap:6px; line-height:1.4;
+              font-family:"SF Mono",Menlo,monospace; line-height:1.4;
               animation: trace-appear 0.3s ease-out; }
+.trace-head { display:flex; align-items:flex-start; gap:6px; cursor:pointer; }
+.trace-head:hover { background:var(--bg3); border-radius:3px; }
+.trace-detail { margin-top:5px; padding:6px 8px; background:var(--bg3);
+                border:1px solid var(--border); border-radius:4px; color:var(--text2);
+                font-size:10px; white-space:pre-wrap; word-break:break-word;
+                max-height:280px; overflow:auto; }
 .trace-agent { color:var(--purple); flex-shrink:0; width:80px; overflow:hidden;
                text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
 .trace-round { color:var(--text2); flex-shrink:0; width:28px; }
@@ -362,6 +378,22 @@ svg { width:100%; height:100%; }
 // ========== INITIAL TOPOLOGY DATA ==========
 const TOPO = __GRAPH_DATA__;
 let runStartTime = null;
+let elapsedTimer = null;    // setInterval id while the run is live
+let finalElapsed = null;    // frozen elapsed once run.done arrives
+// Start the elapsed clock from the first event carrying a _ts (so the timer works
+// even if the browser connects after run.start). Idempotent.
+function ensureTimer(ts) {
+  if (runStartTime === null && ts) { runStartTime = ts; updateSummary(); }
+  if (elapsedTimer === null && runStartTime !== null) {
+    elapsedTimer = setInterval(updateSummary, 1000);
+  }
+}
+function stopTimer(duration) {
+  if (elapsedTimer !== null) { clearInterval(elapsedTimer); elapsedTimer = null; }
+  finalElapsed = (typeof duration === "number") ? duration
+    : (runStartTime !== null ? Date.now() / 1000 - runStartTime : 0);
+  updateSummary();
+}
 let traceItems = [];
 let activeFilter = "all";
 let activeChannelFilter = null;  // channel id or null
@@ -397,9 +429,13 @@ const agentElements = {};
     div.className = "agent-item";
     div.dataset.agentId = a.id;
     div.innerHTML = `
-      <span class="agent-status status-idle" data-status-dot="${a.id}"></span>
-      <span class="agent-name">${a.id}<span class="agent-state" data-agent-state="${a.id}"></span></span>
-      <span class="agent-steps" data-steps="${a.id}">0</span>`;
+      <div class="agent-row1">
+        <span class="agent-status status-idle" data-status-dot="${a.id}"></span>
+        <span class="agent-name">${a.id}</span>
+        <span class="agent-statusword status-word-idle" data-status-word="${a.id}">idle</span>
+        <span class="agent-steps" data-steps="${a.id}">0</span>
+      </div>
+      <div class="agent-state" data-agent-state="${a.id}"></div>`;
     div.addEventListener("click", () => {
       activeFilter = a.id;
       activeChannelFilter = null;
@@ -497,7 +533,8 @@ function updateChannelCount(chId) {
 // ========== LEFT PANEL: SUMMARY ==========
 function updateSummary() {
   const box = document.getElementById("summaryBox");
-  const elapsed = runStartTime ? ((Date.now() / 1000 - runStartTime).toFixed(1)) : "0.0";
+  const elapsed = finalElapsed !== null ? finalElapsed.toFixed(1)
+    : (runStartTime !== null ? (Date.now() / 1000 - runStartTime).toFixed(1) : "0.0");
   const cost = calcCost(tokenState.totalIn, tokenState.totalOut);
   const tokenRow = (tokenState.totalIn || tokenState.totalOut)
     ? `<div class="summary-row"><span>Tokens in/out</span><span class="val">${tokenState.totalIn.toLocaleString()} / ${tokenState.totalOut.toLocaleString()}</span></div>
@@ -568,7 +605,7 @@ function updateAgentStateLabel(agentId) {
   const phaseLabel = p ? " \u00b7 \u2699 " + (p.task || p.id) : "";   // \u2699 working: <task>
   const el = document.querySelector(`[data-agent-state="${agentId}"]`);
   if (el && protocolState[agentId]) {
-    el.textContent = " @ " + protocolState[agentId] + phaseLabel;
+    el.innerHTML = `<span class="agent-state-at">→</span> ${protocolState[agentId]}${phaseLabel}`;
   }
   // Update graph node sub-label to include state (+ business phase, if any)
   const node = graphNodeMap[agentId];
@@ -591,12 +628,14 @@ function appendStateTransitionTrace(agentId, fromState, toState, trigger) {
     div.style.display = "none";
   }
   div.innerHTML = `
-    <span class="trace-agent">${agentId}</span>
-    <span class="trace-round" style="color:var(--text2)">\u2192</span>
-    <span style="flex-shrink:0;color:var(--purple)">\u25C6</span>
-    <div class="trace-body">
-      <span style="color:var(--text2)">${fromState || "?"} \u2192 ${toState}</span>
-      <div class="trace-args">${trigger}</div>
+    <div class="trace-head" style="cursor:default">
+      <span class="trace-agent">${agentId}</span>
+      <span class="trace-round" style="color:var(--text2)">\u2192</span>
+      <span style="flex-shrink:0;color:var(--purple)">\u25C6</span>
+      <div class="trace-body">
+        <span style="color:var(--text2)">${fromState || "?"} \u2192 ${toState}</span>
+        <div class="trace-args">${trigger}</div>
+      </div>
     </div>`;
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
@@ -614,11 +653,13 @@ function appendProgressTrace(agentId, label) {
     div.style.display = "none";
   }
   div.innerHTML = `
-    <span class="trace-agent">${agentId}</span>
-    <span class="trace-round" style="color:var(--text2)">\u2699</span>
-    <div class="trace-body">
-      <span style="color:var(--cyan,#22d3ee)">progress</span>
-      <div class="trace-args">${label}</div>
+    <div class="trace-head" style="cursor:default">
+      <span class="trace-agent">${agentId}</span>
+      <span class="trace-round" style="color:var(--text2)">\u2699</span>
+      <div class="trace-body">
+        <span style="color:var(--cyan,#22d3ee)">progress</span>
+        <div class="trace-args">${label}</div>
+      </div>
     </div>`;
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
@@ -784,15 +825,34 @@ function appendTraceItem(agentId, round, toolName, args, result, elapsed) {
     div.style.display = "none";
   }
   div.innerHTML = `
-    <span class="trace-agent">${agentId}</span>
-    <span class="trace-round">R${String(round).padStart(2, '0')}</span>
-    <span class="${cls}" style="flex-shrink:0">${icon}</span>
-    <div class="trace-body">
-      <span class="trace-tool ${cls}">${toolName}</span>
-      ${argsStr ? `<div class="trace-args">${argsStr}</div>` : ""}
-      <div class="trace-result ${cls}">&rarr; ${resultStr}</div>
+    <div class="trace-head">
+      <span class="trace-agent">${agentId}</span>
+      <span class="trace-round">R${String(round).padStart(2, '0')}</span>
+      <span class="${cls}" style="flex-shrink:0">${icon}</span>
+      <div class="trace-body">
+        <span class="trace-tool ${cls}">${toolName}</span>
+        ${argsStr ? `<div class="trace-args">${argsStr}</div>` : ""}
+        <div class="trace-result ${cls}">&rarr; ${resultStr}</div>
+      </div>
+      <span class="trace-elapsed">${elapsed.toFixed(1)}s</span>
     </div>
-    <span class="trace-elapsed">${elapsed.toFixed(1)}s</span>`;
+    <div class="trace-detail" style="display:none"></div>`;
+
+  // Click to expand the full arguments + result for this log line.
+  const detail = div.querySelector(".trace-detail");
+  div.querySelector(".trace-head").addEventListener("click", () => {
+    if (detail.style.display === "none") {
+      if (!detail.dataset.filled) {
+        detail.textContent =
+          "args: " + JSON.stringify(args, null, 2) +
+          "\n\nresult: " + JSON.stringify(result, null, 2);
+        detail.dataset.filled = "1";
+      }
+      detail.style.display = "block";
+    } else {
+      detail.style.display = "none";
+    }
+  });
   container.appendChild(div);
 
   // Auto-scroll
@@ -807,10 +867,17 @@ function updateAgentStatus(agentId, status) {
   if (!agentState[agentId]) return;
   agentState[agentId].status = status;
 
-  // Update left panel dot
+  // Update left panel dot + the prominent status word
   const dot = document.querySelector(`[data-status-dot="${agentId}"]`);
   if (dot) {
     dot.className = `agent-status status-${status}`;
+  }
+  const word = document.querySelector(`[data-status-word="${agentId}"]`);
+  if (word) {
+    const label = { busy: "working", completed: "done", error: "error",
+                    timeout: "timeout", idle: "idle" }[status] || status;
+    word.textContent = label;
+    word.className = `agent-statusword status-word-${status}`;
   }
 
   // Update graph node
@@ -1063,9 +1130,7 @@ const evtSource = new EventSource("/api/events");
 
 evtSource.addEventListener("run.start", (e) => {
   const data = JSON.parse(e.data);
-  runStartTime = data._ts;
-  // Start elapsed timer
-  setInterval(updateSummary, 1000);
+  ensureTimer(data._ts);
 });
 
 evtSource.addEventListener("agent.llm_start", (e) => {
@@ -1086,6 +1151,7 @@ evtSource.addEventListener("agent.llm_end", (e) => {
 
 evtSource.addEventListener("agent.tool_call", (e) => {
   const data = JSON.parse(e.data);
+  ensureTimer(data._ts);   // fallback start if run.start was missed
   const { agent_id, round, tool_name, arguments: args, result, elapsed } = data;
 
   // Update step count
@@ -1177,6 +1243,7 @@ evtSource.addEventListener("sim.update", (e) => {
 
 evtSource.addEventListener("state.transition", (e) => {
   const data = JSON.parse(e.data);
+  ensureTimer(data._ts);   // fallback start if run.start was missed
   protocolState[data.agent_id] = data.to_state;
   updateAgentStateLabel(data.agent_id);
   appendStateTransitionTrace(data.agent_id, data.from_state, data.to_state, data.trigger);
@@ -1218,6 +1285,7 @@ evtSource.addEventListener("agent.done", (e) => {
 evtSource.addEventListener("run.done", (e) => {
   const data = JSON.parse(e.data);
   evtSource.close();
+  stopTimer(data.duration);   // freeze elapsed; stop the live ticker
 
   // Update header
   const badge = document.getElementById("statusBadge");
