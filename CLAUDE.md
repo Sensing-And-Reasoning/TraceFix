@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-TraceFix verifies LLM multi-agent coordination protocols using TLA+ formal methods. The pipeline turns natural-language task descriptions into a verified Intermediate Representation (IR), compiles it through PlusCal to TLA+, model-checks it with TLC, and emits per-agent runtime prompts. Two runtimes — `monitoring` (built-in OpenAI loop) and `sdk_adapter` (Claude Agent SDK harness, real Read/Write/Edit/Bash) — consume the verified artifacts; an opt-in `coordination` service distributes them across processes/machines.
+TraceFix verifies LLM multi-agent coordination protocols using TLA+ formal methods. The pipeline turns natural-language task descriptions into a verified Intermediate Representation (IR), compiles it through PlusCal to TLA+, model-checks it with TLC, and emits per-agent runtime prompts. The verified artifacts are consumed by pluggable harnesses over one shared coordination core: `opencode_adapter` (the **default** — each agent runs as its own opencode process with real Read/Write/Edit/Bash), `sdk_adapter` (Claude Agent SDK harness), and a built-in `monitoring` loop; an opt-in `coordination` service distributes them across processes/machines.
 
 ## Common Commands
 
@@ -84,10 +84,10 @@ tracefix run --workspace workspace/3E --harness monitoring --verbose   # benchma
 ```
 The per-harness module CLIs remain available for full control:
 ```bash
-# Monitoring (Architecture B, OpenAI loop) — agents call coordination tools, Monitor validates
+# Monitoring (built-in OpenAI loop) — agents call coordination tools, Monitor validates
 python -m tracefix.runtime.monitoring run --task 3E --workspace workspace/3E --verbose
 
-# SDK adapter (Architecture B, Claude Agent SDK harness) — real Read/Write/Edit/Bash;
+# SDK adapter (Claude Agent SDK harness) — real Read/Write/Edit/Bash;
 # run sub-agents on OpenAI via a LiteLLM proxy (ANTHROPIC_BASE_URL → proxy)
 python -m tracefix.runtime.sdk_adapter run --task 3E --workspace workspace/3E \
     --model gpt-5-mini --builtins Read,Write,Edit
@@ -141,9 +141,12 @@ Thin argparse wrapper around the inner pipeline. `cli.py:_resolve_java` / `_reso
 ### 3. Runtimes (`tracefix/runtime/`)
 All runtimes consume the same verified workspace and share `LockStore`, `CounterStore`, `MessageStore` (in `tracefix/runtime/store.py`) plus the monitoring core (`monitoring/coord.py`, `monitor.py`, `state_tracker.py`, `correction.py`).
 
-- **`monitoring/`** (Architecture B, OpenAI loop): agents drive themselves through pre-generated prompts and call coordination tools (`acquire_lock`, `send_message`, `receive_message`, `release_lock`, `signal_done`). `monitor.py:ProtocolMonitor` validates every op against the IR topology whitelist; `state_tracker.py:StateTracker` validates against the per-agent state machine. On an out-of-order op, `coord.py` blocks it and returns the legal next actions (`correction.py`); after `CORRECTION_CAP` unrecovered tries the agent fails honestly. See `coord.py`, `agent_runner.py`, `orchestrator.py`, `state_tracker.py`, `correction.py`.
-- **`sdk_adapter/`** (Architecture B, Claude Agent SDK harness): same coordination core, but each agent's loop runs via the SDK with real `Read`/`Write`/`Edit`/`Bash` builtins (custom tasks do real work). Coordination tools are a per-agent in-process MCP server; sub-agents can run on OpenAI via a LiteLLM proxy. A workspace-local `tools.json` (or none → SDK builtins) supplies the domain layer. See `dispatch.py`, `mcp_server.py`, `sdk_runner.py`, `orchestrator.py`.
+- **`opencode_adapter/`** (the **default** harness): each agent runs as its own `opencode` process (`opencode run --agent <key> --format json`) with real `Read`/`Write`/`Edit`/`Bash`, reaching the coordination core over a per-agent stdio MCP server (`coord_mcp/`). `config_gen.py` builds each agent's injected config + permission map; `driver.py` streams the JSONL events; `orchestrator.py` wires the run (+ the live event bus). This is what `tracefix run` and the TUI use. See `orchestrator.py`, `config_gen.py`, `driver.py`, `design.py`.
+- **`monitoring/`** (built-in OpenAI loop + the shared coordination core): agents drive themselves through pre-generated prompts and call coordination tools (`acquire_lock`, `send_message`, `receive_message`, `release_lock`, `signal_done`). `monitor.py:ProtocolMonitor` validates every op against the IR topology whitelist; `state_tracker.py:StateTracker` validates against the per-agent state machine. On an out-of-order op, `coord.py` blocks it and returns the legal next actions (`correction.py`); after `CORRECTION_CAP` unrecovered tries the agent fails honestly. See `coord.py`, `agent_runner.py`, `orchestrator.py`, `state_tracker.py`, `correction.py`.
+- **`sdk_adapter/`** (Claude Agent SDK harness): same coordination core, but each agent's loop runs via the SDK with real `Read`/`Write`/`Edit`/`Bash` builtins (custom tasks do real work). Coordination tools are a per-agent in-process MCP server; sub-agents can run on OpenAI via a LiteLLM proxy. See `dispatch.py`, `mcp_server.py`, `sdk_runner.py`, `orchestrator.py`.
 - **`coordination/`** (distributed, opt-in): puts the verified coordination logic behind a network boundary — one authoritative `CoordinationService` + per-agent `CoordClient` over the same `CoordBackend` interface, so agents run as separate processes/machines. `sdk_adapter --coord-url` switches to it; blocking stays server-side.
+
+**Domain layer (what agents actually *do* between coordination steps):** by default the runtime builtins (`Read`/`Write`/`Edit`/`Bash`). When the design tags a step with a **typed tool** (`\* domain: ... [tool: name(args); impl: external|local]`), `extract-states` generates a workspace `tools.json` (schema + per-agent `agent_ids`) + an impl stub; the runtime exposes each typed tool only to its owning agent over MCP — `domain_mcp/` serves `impl: local` Python impls, and `config_gen.domain_wiring` attaches `impl: external` MCP servers. So one system mixes builtin collaboration with real typed API calls. (A hand-written workspace `tools.json` works the same way; benchmark tasks ship one.)
 
 Real-time visualization is shared across runtimes: `event_bus.py` (async pub/sub) → `live_server.py` (asyncio HTTP/SSE, zero deps) → `live_view.py` (D3 + SSE client). Static post-run HTML lives in each runtime's `visualize.py`.
 
